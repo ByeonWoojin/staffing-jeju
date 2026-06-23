@@ -18,7 +18,7 @@ export function ApplicantCard({ application }: ApplicantCardProps) {
         <div className="flex items-start gap-3 min-w-0">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={application.representative_photo_url}
+            src={application.representative_photo_path}
             alt={`${application.name} 대표사진`}
             className="h-12 w-12 shrink-0 rounded-full object-cover border border-neutral-200"
           />

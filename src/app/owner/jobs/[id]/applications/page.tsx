@@ -2,11 +2,11 @@ import { notFound } from "next/navigation";
 import { OwnerLayout } from "@/components/layout/OwnerLayout";
 import { ApplicantList } from "@/components/owner";
 import {
-  getApplicationsByJobPostIdMock,
-  getCurrentOwnerMock,
-  getOwnerGuesthouseMock,
-  getOwnerJobPostByIdMock,
-} from "@/lib/owner-data";
+  getApplicationsByJobPostId,
+  getCurrentOwner,
+  getOwnerGuesthouse,
+  getOwnerJobPostById,
+} from "@/lib/owner-supabase-data";
 import {
   ButtonLink,
   EmptyState,
@@ -20,6 +20,8 @@ interface ApplicationsPageProps {
   params: Promise<{ id: string }>;
 }
 
+export const dynamic = "force-dynamic";
+
 export default async function JobApplicationsPage({
   params,
 }: ApplicationsPageProps) {
@@ -28,15 +30,15 @@ export default async function JobApplicationsPage({
   //TODO: GET job_post by id where owner_id = currentOwner.id
   //TODO: GET applications where job_post_id = currentJobPost.id
 
-  const owner = getCurrentOwnerMock();
-  const jobPost = getOwnerJobPostByIdMock(owner.id, id);
+  const owner = await getCurrentOwner();
+  const jobPost = await getOwnerJobPostById(owner.id, id);
 
   if (!jobPost) {
     notFound();
   }
 
-  const applications = getApplicationsByJobPostIdMock(jobPost.id);
-  const guesthouse = getOwnerGuesthouseMock(owner.id);
+  const applications = await getApplicationsByJobPostId(jobPost.id);
+  const guesthouse = await getOwnerGuesthouse(owner.id);
 
   return (
     <OwnerLayout>

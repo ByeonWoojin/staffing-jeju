@@ -1,18 +1,20 @@
 import { OwnerLayout } from "@/components/layout/OwnerLayout";
 import { RecentApplicantList } from "@/components/owner";
 import {
-  getCurrentJobPostMock,
-  getCurrentOwnerMock,
-  getOwnerApplicationsMock,
-} from "@/lib/owner-data";
+  getCurrentJobPost,
+  getCurrentOwner,
+  getOwnerApplications,
+} from "@/lib/owner-supabase-data";
 import { ButtonLink, EmptyState, PageHeader, Section } from "@/components/ui";
 
-export default function AllApplicationsPage() {
+export const dynamic = "force-dynamic";
+
+export default async function AllApplicationsPage() {
   //TODO: GET applications for current job_post where owner_id = currentOwner.id
 
-  const owner = getCurrentOwnerMock();
-  const currentJobPost = getCurrentJobPostMock(owner.id);
-  const applications = getOwnerApplicationsMock(owner.id);
+  const owner = await getCurrentOwner();
+  const currentJobPost = await getCurrentJobPost(owner.id);
+  const applications = await getOwnerApplications(owner.id);
 
   return (
     <OwnerLayout>

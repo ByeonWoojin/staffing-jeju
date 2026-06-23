@@ -226,6 +226,7 @@ export function createJobPostFromFormMock(
     owner_id: ownerId,
     slug: generateSlugFromTitle(formData.title),
     status: "open",
+    recruitment_cycle: 1,
     bumped_at: now,
     last_bumped_at: null,
     bump_count: 0,

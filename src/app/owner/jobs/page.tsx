@@ -1,19 +1,25 @@
 import { OwnerLayout } from "@/components/layout/OwnerLayout";
 import { RecruitmentManagePanel } from "@/components/owner";
 import {
-  getCurrentJobPostMock,
-  getCurrentOwnerMock,
-  getOwnerGuesthouseMock,
-} from "@/lib/owner-data";
+  getApplicationsByJobPostId,
+  getCurrentJobPost,
+  getCurrentOwner,
+  getOwnerGuesthouse,
+} from "@/lib/owner-supabase-data";
 import { ButtonLink, EmptyState, PageHeader } from "@/components/ui";
 
-export default function JobsPage() {
+export const dynamic = "force-dynamic";
+
+export default async function JobsPage() {
   //TODO: GET current job_post where owner_id = currentOwner.id
   //TODO: GET applications count for current job_post
 
-  const owner = getCurrentOwnerMock();
-  const currentJobPost = getCurrentJobPostMock(owner.id);
-  const guesthouse = getOwnerGuesthouseMock(owner.id);
+  const owner = await getCurrentOwner();
+  const currentJobPost = await getCurrentJobPost(owner.id);
+  const guesthouse = await getOwnerGuesthouse(owner.id);
+  const applicationCount = currentJobPost
+    ? (await getApplicationsByJobPostId(currentJobPost.id)).length
+    : 0;
 
   return (
     <OwnerLayout>
@@ -31,6 +37,7 @@ export default function JobsPage() {
         <RecruitmentManagePanel
           initialJobPost={currentJobPost}
           guesthouse={guesthouse}
+          applicationCount={applicationCount}
         />
       ) : (
         <EmptyState

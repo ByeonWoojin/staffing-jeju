@@ -2,14 +2,16 @@ import { notFound } from "next/navigation";
 import { OwnerLayout } from "@/components/layout/OwnerLayout";
 import { JobPostForm } from "@/components/owner";
 import {
-  getCurrentOwnerMock,
-  getOwnerJobPostByIdMock,
-} from "@/lib/owner-data";
+  getCurrentOwner,
+  getOwnerJobPostById,
+} from "@/lib/owner-supabase-data";
 import { PageHeader } from "@/components/ui";
 
 interface EditJobPageProps {
   params: Promise<{ id: string }>;
 }
+
+export const dynamic = "force-dynamic";
 
 export default async function EditJobPage({ params }: EditJobPageProps) {
   const { id } = await params;
@@ -18,8 +20,8 @@ export default async function EditJobPage({ params }: EditJobPageProps) {
   //TODO: PATCH job_posts by id
   //TODO: If important fields changed, INSERT job_post_update_logs
 
-  const owner = getCurrentOwnerMock();
-  const jobPost = getOwnerJobPostByIdMock(owner.id, id);
+  const owner = await getCurrentOwner();
+  const jobPost = await getOwnerJobPostById(owner.id, id);
 
   if (!jobPost) {
     notFound();

@@ -5,7 +5,7 @@ import {
   RecentApplicantList,
   RecruitmentSummaryCard,
 } from "@/components/owner";
-import { getOwnerDashboardDataMock } from "@/lib/owner-data";
+import { getOwnerDashboardData } from "@/lib/owner-supabase-data";
 import {
   ButtonLink,
   Card,
@@ -15,14 +15,16 @@ import {
   Section,
 } from "@/components/ui";
 
-export default function OwnerHomePage() {
+export const dynamic = "force-dynamic";
+
+export default async function OwnerHomePage() {
   //TODO: GET current owner profile
   //TODO: GET guesthouses where owner_id = currentOwner.id
   //TODO: GET current job_post for guesthouse
   //TODO: GET applications for current job_post
 
   const { owner, guesthouse, current_job_post, applications, stats } =
-    getOwnerDashboardDataMock();
+    await getOwnerDashboardData();
 
   const recentApplications = applications.slice(0, 5);
 

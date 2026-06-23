@@ -1,12 +1,14 @@
 import { notFound } from "next/navigation";
 import { OwnerLayout } from "@/components/layout/OwnerLayout";
 import { ApplicationDetail } from "@/components/owner";
-import { getApplicationWithOwnerCheckMock } from "@/lib/owner-data";
+import { getApplicationWithOwnerCheck } from "@/lib/owner-supabase-data";
 import { ButtonLink, PageHeader } from "@/components/ui";
 
 interface ApplicationDetailPageProps {
   params: Promise<{ id: string }>;
 }
+
+export const dynamic = "force-dynamic";
 
 export default async function ApplicationDetailPage({
   params,
@@ -18,7 +20,7 @@ export default async function ApplicationDetailPage({
   //TODO: If application.status === 'submitted', PATCH applications.status = 'viewed'
   //TODO: INSERT application_status_logs from submitted to viewed
 
-  const result = getApplicationWithOwnerCheckMock("owner_001", id);
+  const result = await getApplicationWithOwnerCheck(id);
 
   if (!result) {
     notFound();

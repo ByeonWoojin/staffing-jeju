@@ -2,16 +2,18 @@ import { redirect } from "next/navigation";
 import { OwnerLayout } from "@/components/layout/OwnerLayout";
 import { GuesthouseForm } from "@/components/owner";
 import {
-  getCurrentOwnerMock,
-  getOwnerGuesthouseMock,
-} from "@/lib/owner-data";
+  getCurrentOwner,
+  getOwnerGuesthouse,
+} from "@/lib/owner-supabase-data";
 import { PageHeader } from "@/components/ui";
 
-export default function EditGuesthousePage() {
+export const dynamic = "force-dynamic";
+
+export default async function EditGuesthousePage() {
   //TODO: GET guesthouse where owner_id = currentOwner.id
 
-  const owner = getCurrentOwnerMock();
-  const guesthouse = getOwnerGuesthouseMock(owner.id);
+  const owner = await getCurrentOwner();
+  const guesthouse = await getOwnerGuesthouse(owner.id);
 
   if (!guesthouse) {
     redirect("/owner/guesthouse/new");

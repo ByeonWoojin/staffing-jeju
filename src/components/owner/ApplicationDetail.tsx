@@ -80,7 +80,7 @@ export function ApplicationDetail({
           <CardContent className="flex flex-col gap-6 pt-5 md:pt-6 sm:flex-row">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={application.representative_photo_url}
+              src={application.representative_photo_path}
               alt={`${application.name} 대표사진`}
               className="h-32 w-32 shrink-0 rounded-lg object-cover border border-neutral-200 mx-auto sm:mx-0"
             />

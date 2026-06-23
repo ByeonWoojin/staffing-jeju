@@ -1,14 +1,16 @@
 import { OwnerLayout } from "@/components/layout/OwnerLayout";
 import { JobPostForm } from "@/components/owner";
 import {
-  getCurrentJobPostMock,
-  getCurrentOwnerMock,
-} from "@/lib/owner-data";
+  getCurrentJobPost,
+  getCurrentOwner,
+} from "@/lib/owner-supabase-data";
 import { ButtonLink, Card, CardContent, PageHeader } from "@/components/ui";
 
-export default function NewJobPage() {
-  const owner = getCurrentOwnerMock();
-  const existingJobPost = getCurrentJobPostMock(owner.id);
+export const dynamic = "force-dynamic";
+
+export default async function NewJobPage() {
+  const owner = await getCurrentOwner();
+  const existingJobPost = await getCurrentJobPost(owner.id);
 
   return (
     <OwnerLayout>

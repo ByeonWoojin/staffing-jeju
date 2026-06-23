@@ -62,6 +62,7 @@ export interface JobPost {
   extra_info: string | null;
   description: string | null;
   status: JobStatus;
+  recruitment_cycle: number;
   bumped_at: string;
   last_bumped_at: string | null;
   bump_count: number;
@@ -73,11 +74,12 @@ export interface Application {
   id: string;
   job_post_id: string;
   staff_id: string;
+  recruitment_cycle: number;
   name: string;
   age: number;
   gender: GenderCondition;
   phone: string;
-  representative_photo_url: string;
+  representative_photo_path: string;
   available_start_date: string;
   available_work_period: string;
   experience_status: ExperienceStatus;
@@ -94,6 +96,7 @@ export type JobPostFormData = Omit<
   | "owner_id"
   | "slug"
   | "status"
+  | "recruitment_cycle"
   | "bumped_at"
   | "last_bumped_at"
   | "bump_count"

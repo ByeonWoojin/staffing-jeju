@@ -17,7 +17,7 @@ export function RecentApplicantRow({ application }: RecentApplicantRowProps) {
         <div className="flex items-center gap-3 min-w-0">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={application.representative_photo_url}
+            src={application.representative_photo_path}
             alt={`${application.name} 대표사진`}
             className="h-10 w-10 shrink-0 rounded-full object-cover border border-neutral-200"
           />

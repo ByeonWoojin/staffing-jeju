@@ -4,7 +4,6 @@ import { useState } from "react";
 import type { Guesthouse, JobPost } from "@/types/database";
 import { formatDate, formatDateTime } from "@/lib/owner-utils";
 import {
-  getApplicationCountByJobPostMock,
   getBumpDisabledReason,
   getShareLink,
 } from "@/lib/owner-data";
@@ -23,15 +22,16 @@ import {
 interface RecruitmentManagePanelProps {
   initialJobPost: JobPost;
   guesthouse: Guesthouse | null;
+  applicationCount: number;
 }
 
 export function RecruitmentManagePanel({
   initialJobPost,
   guesthouse,
+  applicationCount,
 }: RecruitmentManagePanelProps) {
   const [jobPost, setJobPost] = useState(initialJobPost);
 
-  const applicationCount = getApplicationCountByJobPostMock(jobPost.id);
   const shareLink = getShareLink(jobPost.slug);
   const bumpDisabledReason = getBumpDisabledReason(jobPost);
   const canShare = jobPost.status !== "hidden";
