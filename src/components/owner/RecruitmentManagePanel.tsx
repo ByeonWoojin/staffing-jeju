@@ -1,12 +1,19 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import type { Guesthouse, JobPost } from "@/types/database";
 import { formatDate, formatDateTime } from "@/lib/owner-utils";
+import { isUuid } from "@/lib/uuid";
 import {
   getBumpDisabledReason,
   getShareLink,
 } from "@/lib/owner-data";
+import {
+  bumpRecruitment,
+  closeRecruitment,
+  reopenRecruitment,
+} from "@/app/owner/jobs/actions";
 import {
   AccommodationBadge,
   Button,
@@ -30,11 +37,20 @@ export function RecruitmentManagePanel({
   guesthouse,
   applicationCount,
 }: RecruitmentManagePanelProps) {
-  const [jobPost, setJobPost] = useState(initialJobPost);
+  const router = useRouter();
+  const [pendingAction, setPendingAction] = useState<
+    "close" | "reopen" | "bump" | null
+  >(null);
 
+  const jobPost = initialJobPost;
   const shareLink = getShareLink(jobPost.slug);
   const bumpDisabledReason = getBumpDisabledReason(jobPost);
   const canShare = jobPost.status !== "hidden";
+  const isActionPending = pendingAction !== null;
+  const isDatabaseJobPost = isUuid(jobPost.id);
+  const actionDisabledReason = isDatabaseJobPost
+    ? null
+    : "개발용 mock 데이터에서는 액션을 실행할 수 없습니다.";
 
   const handleCopyLink = async () => {
     if (!canShare) return;
@@ -47,49 +63,73 @@ export function RecruitmentManagePanel({
     }
   };
 
-  const handleClose = () => {
+  const handleClose = async () => {
+    if (actionDisabledReason) {
+      alert(actionDisabledReason);
+      return;
+    }
     if (!confirm("모집을 마감하시겠습니까? 마감 후에는 새 지원을 받을 수 없습니다.")) {
       return;
     }
-    //TODO: PATCH job_posts.status = 'closed'
-    console.log("PATCH job_posts.status = closed", jobPost.id);
-    setJobPost((prev) => ({
-      ...prev,
-      status: "closed",
-      updated_at: new Date().toISOString(),
-    }));
-    alert("모집이 마감되었습니다.");
+    setPendingAction("close");
+    try {
+      await closeRecruitment(jobPost.id);
+      router.refresh();
+      alert("모집이 마감되었습니다.");
+    } catch (error) {
+      alert(
+        error instanceof Error
+          ? error.message
+          : "모집 마감 처리에 실패했습니다.",
+      );
+    } finally {
+      setPendingAction(null);
+    }
   };
 
-  const handleReopen = () => {
+  const handleReopen = async () => {
+    if (actionDisabledReason) {
+      alert(actionDisabledReason);
+      return;
+    }
     if (!confirm("모집을 다시 시작하시겠습니까?")) return;
-    //TODO: PATCH job_posts.status = 'open'
-    console.log("PATCH job_posts.status = open", jobPost.id);
-    setJobPost((prev) => ({
-      ...prev,
-      status: "open",
-      updated_at: new Date().toISOString(),
-    }));
-    alert("모집중으로 변경되었습니다.");
+    setPendingAction("reopen");
+    try {
+      await reopenRecruitment(jobPost.id);
+      router.refresh();
+      alert("모집중으로 변경되었습니다.");
+    } catch (error) {
+      alert(
+        error instanceof Error
+          ? error.message
+          : "모집 재개 처리에 실패했습니다.",
+      );
+    } finally {
+      setPendingAction(null);
+    }
   };
 
-  const handleBump = () => {
+  const handleBump = async () => {
+    if (actionDisabledReason) {
+      alert(actionDisabledReason);
+      return;
+    }
     if (bumpDisabledReason) return;
 
-    // TODO: PATCH job_posts bumped_at, last_bumped_at, bump_count
-    // TODO: only allow bump when status === 'open'
-    // TODO: block bump if last_bumped_at is within 24 hours
-    console.log("PATCH job_posts bump", jobPost.id);
-
-    const now = new Date().toISOString();
-    setJobPost((prev) => ({
-      ...prev,
-      bumped_at: now,
-      last_bumped_at: now,
-      bump_count: prev.bump_count + 1,
-      updated_at: now,
-    }));
-    alert("모집글이 끌어올려졌습니다.");
+    setPendingAction("bump");
+    try {
+      await bumpRecruitment(jobPost.id);
+      router.refresh();
+      alert("모집글이 끌어올려졌습니다.");
+    } catch (error) {
+      alert(
+        error instanceof Error
+          ? error.message
+          : "모집글 끌어올리기에 실패했습니다.",
+      );
+    } finally {
+      setPendingAction(null);
+    }
   };
 
   return (
@@ -194,6 +234,11 @@ export function RecruitmentManagePanel({
         {jobPost.status === "open" && bumpDisabledReason && (
           <p className="text-caption text-neutral-500">{bumpDisabledReason}</p>
         )}
+        {actionDisabledReason && (
+          <p className="text-caption text-neutral-500">
+            {actionDisabledReason}
+          </p>
+        )}
       </CardContent>
 
       <CardFooter className="flex-col items-stretch gap-3 border-t border-neutral-100 px-5 pb-5 sm:flex-row sm:flex-wrap sm:items-center md:px-6 md:pb-6">
@@ -217,24 +262,31 @@ export function RecruitmentManagePanel({
             <Button
               variant="outline"
               size="sm"
-              disabled={!!bumpDisabledReason}
+              disabled={
+                !!bumpDisabledReason || !!actionDisabledReason || isActionPending
+              }
               onClick={handleBump}
             >
-              끌어올리기
+              {pendingAction === "bump" ? "처리 중..." : "끌어올리기"}
             </Button>
             <Button
               variant="outline-danger"
               size="sm"
+              disabled={!!actionDisabledReason || isActionPending}
               onClick={handleClose}
             >
-              모집 마감
+              {pendingAction === "close" ? "처리 중..." : "모집 마감"}
             </Button>
           </>
         )}
 
         {jobPost.status === "closed" && (
-          <Button size="sm" onClick={handleReopen}>
-            모집중으로 변경
+          <Button
+            size="sm"
+            disabled={!!actionDisabledReason || isActionPending}
+            onClick={handleReopen}
+          >
+            {pendingAction === "reopen" ? "처리 중..." : "모집중으로 변경"}
           </Button>
         )}
 
