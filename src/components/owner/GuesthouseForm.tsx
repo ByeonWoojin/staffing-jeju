@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { GuesthouseFormData } from "@/types/database";
+import { updateGuesthouse } from "@/app/owner/guesthouse/edit/actions";
+import { isUuid } from "@/lib/uuid";
 import {
   Button,
   ButtonLink,
@@ -16,6 +18,7 @@ import {
 
 interface GuesthouseFormProps {
   mode: "create" | "edit";
+  guesthouseId?: string;
   initialData?: GuesthouseFormData;
 }
 
@@ -27,12 +30,18 @@ const emptyForm: GuesthouseFormData = {
   contact_method: "",
 };
 
-export function GuesthouseForm({ mode, initialData }: GuesthouseFormProps) {
+export function GuesthouseForm({
+  mode,
+  guesthouseId,
+  initialData,
+}: GuesthouseFormProps) {
   const router = useRouter();
   const [form, setForm] = useState<GuesthouseFormData>(
     initialData ?? emptyForm,
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const isMockEdit =
+    mode === "edit" && (!guesthouseId || !isUuid(guesthouseId));
 
   const updateField = (field: keyof GuesthouseFormData, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -50,11 +59,23 @@ export function GuesthouseForm({ mode, initialData }: GuesthouseFormProps) {
       alert("게스트하우스 정보가 저장되었습니다.");
       router.push("/owner/jobs/new");
     } else {
-      //TODO: PATCH guesthouses by id
-      console.log("PATCH guesthouses", form);
-      //TODO: Toast로 성공 메시지 표시
-      alert("게스트하우스 정보가 수정되었습니다.");
-      router.push("/owner");
+      if (!guesthouseId || isMockEdit) {
+        alert("개발용 mock 데이터에서는 저장할 수 없습니다.");
+        setIsSubmitting(false);
+        return;
+      }
+
+      try {
+        await updateGuesthouse(guesthouseId, form);
+        alert("게스트하우스 정보가 수정되었습니다.");
+        router.push("/owner/guesthouse");
+      } catch (error) {
+        alert(
+          error instanceof Error
+            ? error.message
+            : "게스트하우스 정보 수정에 실패했습니다.",
+        );
+      }
     }
 
     setIsSubmitting(false);
@@ -118,10 +139,15 @@ export function GuesthouseForm({ mode, initialData }: GuesthouseFormProps) {
       </Section>
 
       <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+        {isMockEdit && (
+          <p className="text-caption text-neutral-500 sm:mr-auto">
+            개발용 mock 데이터에서는 저장할 수 없습니다.
+          </p>
+        )}
         <ButtonLink href="/owner" variant="outline">
           취소
         </ButtonLink>
-        <Button type="submit" disabled={isSubmitting}>
+        <Button type="submit" disabled={isSubmitting || isMockEdit}>
           {mode === "create" ? "저장하기" : "수정 저장"}
         </Button>
       </div>
