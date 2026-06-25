@@ -1,7 +1,9 @@
 import { notFound } from "next/navigation";
 import { OwnerLayout } from "@/components/layout/OwnerLayout";
 import { ApplicationDetail } from "@/components/owner";
+import { markApplicationViewed } from "@/app/owner/applications/actions";
 import { getApplicationWithOwnerCheck } from "@/lib/owner-supabase-data";
+import { isUuid } from "@/lib/uuid";
 import { ButtonLink, PageHeader } from "@/components/ui";
 
 interface ApplicationDetailPageProps {
@@ -15,15 +17,19 @@ export default async function ApplicationDetailPage({
 }: ApplicationDetailPageProps) {
   const { id } = await params;
 
-  //TODO: GET application by id joined with job_posts
-  //TODO: Check job_posts.owner_id === currentOwner.id
-  //TODO: If application.status === 'submitted', PATCH applications.status = 'viewed'
-  //TODO: INSERT application_status_logs from submitted to viewed
-
-  const result = await getApplicationWithOwnerCheck(id);
+  let result = await getApplicationWithOwnerCheck(id);
 
   if (!result) {
     notFound();
+  }
+
+  if (result.application.status === "submitted" && isUuid(result.application.id)) {
+    await markApplicationViewed(result.application.id);
+    result = await getApplicationWithOwnerCheck(id);
+
+    if (!result) {
+      notFound();
+    }
   }
 
   const { application, job_post } = result;

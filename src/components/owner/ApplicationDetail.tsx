@@ -2,14 +2,17 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import type { Application, ApplicationStatus, JobPost } from "@/types/database";
+import type { Application, JobPost } from "@/types/database";
+import {
+  acceptApplication,
+  rejectApplication,
+} from "@/app/owner/applications/actions";
 import { formatDate } from "@/lib/owner-utils";
 import {
   getApplicationStatusLabel,
   getExperienceStatusLabel,
   getGenderConditionLabel,
 } from "@/lib/labels";
-import { getAllowedStatusTransitions } from "@/lib/owner-data";
 import {
   ApplicationStatusBadge,
   Button,
@@ -31,47 +34,45 @@ export function ApplicationDetail({
   jobPost,
 }: ApplicationDetailProps) {
   const router = useRouter();
-  const [application, setApplication] = useState(initialApplication);
   const [isUpdating, setIsUpdating] = useState(false);
 
-  const allowedTransitions = getAllowedStatusTransitions(application.status);
+  const application = initialApplication;
+  const canDecide =
+    application.status === "submitted" || application.status === "viewed";
 
-  //TODO: If application.status === 'submitted', PATCH applications.status = 'viewed'
-  //TODO: INSERT application_status_logs from submitted to viewed
-
-  const handleStatusChange = async (newStatus: ApplicationStatus) => {
-    if (!allowedTransitions.includes(newStatus)) return;
-
-    const label = getApplicationStatusLabel(newStatus);
-    if (
-      !confirm(`지원 상태를 "${label}"(으)로 변경하시겠습니까?`)
-    ) {
-      return;
-    }
-
+  const handleAccept = async () => {
+    if (!canDecide) return;
+    if (!confirm("이 지원자를 채용합격 처리하시겠습니까?")) return;
     setIsUpdating(true);
-
-    //TODO: PATCH applications.status
-    //TODO: INSERT application_status_logs with application_id, changed_by, from_status, to_status, memo
-    console.log("PATCH applications.status", {
-      application_id: application.id,
-      from_status: application.status,
-      to_status: newStatus,
-    });
-
-    setApplication((prev) => ({
-      ...prev,
-      status: newStatus,
-      updated_at: new Date().toISOString(),
-    }));
-
-    //TODO: Toast로 상태 변경 완료 표시
-    alert(`지원 상태가 "${label}"(으)로 변경되었습니다.`);
-    setIsUpdating(false);
-    router.refresh();
+    try {
+      await acceptApplication(application.id);
+      router.refresh();
+      alert("채용합격 처리되었습니다.");
+    } catch (error) {
+      alert(
+        error instanceof Error ? error.message : "채용합격 처리에 실패했습니다.",
+      );
+    } finally {
+      setIsUpdating(false);
+    }
   };
 
-  const isStatusLocked = allowedTransitions.length === 0;
+  const handleReject = async () => {
+    if (!canDecide) return;
+    if (!confirm("이 지원자를 불합격 처리하시겠습니까?")) return;
+    setIsUpdating(true);
+    try {
+      await rejectApplication(application.id);
+      router.refresh();
+      alert("불합격 처리되었습니다.");
+    } catch (error) {
+      alert(
+        error instanceof Error ? error.message : "불합격 처리에 실패했습니다.",
+      );
+    } finally {
+      setIsUpdating(false);
+    }
+  };
 
   return (
     <div className="flex flex-col gap-8">
@@ -177,47 +178,22 @@ export function ApplicationDetail({
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {isStatusLocked ? (
+            {!canDecide ? (
               <p className="text-body-sm text-neutral-500">
                 이 지원서는 더 이상 상태를 변경할 수 없습니다.
               </p>
             ) : (
               <div className="flex flex-wrap gap-3">
-                {allowedTransitions.includes("accepted") && (
-                  <Button
-                    onClick={() => handleStatusChange("accepted")}
-                    disabled={isUpdating}
-                  >
-                    채용합격 처리
-                  </Button>
-                )}
-                {allowedTransitions.includes("rejected") && (
-                  <Button
-                    variant="outline-danger"
-                    onClick={() => handleStatusChange("rejected")}
-                    disabled={isUpdating}
-                  >
-                    불합격 처리
-                  </Button>
-                )}
-                {allowedTransitions.includes("viewed") && (
-                  <Button
-                    variant="outline"
-                    onClick={() => handleStatusChange("viewed")}
-                    disabled={isUpdating}
-                  >
-                    열람 처리
-                  </Button>
-                )}
-                {allowedTransitions.includes("canceled") && (
-                  <Button
-                    variant="ghost"
-                    onClick={() => handleStatusChange("canceled")}
-                    disabled={isUpdating}
-                  >
-                    지원취소 처리
-                  </Button>
-                )}
+                <Button onClick={handleAccept} disabled={isUpdating}>
+                  {isUpdating ? "처리 중..." : "채용합격 처리"}
+                </Button>
+                <Button
+                  variant="outline-danger"
+                  onClick={handleReject}
+                  disabled={isUpdating}
+                >
+                  {isUpdating ? "처리 중..." : "불합격 처리"}
+                </Button>
               </div>
             )}
           </CardContent>
