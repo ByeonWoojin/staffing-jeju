@@ -3,10 +3,12 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { JobPost, JobPostFormData } from "@/types/database";
+import { updateJobPost } from "@/app/owner/jobs/[id]/edit/actions";
 import {
   GENDER_CONDITION_LABELS,
   STIPEND_TYPE_LABELS,
 } from "@/lib/labels";
+import { isUuid } from "@/lib/uuid";
 import {
   createJobPostFromFormMock,
   getCurrentOwnerMock,
@@ -84,6 +86,8 @@ export function JobPostForm({ mode, initialData }: JobPostFormProps) {
     initialData ? jobPostToFormData(initialData) : defaultFormData,
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const isMockEdit =
+    mode === "edit" && (!initialData || !isUuid(initialData.id));
 
   const updateField = <K extends keyof JobPostFormData>(
     field: K,
@@ -136,12 +140,23 @@ export function JobPostForm({ mode, initialData }: JobPostFormProps) {
       saveCreatedJobPostToSession(created);
       router.push(`/owner/jobs/${created.id}/complete`);
     } else {
-      //TODO: PATCH job_posts by id
-      //TODO: If important fields changed, INSERT job_post_update_logs
-      console.log("PATCH job_posts", { id: initialData?.id, ...form });
-      //TODO: Toast로 성공 메시지 표시
-      alert("모집글이 수정되었습니다.");
-      router.push("/owner/jobs");
+      if (!initialData || isMockEdit) {
+        alert("개발용 mock 데이터에서는 저장할 수 없습니다.");
+        setIsSubmitting(false);
+        return;
+      }
+
+      try {
+        await updateJobPost(initialData.id, form);
+        alert("모집글이 수정되었습니다.");
+        router.push("/owner/jobs");
+      } catch (error) {
+        alert(
+          error instanceof Error
+            ? error.message
+            : "모집글 수정에 실패했습니다.",
+        );
+      }
     }
 
     setIsSubmitting(false);
@@ -199,15 +214,17 @@ export function JobPostForm({ mode, initialData }: JobPostFormProps) {
               placeholder="예: 20대~30대"
               helperText="선택 입력"
             />
-            <div className="flex items-end">
-              <Checkbox
-                label="급구"
-                name="is_urgent"
-                checked={form.is_urgent}
-                onChange={(e) => updateField("is_urgent", e.target.checked)}
-                description="급하게 스탭을 구하는 공고입니다"
-              />
-            </div>
+            {mode === "create" && (
+              <div className="flex items-end">
+                <Checkbox
+                  label="급구"
+                  name="is_urgent"
+                  checked={form.is_urgent}
+                  onChange={(e) => updateField("is_urgent", e.target.checked)}
+                  description="급하게 스탭을 구하는 공고입니다"
+                />
+              </div>
+            )}
           </CardContent>
         </Card>
       </Section>
@@ -370,10 +387,15 @@ export function JobPostForm({ mode, initialData }: JobPostFormProps) {
       </Section>
 
       <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+        {isMockEdit && (
+          <p className="text-caption text-neutral-500 sm:mr-auto">
+            개발용 mock 데이터에서는 저장할 수 없습니다.
+          </p>
+        )}
         <ButtonLink href="/owner/jobs" variant="outline">
           {mode === "create" ? "취소" : "돌아가기"}
         </ButtonLink>
-        <Button type="submit" disabled={isSubmitting}>
+        <Button type="submit" disabled={isSubmitting || isMockEdit}>
           {mode === "create" ? "스탭 모집글 작성하기" : "변경사항 저장"}
         </Button>
       </div>

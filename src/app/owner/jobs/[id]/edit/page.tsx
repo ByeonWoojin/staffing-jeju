@@ -16,10 +16,6 @@ export const dynamic = "force-dynamic";
 export default async function EditJobPage({ params }: EditJobPageProps) {
   const { id } = await params;
 
-  //TODO: GET job_post by id where owner_id = currentOwner.id
-  //TODO: PATCH job_posts by id
-  //TODO: If important fields changed, INSERT job_post_update_logs
-
   const owner = await getCurrentOwner();
   const jobPost = await getOwnerJobPostById(owner.id, id);
 
