@@ -57,6 +57,7 @@ export interface JobPost {
   provides_accommodation: boolean;
   provides_meal: boolean;
   is_urgent: boolean;
+  last_urgent_marked_at: string | null;
   preferred_conditions: string | null;
   caution: string | null;
   extra_info: string | null;
@@ -99,6 +100,7 @@ export type JobPostFormData = Omit<
   | "recruitment_cycle"
   | "bumped_at"
   | "last_bumped_at"
+  | "last_urgent_marked_at"
   | "bump_count"
   | "created_at"
   | "updated_at"

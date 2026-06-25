@@ -12,6 +12,7 @@ import {
 import {
   bumpRecruitment,
   closeRecruitment,
+  markUrgentRecruitment,
   reopenRecruitment,
 } from "@/app/owner/jobs/actions";
 import {
@@ -26,10 +27,28 @@ import {
   UrgentBadge,
 } from "@/components/ui";
 
+const URGENT_INTERVAL_MS = 30 * 24 * 60 * 60 * 1000;
+
 interface RecruitmentManagePanelProps {
   initialJobPost: JobPost;
   guesthouse: Guesthouse | null;
   applicationCount: number;
+}
+
+function getUrgentDisabledReason(jobPost: JobPost): string | null {
+  if (jobPost.status !== "open") {
+    return "모집중 상태에서만 급구 처리할 수 있습니다.";
+  }
+  if (!jobPost.last_urgent_marked_at) return null;
+
+  const lastUrgentMarkedAt = new Date(
+    jobPost.last_urgent_marked_at,
+  ).getTime();
+  if (Date.now() < lastUrgentMarkedAt + URGENT_INTERVAL_MS) {
+    return "급구 처리는 한 달에 한 번만 가능합니다.";
+  }
+
+  return null;
 }
 
 export function RecruitmentManagePanel({
@@ -39,12 +58,13 @@ export function RecruitmentManagePanel({
 }: RecruitmentManagePanelProps) {
   const router = useRouter();
   const [pendingAction, setPendingAction] = useState<
-    "close" | "reopen" | "bump" | null
+    "close" | "reopen" | "bump" | "urgent" | null
   >(null);
 
   const jobPost = initialJobPost;
   const shareLink = getShareLink(jobPost.slug);
   const bumpDisabledReason = getBumpDisabledReason(jobPost);
+  const urgentDisabledReason = getUrgentDisabledReason(jobPost);
   const canShare = jobPost.status !== "hidden";
   const isActionPending = pendingAction !== null;
   const isDatabaseJobPost = isUuid(jobPost.id);
@@ -126,6 +146,31 @@ export function RecruitmentManagePanel({
         error instanceof Error
           ? error.message
           : "모집글 끌어올리기에 실패했습니다.",
+      );
+    } finally {
+      setPendingAction(null);
+    }
+  };
+
+  const handleMarkUrgent = async () => {
+    if (actionDisabledReason) {
+      alert(actionDisabledReason);
+      return;
+    }
+    if (urgentDisabledReason) {
+      alert(urgentDisabledReason);
+      return;
+    }
+    if (!confirm("이 모집글을 급구로 표시하시겠습니까?")) return;
+
+    setPendingAction("urgent");
+    try {
+      await markUrgentRecruitment(jobPost.id);
+      router.refresh();
+      alert("급구 처리되었습니다.");
+    } catch (error) {
+      alert(
+        error instanceof Error ? error.message : "급구 처리에 실패했습니다.",
       );
     } finally {
       setPendingAction(null);
@@ -234,6 +279,11 @@ export function RecruitmentManagePanel({
         {jobPost.status === "open" && bumpDisabledReason && (
           <p className="text-caption text-neutral-500">{bumpDisabledReason}</p>
         )}
+        {jobPost.status === "open" && urgentDisabledReason && (
+          <p className="text-caption text-neutral-500">
+            {urgentDisabledReason}
+          </p>
+        )}
         {actionDisabledReason && (
           <p className="text-caption text-neutral-500">
             {actionDisabledReason}
@@ -259,6 +309,18 @@ export function RecruitmentManagePanel({
 
         {jobPost.status === "open" && (
           <>
+            <Button
+              variant="secondary"
+              size="sm"
+              disabled={
+                !!urgentDisabledReason ||
+                !!actionDisabledReason ||
+                isActionPending
+              }
+              onClick={handleMarkUrgent}
+            >
+              {pendingAction === "urgent" ? "처리 중..." : "급구 처리"}
+            </Button>
             <Button
               variant="outline"
               size="sm"

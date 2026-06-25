@@ -56,6 +56,7 @@ export const mockJobPosts: JobPost[] = [
     provides_accommodation: true,
     provides_meal: true,
     is_urgent: true,
+    last_urgent_marked_at: "2026-06-18T10:00:00+09:00",
     preferred_conditions: "게스트하우스 근무 경험자 우대",
     caution: "주말 근무 포함, 성수기에는 교대 근무 가능",
     extra_info: "입도 후 3일간 오리엔테이션 진행",

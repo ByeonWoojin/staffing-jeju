@@ -229,6 +229,7 @@ export function createJobPostFromFormMock(
     recruitment_cycle: 1,
     bumped_at: now,
     last_bumped_at: null,
+    last_urgent_marked_at: null,
     bump_count: 0,
     created_at: now,
     updated_at: now,

@@ -6,6 +6,7 @@ import { isUuid } from "@/lib/uuid";
 import type { JobPost } from "@/types/database";
 
 const BUMP_INTERVAL_MS = 24 * 60 * 60 * 1000;
+const URGENT_INTERVAL_MS = 30 * 24 * 60 * 60 * 1000;
 const INVALID_JOB_POST_ID_MESSAGE =
   "개발용 mock 데이터에서는 액션을 실행할 수 없습니다. Supabase job_posts.id UUID를 사용해야 합니다.";
 
@@ -226,6 +227,65 @@ export async function bumpRecruitment(jobPostId: string): Promise<JobPost> {
   revalidatePath(`/owner/jobs/${jobPostId}/applications`);
 
   logAction("bumpRecruitment:done", jobPostId, {
+    before: current,
+    result: updated,
+  });
+  return updated;
+}
+
+export async function markUrgentRecruitment(
+  jobPostId: string,
+): Promise<JobPost> {
+  console.log("[markUrgentRecruitment] called", jobPostId);
+  logUuidValidation("markUrgentRecruitment", jobPostId);
+  const current = await getJobPostOrThrow(jobPostId);
+
+  if (current.status !== "open") {
+    logAction("markUrgentRecruitment:status:error", jobPostId, {
+      existingRow: current,
+      status: current.status,
+    });
+    throw new Error("모집중 상태에서만 급구 처리할 수 있습니다.");
+  }
+
+  if (current.last_urgent_marked_at) {
+    const lastUrgentMarkedAt = new Date(
+      current.last_urgent_marked_at,
+    ).getTime();
+    const nextAvailableAt = lastUrgentMarkedAt + URGENT_INTERVAL_MS;
+
+    if (Date.now() < nextAvailableAt) {
+      logAction("markUrgentRecruitment:interval:error", jobPostId, {
+        existingRow: current,
+        last_urgent_marked_at: current.last_urgent_marked_at,
+        nextAvailableAt: new Date(nextAvailableAt).toISOString(),
+      });
+      throw new Error("급구 처리는 한 달에 한 번만 가능합니다.");
+    }
+  }
+
+  const now = new Date().toISOString();
+  const updated = await updateJobPostOrThrow(
+    "markUrgentRecruitment",
+    jobPostId,
+    {
+      is_urgent: true,
+      last_urgent_marked_at: now,
+    },
+  );
+
+  if (updated.is_urgent !== true || !updated.last_urgent_marked_at) {
+    logAction("markUrgentRecruitment:verify:error", jobPostId, {
+      before: current,
+      result: updated,
+    });
+    throw new Error("급구 처리 후 DB 상태 검증에 실패했습니다.");
+  }
+
+  revalidatePath("/owner");
+  revalidatePath("/owner/jobs");
+
+  logAction("markUrgentRecruitment:done", jobPostId, {
     before: current,
     result: updated,
   });
