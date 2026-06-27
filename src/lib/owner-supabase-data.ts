@@ -1,4 +1,5 @@
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { getCurrentAuthUser } from "@/lib/auth/onboarding";
 import {
   currentOwner,
   getApplicationWithOwnerCheckMock,
@@ -38,6 +39,25 @@ function logMockFallback(context: string, reason: string) {
 
 export async function getCurrentOwner(): Promise<Profile> {
   try {
+    const authUser = await getCurrentAuthUser();
+    if (authUser) {
+      const supabase = createSupabaseAdminClient();
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", authUser.id)
+        .eq("role", "owner")
+        .maybeSingle();
+
+      if (error) throw error;
+      if (data) return data as Profile;
+
+      logMockFallback(
+        "current owner",
+        `auth user id=${authUser.id}에 해당하는 owner profile이 없습니다.`,
+      );
+    }
+
     const supabase = createSupabaseAdminClient();
     const devOwnerId = process.env.NEXT_PUBLIC_DEV_OWNER_ID;
     const baseQuery = supabase.from("profiles").select("*").eq("role", "owner");

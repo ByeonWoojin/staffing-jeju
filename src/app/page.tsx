@@ -1,7 +1,18 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { GoogleLoginButton } from "@/components/auth/GoogleLoginButton";
+import { getCurrentUserDestination } from "@/lib/auth/onboarding";
 import { ButtonLink } from "@/components/ui";
 
-export default function HomePage() {
+export const dynamic = "force-dynamic";
+
+export default async function HomePage() {
+  const { user, destination } = await getCurrentUserDestination();
+
+  if (user && destination !== "/") {
+    redirect(destination);
+  }
+
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-surface px-5">
       <div className="w-full max-w-md text-center">
@@ -12,15 +23,12 @@ export default function HomePage() {
         <p className="mt-3 text-body text-neutral-500">
           제주 게스트하우스 스탭 모집 플랫폼
         </p>
-        <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
-          <ButtonLink href="/owner" fullWidth className="sm:w-auto">
-            사장님 화면
-          </ButtonLink>
+        <div className="mt-8 flex flex-col gap-3">
+          <GoogleLoginButton />
           <ButtonLink
             href="/design-system"
             variant="outline"
             fullWidth
-            className="sm:w-auto"
           >
             디자인 시스템
           </ButtonLink>
