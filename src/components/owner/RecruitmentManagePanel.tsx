@@ -77,8 +77,7 @@ export function RecruitmentManagePanel({
     if (!canShare) return;
     try {
       await navigator.clipboard.writeText(shareLink);
-      //TODO: Toast로 '링크가 복사되었습니다' 표시
-      alert("링크가 복사되었습니다.");
+      alert("공개 모집글 링크를 복사했습니다.");
     } catch {
       alert("링크 복사에 실패했습니다.");
     }

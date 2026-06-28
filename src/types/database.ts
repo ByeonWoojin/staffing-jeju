@@ -96,6 +96,13 @@ export interface JobPostPhoto {
   updated_at: string;
 }
 
+export interface StaffFavoriteGuesthouse {
+  id: string;
+  staff_id: string;
+  guesthouse_id: string;
+  created_at: string;
+}
+
 export interface Application {
   id: string;
   job_post_id: string;

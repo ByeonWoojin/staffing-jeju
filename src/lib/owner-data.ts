@@ -159,8 +159,12 @@ export function getOwnerDashboardDataMock(): OwnerDashboardData {
 }
 
 export function getShareLink(slug: string): string {
-  //TODO: use real production domain after deployment
-  return `${SHARE_LINK_BASE_URL}/${slug}`;
+  if (typeof window !== "undefined") {
+    return `${window.location.origin}/jobs/${slug}`;
+  }
+
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? SHARE_LINK_BASE_URL;
+  return `${baseUrl.replace(/\/$/, "")}/jobs/${slug}`;
 }
 
 export function canBumpJobPost(jobPost: JobPost): boolean {
