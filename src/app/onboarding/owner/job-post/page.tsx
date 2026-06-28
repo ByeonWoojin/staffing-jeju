@@ -3,7 +3,9 @@ import {
   getCurrentAuthUser,
   getPostLoginDestination,
 } from "@/lib/auth/onboarding";
-import { ButtonLink, Card, CardContent } from "@/components/ui";
+import { createOwnerJobPost } from "@/app/onboarding/owner/job-post/actions";
+import { JobPostForm } from "@/components/owner";
+import { PageHeader } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
 
@@ -19,21 +21,19 @@ export default async function OwnerJobPostOnboardingPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-surface px-5 py-10">
-      <Card className="w-full max-w-lg text-center">
-        <CardContent className="pt-6">
-          <h1 className="text-h2 text-neutral-800">
-            모집글을 먼저 등록해주세요
-          </h1>
-          <p className="mt-3 text-body-sm text-neutral-500">
-            게스트하우스 등록은 확인되었습니다. 다음 단계에서는 최초 모집글
-            등록 저장 기능을 연결합니다.
-          </p>
-          <ButtonLink href="/" variant="outline" className="mt-6">
-            첫 화면으로
-          </ButtonLink>
-        </CardContent>
-      </Card>
+    <main className="min-h-screen bg-surface px-5 py-8 md:py-10">
+      <div className="mx-auto w-full max-w-5xl">
+        <PageHeader
+          title="모집글을 먼저 등록해주세요"
+          description="우리 게하의 첫 스탭 모집글을 작성합니다."
+        />
+        <JobPostForm
+          mode="create"
+          createAction={createOwnerJobPost}
+          cancelHref="/onboarding/owner/guesthouse"
+          submitLabel="모집글 저장 후 시작하기"
+        />
+      </div>
     </main>
   );
 }

@@ -20,6 +20,9 @@ interface GuesthouseFormProps {
   mode: "create" | "edit";
   guesthouseId?: string;
   initialData?: GuesthouseFormData;
+  createAction?: (payload: GuesthouseFormData) => Promise<string | void>;
+  cancelHref?: string;
+  submitLabel?: string;
 }
 
 const emptyForm: GuesthouseFormData = {
@@ -34,6 +37,9 @@ export function GuesthouseForm({
   mode,
   guesthouseId,
   initialData,
+  createAction,
+  cancelHref = "/owner",
+  submitLabel,
 }: GuesthouseFormProps) {
   const router = useRouter();
   const [form, setForm] = useState<GuesthouseFormData>(
@@ -52,12 +58,27 @@ export function GuesthouseForm({
     setIsSubmitting(true);
 
     if (mode === "create") {
-      //TODO: POST guesthouses
-      // body: { owner_id, name, region, address_text, map_url, contact_method }
-      console.log("POST guesthouses", form);
-      //TODO: Toast로 성공 메시지 표시
-      alert("게스트하우스 정보가 저장되었습니다.");
-      router.push("/owner/jobs/new");
+      if (createAction) {
+        try {
+          const redirectTo = await createAction(form);
+          if (redirectTo) {
+            router.push(redirectTo);
+          }
+        } catch (error) {
+          alert(
+            error instanceof Error
+              ? error.message
+              : "게스트하우스 정보 저장에 실패했습니다.",
+          );
+        }
+      } else {
+        //TODO: POST guesthouses
+        // body: { owner_id, name, region, address_text, map_url, contact_method }
+        console.log("POST guesthouses", form);
+        //TODO: Toast로 성공 메시지 표시
+        alert("게스트하우스 정보가 저장되었습니다.");
+        router.push("/owner/jobs/new");
+      }
     } else {
       if (!guesthouseId || isMockEdit) {
         alert("개발용 mock 데이터에서는 저장할 수 없습니다.");
@@ -144,11 +165,11 @@ export function GuesthouseForm({
             개발용 mock 데이터에서는 저장할 수 없습니다.
           </p>
         )}
-        <ButtonLink href="/owner" variant="outline">
+        <ButtonLink href={cancelHref} variant="outline">
           취소
         </ButtonLink>
         <Button type="submit" disabled={isSubmitting || isMockEdit}>
-          {mode === "create" ? "저장하기" : "수정 저장"}
+          {submitLabel ?? (mode === "create" ? "저장하기" : "수정 저장")}
         </Button>
       </div>
     </form>

@@ -3,7 +3,9 @@ import {
   getCurrentAuthUser,
   getPostLoginDestination,
 } from "@/lib/auth/onboarding";
-import { ButtonLink, Card, CardContent } from "@/components/ui";
+import { createOwnerGuesthouse } from "@/app/onboarding/owner/guesthouse/actions";
+import { GuesthouseForm } from "@/components/owner";
+import { PageHeader } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
 
@@ -19,21 +21,19 @@ export default async function OwnerGuesthouseOnboardingPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-surface px-5 py-10">
-      <Card className="w-full max-w-lg text-center">
-        <CardContent className="pt-6">
-          <h1 className="text-h2 text-neutral-800">
-            게스트하우스 정보를 먼저 등록해주세요
-          </h1>
-          <p className="mt-3 text-body-sm text-neutral-500">
-            사장님 계정 설정은 완료되었습니다. 다음 단계에서는 게스트하우스
-            최초 등록 저장 기능을 연결합니다.
-          </p>
-          <ButtonLink href="/" variant="outline" className="mt-6">
-            첫 화면으로
-          </ButtonLink>
-        </CardContent>
-      </Card>
+    <main className="min-h-screen bg-surface px-5 py-8 md:py-10">
+      <div className="mx-auto w-full max-w-5xl">
+        <PageHeader
+          title="게스트하우스 정보를 먼저 등록해주세요"
+          description="지원자에게 보여질 게스트하우스 기본 정보를 입력합니다."
+        />
+        <GuesthouseForm
+          mode="create"
+          createAction={createOwnerGuesthouse}
+          cancelHref="/"
+          submitLabel="게스트하우스 저장 후 다음"
+        />
+      </div>
     </main>
   );
 }

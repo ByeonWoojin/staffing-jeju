@@ -32,6 +32,9 @@ import {
 interface JobPostFormProps {
   mode: "create" | "edit";
   initialData?: JobPost;
+  createAction?: (payload: JobPostFormData) => Promise<string | void>;
+  cancelHref?: string;
+  submitLabel?: string;
 }
 
 const defaultFormData: JobPostFormData = {
@@ -80,7 +83,13 @@ function jobPostToFormData(jobPost: JobPost): JobPostFormData {
   };
 }
 
-export function JobPostForm({ mode, initialData }: JobPostFormProps) {
+export function JobPostForm({
+  mode,
+  initialData,
+  createAction,
+  cancelHref = "/owner/jobs",
+  submitLabel,
+}: JobPostFormProps) {
   const router = useRouter();
   const [form, setForm] = useState<JobPostFormData>(
     initialData ? jobPostToFormData(initialData) : defaultFormData,
@@ -104,6 +113,23 @@ export function JobPostForm({ mode, initialData }: JobPostFormProps) {
     const guesthouse = getOwnerGuesthouseMock(owner.id);
 
     if (mode === "create") {
+      if (createAction) {
+        try {
+          const redirectTo = await createAction(form);
+          if (redirectTo) {
+            router.push(redirectTo);
+          }
+        } catch (error) {
+          alert(
+            error instanceof Error
+              ? error.message
+              : "모집글 저장에 실패했습니다.",
+          );
+        }
+        setIsSubmitting(false);
+        return;
+      }
+
       //TODO: GET guesthouse where owner_id = currentOwner.id
       //TODO: POST job_posts
       if (!guesthouse) {
@@ -392,11 +418,12 @@ export function JobPostForm({ mode, initialData }: JobPostFormProps) {
             개발용 mock 데이터에서는 저장할 수 없습니다.
           </p>
         )}
-        <ButtonLink href="/owner/jobs" variant="outline">
+        <ButtonLink href={cancelHref} variant="outline">
           {mode === "create" ? "취소" : "돌아가기"}
         </ButtonLink>
         <Button type="submit" disabled={isSubmitting || isMockEdit}>
-          {mode === "create" ? "스탭 모집글 작성하기" : "변경사항 저장"}
+          {submitLabel ??
+            (mode === "create" ? "스탭 모집글 작성하기" : "변경사항 저장")}
         </Button>
       </div>
     </form>
