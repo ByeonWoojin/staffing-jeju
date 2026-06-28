@@ -16,6 +16,7 @@ import type {
   Guesthouse,
   GuesthousePhoto,
   JobPost,
+  JobPostPhoto,
   Profile,
 } from "@/types/database";
 
@@ -396,6 +397,35 @@ export function getGuesthousePhotoPublicUrl(photoPath: string): string {
   const supabase = createSupabaseAdminClient();
   const { data } = supabase.storage
     .from("guesthouse-images")
+    .getPublicUrl(photoPath);
+
+  return data.publicUrl;
+}
+
+export async function getJobPostPhotos(
+  jobPostId: string,
+): Promise<JobPostPhoto[]> {
+  try {
+    const supabase = createSupabaseAdminClient();
+    const { data, error } = await supabase
+      .from("job_post_photos")
+      .select("*")
+      .eq("job_post_id", jobPostId)
+      .order("sort_order", { ascending: true })
+      .order("created_at", { ascending: true });
+
+    if (error) throw error;
+    return (data ?? []) as JobPostPhoto[];
+  } catch (error) {
+    logSupabaseReadError("failed to load job post photos", error);
+    return [];
+  }
+}
+
+export function getJobPostPhotoPublicUrl(photoPath: string): string {
+  const supabase = createSupabaseAdminClient();
+  const { data } = supabase.storage
+    .from("job-post-images")
     .getPublicUrl(photoPath);
 
   return data.publicUrl;

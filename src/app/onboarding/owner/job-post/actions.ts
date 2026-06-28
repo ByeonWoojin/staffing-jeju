@@ -6,6 +6,7 @@ import { getCurrentAuthUser, getProfileById } from "@/lib/auth/onboarding";
 import type {
   GenderCondition,
   JobPost,
+  JobPostPhoto,
   JobPostFormData,
   StipendType,
 } from "@/types/database";
@@ -54,6 +55,7 @@ const STIPEND_VALUES: StipendType[] = [
   "negotiable",
   "custom",
 ];
+const JOB_POST_IMAGE_BUCKET = "job-post-images";
 
 function normalizeRequiredText(value: string, fieldLabel: string): string {
   const trimmed = value.trim();
@@ -163,6 +165,65 @@ async function getOwnerIdOrRedirect(): Promise<string | null> {
   return profile.id;
 }
 
+function serializeSupabaseError(error: unknown) {
+  if (error && typeof error === "object") {
+    const record = error as Record<string, unknown>;
+    return {
+      message: record.message,
+      code: record.code,
+      details: record.details,
+      hint: record.hint,
+    };
+  }
+
+  return { message: String(error) };
+}
+
+async function deleteExistingJobPostPhotos(
+  supabase: ReturnType<typeof createSupabaseAdminClient>,
+  jobPostId: string,
+) {
+  const { data: photos, error: photoError } = await supabase
+    .from("job_post_photos")
+    .select("*")
+    .eq("job_post_id", jobPostId);
+
+  if (photoError) {
+    console.error("[createOwnerJobPost] hidden photo lookup failed", {
+      error: serializeSupabaseError(photoError),
+    });
+    throw new Error("기존 모집글 사진 정리에 실패했습니다.");
+  }
+
+  const existingPhotos = (photos ?? []) as JobPostPhoto[];
+  if (existingPhotos.length === 0) return;
+
+  const photoPaths = existingPhotos.map((photo) => photo.photo_path);
+  const { error: removeError } = await supabase.storage
+    .from(JOB_POST_IMAGE_BUCKET)
+    .remove(photoPaths);
+
+  if (removeError) {
+    console.error("[createOwnerJobPost] hidden storage cleanup failed", {
+      error: serializeSupabaseError(removeError),
+      photoPaths,
+    });
+    throw new Error("기존 모집글 사진 정리에 실패했습니다.");
+  }
+
+  const { error: deleteError } = await supabase
+    .from("job_post_photos")
+    .delete()
+    .eq("job_post_id", jobPostId);
+
+  if (deleteError) {
+    console.error("[createOwnerJobPost] hidden photo row cleanup failed", {
+      error: serializeSupabaseError(deleteError),
+    });
+    throw new Error("기존 모집글 사진 정리에 실패했습니다.");
+  }
+}
+
 export async function createOwnerJobPost(
   payload: JobPostFormData,
 ): Promise<string> {
@@ -205,6 +266,8 @@ export async function createOwnerJobPost(
       ? existingJobPost.recruitment_cycle + 1
       : 1;
 
+    await deleteExistingJobPostPhotos(supabase, existingJobPost.id);
+
     const { data: updated, error } = await supabase
       .from("job_posts")
       .update({
@@ -225,17 +288,24 @@ export async function createOwnerJobPost(
     revalidatePath("/onboarding/owner/job-post");
     revalidatePath("/owner");
     revalidatePath("/owner/jobs");
-    return "/owner";
+    return `/owner/jobs/${updated.id}/edit`;
   }
 
-  const { error } = await supabase.from("job_posts").insert(values);
+  const { data: created, error } = await supabase
+    .from("job_posts")
+    .insert(values)
+    .select("id")
+    .maybeSingle();
 
   if (error) {
     throw new Error(`모집글 등록에 실패했습니다: ${error.message}`);
+  }
+  if (!created) {
+    throw new Error("모집글 등록 결과가 없습니다.");
   }
 
   revalidatePath("/onboarding/owner/job-post");
   revalidatePath("/owner");
   revalidatePath("/owner/jobs");
-  return "/owner";
+  return `/owner/jobs/${created.id}/edit`;
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import type { JobPost, JobPostFormData } from "@/types/database";
 import { updateJobPost } from "@/app/owner/jobs/[id]/edit/actions";
@@ -35,6 +35,7 @@ interface JobPostFormProps {
   createAction?: (payload: JobPostFormData) => Promise<string | void>;
   cancelHref?: string;
   submitLabel?: string;
+  photoManager?: ReactNode;
 }
 
 const defaultFormData: JobPostFormData = {
@@ -89,6 +90,7 @@ export function JobPostForm({
   createAction,
   cancelHref = "/owner/jobs",
   submitLabel,
+  photoManager,
 }: JobPostFormProps) {
   const router = useRouter();
   const [form, setForm] = useState<JobPostFormData>(
@@ -408,6 +410,11 @@ export function JobPostForm({
               onChange={(e) => updateField("description", e.target.value)}
               placeholder="모집글에 대한 추가 설명"
             />
+            {photoManager && (
+              <div className="border-t border-neutral-100 pt-5">
+                {photoManager}
+              </div>
+            )}
           </CardContent>
         </Card>
       </Section>

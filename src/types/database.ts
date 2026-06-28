@@ -83,6 +83,17 @@ export interface JobPost {
   updated_at: string;
 }
 
+export interface JobPostPhoto {
+  id: string;
+  job_post_id: string;
+  owner_id: string;
+  photo_path: string;
+  alt_text: string | null;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Application {
   id: string;
   job_post_id: string;
