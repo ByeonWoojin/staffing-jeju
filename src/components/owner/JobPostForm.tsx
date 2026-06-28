@@ -53,6 +53,8 @@ const defaultFormData: JobPostFormData = {
   stipend_description: "",
   provides_accommodation: false,
   provides_meal: false,
+  has_party: false,
+  party_description: "",
   is_urgent: false,
   preferred_conditions: "",
   caution: "",
@@ -76,6 +78,8 @@ function jobPostToFormData(jobPost: JobPost): JobPostFormData {
     stipend_description: jobPost.stipend_description ?? "",
     provides_accommodation: jobPost.provides_accommodation,
     provides_meal: jobPost.provides_meal,
+    has_party: jobPost.has_party,
+    party_description: jobPost.party_description ?? "",
     is_urgent: jobPost.is_urgent,
     preferred_conditions: jobPost.preferred_conditions ?? "",
     caution: jobPost.caution ?? "",
@@ -148,6 +152,7 @@ export function JobPostForm({
         ...form,
         age_condition: form.age_condition || null,
         stipend_description: form.stipend_description || null,
+        party_description: form.party_description || null,
         preferred_conditions: form.preferred_conditions || null,
         caution: form.caution || null,
         extra_info: form.extra_info || null,
@@ -325,6 +330,28 @@ export function JobPostForm({
                 required
               />
             </div>
+            <div className="md:col-span-2">
+              <Checkbox
+                label="파티 운영 여부"
+                name="has_party"
+                checked={form.has_party}
+                onChange={(e) => updateField("has_party", e.target.checked)}
+                description="파티가 있는 모집글이면 스탭 지원자가 근무 분위기를 빠르게 파악할 수 있습니다."
+                descriptionClassName="whitespace-nowrap"
+              />
+            </div>
+            <div className="md:col-span-2">
+              <Textarea
+                label="파티 관련 안내"
+                name="party_description"
+                value={form.party_description ?? ""}
+                onChange={(e) =>
+                  updateField("party_description", e.target.value)
+                }
+                placeholder="예: 주 2회 파티 운영, 파티 보조 업무 포함"
+                helperText="선택 입력"
+              />
+            </div>
           </CardContent>
         </Card>
       </Section>
@@ -333,7 +360,7 @@ export function JobPostForm({
         <Card>
           <CardContent className="grid gap-5 md:grid-cols-2 pt-5 md:pt-6">
             <Select
-              label="급여/지원금"
+              label="급여/보상 제공 여부"
               name="stipend_type"
               value={form.stipend_type}
               onChange={(e) =>
@@ -351,14 +378,14 @@ export function JobPostForm({
               ))}
             </Select>
             <Input
-              label="급여/지원금 상세"
+              label="급여/보상 상세"
               name="stipend_description"
               value={form.stipend_description ?? ""}
               onChange={(e) =>
                 updateField("stipend_description", e.target.value)
               }
               placeholder="예: 월 80만원 + 식사 제공"
-              helperText="선택 입력"
+              helperText="월 급여, 식비, 숙소 제공 등 실제 제공 내용을 구체적으로 적어주세요."
             />
             <Checkbox
               label="숙소 제공"

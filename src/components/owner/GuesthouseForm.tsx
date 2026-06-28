@@ -4,6 +4,7 @@ import { useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import type { GuesthouseFormData } from "@/types/database";
 import { updateGuesthouse } from "@/app/owner/guesthouse/edit/actions";
+import { JEJU_REGION_OPTIONS } from "@/lib/labels";
 import { isUuid } from "@/lib/uuid";
 import {
   Button,
@@ -14,6 +15,7 @@ import {
   CardTitle,
   Input,
   Section,
+  Select,
   Textarea,
 } from "@/components/ui";
 
@@ -29,12 +31,26 @@ interface GuesthouseFormProps {
 
 const emptyForm: GuesthouseFormData = {
   name: "",
-  region: "",
+  region: "제주시",
   address_text: "",
   map_url: "",
   contact_method: "",
   description: "",
 };
+
+function normalizeInitialData(
+  initialData: GuesthouseFormData | undefined,
+): GuesthouseFormData {
+  const data = initialData ?? emptyForm;
+  return {
+    ...data,
+    region: JEJU_REGION_OPTIONS.includes(
+      data.region as (typeof JEJU_REGION_OPTIONS)[number],
+    )
+      ? data.region
+      : "기타",
+  };
+}
 
 export function GuesthouseForm({
   mode,
@@ -47,13 +63,16 @@ export function GuesthouseForm({
 }: GuesthouseFormProps) {
   const router = useRouter();
   const [form, setForm] = useState<GuesthouseFormData>(
-    initialData ?? emptyForm,
+    normalizeInitialData(initialData),
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const isMockEdit =
     mode === "edit" && (!guesthouseId || !isUuid(guesthouseId));
 
-  const updateField = (field: keyof GuesthouseFormData, value: string) => {
+  const updateField = <K extends keyof GuesthouseFormData>(
+    field: K,
+    value: GuesthouseFormData[K],
+  ) => {
     setForm((prev) => ({ ...prev, [field]: value }));
   };
 
@@ -124,14 +143,19 @@ export function GuesthouseForm({
               placeholder="예: 제주 바람 게스트하우스"
               required
             />
-            <Input
+            <Select
               label="지역"
               name="region"
               value={form.region}
               onChange={(e) => updateField("region", e.target.value)}
-              placeholder="예: 제주시 애월"
               required
-            />
+            >
+              {JEJU_REGION_OPTIONS.map((region) => (
+                <option key={region} value={region}>
+                  {region}
+                </option>
+              ))}
+            </Select>
             <div className="md:col-span-2">
               <Input
                 label="주소"

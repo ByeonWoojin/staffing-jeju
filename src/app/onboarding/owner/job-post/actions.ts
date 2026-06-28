@@ -31,6 +31,8 @@ type NewJobPostValues = Omit<
     | "stipend_description"
     | "provides_accommodation"
     | "provides_meal"
+    | "has_party"
+    | "party_description"
     | "is_urgent"
     | "last_urgent_marked_at"
     | "preferred_conditions"
@@ -141,6 +143,8 @@ function normalizePayload(
     stipend_description: normalizeOptionalText(payload.stipend_description),
     provides_accommodation: Boolean(payload.provides_accommodation),
     provides_meal: Boolean(payload.provides_meal),
+    has_party: Boolean(payload.has_party),
+    party_description: normalizeOptionalText(payload.party_description),
     is_urgent: false,
     last_urgent_marked_at: null,
     preferred_conditions: normalizeOptionalText(payload.preferred_conditions),

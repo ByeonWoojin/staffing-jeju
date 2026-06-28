@@ -219,6 +219,11 @@ export function RecruitmentManagePanel({
               {jobPost.is_urgent && <UrgentBadge />}
               {jobPost.provides_accommodation && <AccommodationBadge />}
               {jobPost.provides_meal && <MealBadge />}
+              {jobPost.has_party && (
+                <span className="inline-flex h-7 items-center rounded-pill bg-primary-50 px-3 text-caption font-semibold text-primary-700">
+                  파티 있음
+                </span>
+              )}
             </div>
           </div>
           <div className="rounded-lg border border-neutral-200 bg-neutral-50 px-4 py-3 text-center shrink-0">
@@ -267,6 +272,20 @@ export function RecruitmentManagePanel({
               {jobPost.provides_meal ? "제공" : "미제공"}
             </dd>
           </div>
+          <div>
+            <dt className="text-neutral-400">파티 운영</dt>
+            <dd className="font-medium text-neutral-700">
+              {jobPost.has_party ? "있음" : "없음"}
+            </dd>
+          </div>
+          {jobPost.has_party && jobPost.party_description && (
+            <div className="sm:col-span-2 lg:col-span-3">
+              <dt className="text-neutral-400">파티 안내</dt>
+              <dd className="font-medium text-neutral-700">
+                {jobPost.party_description}
+              </dd>
+            </div>
+          )}
           <div>
             <dt className="text-neutral-400">끌어올리기 횟수</dt>
             <dd className="font-medium text-neutral-700">

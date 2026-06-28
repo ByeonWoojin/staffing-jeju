@@ -57,6 +57,8 @@ export const mockJobPosts: JobPost[] = [
     stipend_description: "월 80만원 + 식사 제공",
     provides_accommodation: true,
     provides_meal: true,
+    has_party: true,
+    party_description: "성수기에는 주 1~2회 게스트 교류 파티를 운영합니다.",
     is_urgent: true,
     last_urgent_marked_at: "2026-06-18T10:00:00+09:00",
     preferred_conditions: "게스트하우스 근무 경험자 우대",

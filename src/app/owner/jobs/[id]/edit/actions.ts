@@ -26,6 +26,8 @@ type EditableJobPostField =
   | "stipend_description"
   | "provides_accommodation"
   | "provides_meal"
+  | "has_party"
+  | "party_description"
   | "preferred_conditions"
   | "caution"
   | "extra_info"
@@ -48,6 +50,8 @@ const EDITABLE_FIELDS: EditableJobPostField[] = [
   "stipend_description",
   "provides_accommodation",
   "provides_meal",
+  "has_party",
+  "party_description",
   "preferred_conditions",
   "caution",
   "extra_info",
@@ -178,6 +182,8 @@ function normalizePayload(payload: JobPostFormData): EditableJobPostUpdate {
     stipend_description: normalizeOptionalText(payload.stipend_description),
     provides_accommodation: Boolean(payload.provides_accommodation),
     provides_meal: Boolean(payload.provides_meal),
+    has_party: Boolean(payload.has_party),
+    party_description: normalizeOptionalText(payload.party_description),
     preferred_conditions: normalizeOptionalText(payload.preferred_conditions),
     caution: normalizeOptionalText(payload.caution),
     extra_info: normalizeOptionalText(payload.extra_info),

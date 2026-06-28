@@ -24,11 +24,26 @@ export const EXPERIENCE_STATUS_LABELS = {
 } as const;
 
 export const STIPEND_TYPE_LABELS = {
-  none: "없음",
-  provided: "있음",
-  negotiable: "협의",
+  none: "급여 없음",
+  provided: "급여/보상 제공",
+  negotiable: "협의 후 결정",
   custom: "직접 입력",
 } as const;
+
+export const JEJU_REGION_OPTIONS = [
+  "제주시",
+  "서귀포시",
+  "애월",
+  "한림",
+  "조천",
+  "구좌",
+  "성산",
+  "표선",
+  "남원",
+  "중문",
+  "대정",
+  "기타",
+] as const;
 
 export type JobStatus = keyof typeof JOB_STATUS_LABELS;
 export type ApplicationStatus = keyof typeof APPLICATION_STATUS_LABELS;

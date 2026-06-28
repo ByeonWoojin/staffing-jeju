@@ -5,10 +5,22 @@ export interface CheckboxProps
   extends Omit<InputHTMLAttributes<HTMLInputElement>, "type"> {
   label?: string;
   description?: string;
+  descriptionClassName?: string;
 }
 
 export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(
-  ({ className, label, description, id, disabled, ...props }, ref) => {
+  (
+    {
+      className,
+      label,
+      description,
+      descriptionClassName,
+      id,
+      disabled,
+      ...props
+    },
+    ref,
+  ) => {
     const checkboxId = id ?? props.name;
 
     return (
@@ -36,7 +48,11 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(
               </span>
             )}
             {description && (
-              <span className="text-[13px] text-neutral-500">{description}</span>
+              <span
+                className={cn("text-[13px] text-neutral-500", descriptionClassName)}
+              >
+                {description}
+              </span>
             )}
           </span>
         )}

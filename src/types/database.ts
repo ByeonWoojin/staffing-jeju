@@ -68,6 +68,8 @@ export interface JobPost {
   stipend_description: string | null;
   provides_accommodation: boolean;
   provides_meal: boolean;
+  has_party: boolean;
+  party_description: string | null;
   is_urgent: boolean;
   last_urgent_marked_at: string | null;
   preferred_conditions: string | null;

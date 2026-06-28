@@ -148,7 +148,8 @@ function hasChanges(
     stringifyValue(before.map_url) !== stringifyValue(nextValues.map_url) ||
     stringifyValue(before.contact_method) !==
       stringifyValue(nextValues.contact_method) ||
-    stringifyValue(before.description) !== stringifyValue(nextValues.description)
+    stringifyValue(before.description) !==
+      stringifyValue(nextValues.description)
   );
 }
 
