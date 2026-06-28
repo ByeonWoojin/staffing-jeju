@@ -1,9 +1,10 @@
 import Link from "next/link";
+import { OwnerAccountMenu } from "@/components/auth/OwnerAccountMenu";
 
 export function OwnerHeader() {
   return (
     <header className="border-b border-neutral-200 bg-neutral-0">
-      <div className="page-container flex h-16 items-center justify-between">
+      <div className="page-container flex min-h-16 items-center justify-between gap-4 py-3">
         <Link href="/owner" className="flex items-center gap-2 focus-ring rounded-md">
           <span className="flex h-8 w-8 items-center justify-center rounded-md bg-primary-500 text-body-sm font-bold text-white">
             S
@@ -13,6 +14,8 @@ export function OwnerHeader() {
             <span className="text-caption text-neutral-500">사장님</span>
           </div>
         </Link>
+
+        <OwnerAccountMenu />
       </div>
     </header>
   );
