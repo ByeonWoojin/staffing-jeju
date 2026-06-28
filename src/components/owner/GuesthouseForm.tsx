@@ -14,6 +14,7 @@ import {
   CardTitle,
   Input,
   Section,
+  Textarea,
 } from "@/components/ui";
 
 interface GuesthouseFormProps {
@@ -31,6 +32,7 @@ const emptyForm: GuesthouseFormData = {
   address_text: "",
   map_url: "",
   contact_method: "",
+  description: "",
 };
 
 export function GuesthouseForm({
@@ -155,6 +157,16 @@ export function GuesthouseForm({
               helperText="지원자에게 안내될 연락 방법"
               required
             />
+            <div className="md:col-span-2">
+              <Textarea
+                label="게스트하우스 설명"
+                name="description"
+                value={form.description ?? ""}
+                onChange={(e) => updateField("description", e.target.value)}
+                placeholder="게스트하우스 분위기, 주변 환경, 스탭에게 보여주고 싶은 소개를 입력해주세요"
+                helperText="선택 입력"
+              />
+            </div>
           </CardContent>
         </Card>
       </Section>

@@ -28,6 +28,8 @@ export const mockGuesthouses: Guesthouse[] = [
     address_text: "제주특별자치도 제주시 애월읍 곽지해안로 20",
     map_url: "https://map.naver.com/p/example",
     contact_method: "카카오톡 @jeju-baram / 010-1234-5678",
+    description:
+      "애월 바다와 가까운 조용한 게스트하우스입니다. 함께 머무는 스탭과 게스트가 편하게 지낼 수 있는 분위기를 지향합니다.",
     created_at: "2026-06-01T10:00:00+09:00",
     updated_at: "2026-06-15T14:30:00+09:00",
   },

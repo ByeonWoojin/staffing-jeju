@@ -7,7 +7,13 @@ import type { Guesthouse, GuesthouseFormData } from "@/types/database";
 
 type NewGuesthouseValues = Pick<
   Guesthouse,
-  "owner_id" | "name" | "region" | "address_text" | "map_url" | "contact_method"
+  | "owner_id"
+  | "name"
+  | "region"
+  | "address_text"
+  | "map_url"
+  | "contact_method"
+  | "description"
 >;
 
 function normalizeRequiredText(value: string, fieldLabel: string): string {
@@ -34,6 +40,7 @@ function normalizePayload(
     address_text: normalizeRequiredText(payload.address_text, "주소"),
     map_url: normalizeOptionalText(payload.map_url),
     contact_method: normalizeRequiredText(payload.contact_method, "연락 수단"),
+    description: normalizeOptionalText(payload.description),
   };
 }
 

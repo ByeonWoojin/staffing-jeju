@@ -11,7 +11,13 @@ import {
   getOwnerJobPostByIdMock,
   type OwnerDashboardData,
 } from "@/lib/owner-data";
-import type { Application, Guesthouse, JobPost, Profile } from "@/types/database";
+import type {
+  Application,
+  Guesthouse,
+  GuesthousePhoto,
+  JobPost,
+  Profile,
+} from "@/types/database";
 
 function logSupabaseReadError(context: string, error: unknown) {
   if (error && typeof error === "object") {
@@ -364,6 +370,35 @@ export async function getGuesthouseById(
     );
     return getGuesthouseByIdMock(guesthouseId);
   }
+}
+
+export async function getGuesthousePhotos(
+  guesthouseId: string,
+): Promise<GuesthousePhoto[]> {
+  try {
+    const supabase = createSupabaseAdminClient();
+    const { data, error } = await supabase
+      .from("guesthouse_photos")
+      .select("*")
+      .eq("guesthouse_id", guesthouseId)
+      .order("sort_order", { ascending: true })
+      .order("created_at", { ascending: true });
+
+    if (error) throw error;
+    return (data ?? []) as GuesthousePhoto[];
+  } catch (error) {
+    logSupabaseReadError("failed to load guesthouse photos", error);
+    return [];
+  }
+}
+
+export function getGuesthousePhotoPublicUrl(photoPath: string): string {
+  const supabase = createSupabaseAdminClient();
+  const { data } = supabase.storage
+    .from("guesthouse-images")
+    .getPublicUrl(photoPath);
+
+  return data.publicUrl;
 }
 
 export async function getOwnerDashboardData(): Promise<OwnerDashboardData> {

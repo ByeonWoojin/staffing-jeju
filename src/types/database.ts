@@ -33,6 +33,18 @@ export interface Guesthouse {
   address_text: string;
   map_url: string | null;
   contact_method: string;
+  description: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface GuesthousePhoto {
+  id: string;
+  guesthouse_id: string;
+  owner_id: string;
+  photo_path: string;
+  alt_text: string | null;
+  sort_order: number;
   created_at: string;
   updated_at: string;
 }

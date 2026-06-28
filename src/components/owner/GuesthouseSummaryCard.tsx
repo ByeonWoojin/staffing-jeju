@@ -43,6 +43,11 @@ export function GuesthouseSummaryCard({
         <CardTitle>{guesthouse.name}</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-1.5">
+        {guesthouse.description && (
+          <p className="mb-2 text-body-sm text-neutral-600">
+            {guesthouse.description}
+          </p>
+        )}
         <p className="text-body-sm text-neutral-600">
           <span className="font-semibold text-neutral-700">지역</span>{" "}
           {guesthouse.region}
