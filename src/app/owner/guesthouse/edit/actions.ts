@@ -258,10 +258,10 @@ export async function uploadGuesthousePhoto(
     throw new Error("업로드할 사진을 선택해주세요.");
   }
   if (!ALLOWED_PHOTO_TYPES.includes(file.type as (typeof ALLOWED_PHOTO_TYPES)[number])) {
-    throw new Error("사진은 jpeg, png, webp 형식만 업로드할 수 있습니다.");
+    throw new Error("JPG, PNG, WEBP 형식의 이미지만 업로드할 수 있습니다.");
   }
   if (file.size > MAX_PHOTO_SIZE_BYTES) {
-    throw new Error("사진은 1장당 최대 5MB까지 업로드할 수 있습니다.");
+    throw new Error("사진은 1장당 최대 5MB까지만 업로드할 수 있습니다.");
   }
 
   const owner = await getCurrentOwnerOrThrow();
@@ -277,10 +277,13 @@ export async function uploadGuesthousePhoto(
     .eq("guesthouse_id", guesthouseId);
 
   if (countError) {
-    throw new Error(`사진 개수 조회에 실패했습니다: ${countError.message}`);
+    console.error("[uploadGuesthousePhoto] count failed", {
+      error: serializeSupabaseError(countError),
+    });
+    throw new Error("사진 업로드에 실패했습니다. 잠시 후 다시 시도해주세요.");
   }
   if ((count ?? 0) >= MAX_PHOTO_COUNT) {
-    throw new Error("게스트하우스 사진은 최대 5장까지 업로드할 수 있습니다.");
+    throw new Error("게스트하우스 사진은 최대 5장까지 등록할 수 있습니다.");
   }
 
   const ext = getPhotoExtension(file);
@@ -293,7 +296,10 @@ export async function uploadGuesthousePhoto(
     });
 
   if (uploadError) {
-    throw new Error(`사진 업로드에 실패했습니다: ${uploadError.message}`);
+    console.error("[uploadGuesthousePhoto] storage upload failed", {
+      error: serializeSupabaseError(uploadError),
+    });
+    throw new Error("사진 업로드에 실패했습니다. 잠시 후 다시 시도해주세요.");
   }
 
   const { error: insertError } = await supabase
@@ -308,7 +314,10 @@ export async function uploadGuesthousePhoto(
 
   if (insertError) {
     await supabase.storage.from(GUESTHOUSE_IMAGE_BUCKET).remove([photoPath]);
-    throw new Error(`사진 정보 저장에 실패했습니다: ${insertError.message}`);
+    console.error("[uploadGuesthousePhoto] insert failed", {
+      error: serializeSupabaseError(insertError),
+    });
+    throw new Error("사진 업로드에 실패했습니다. 잠시 후 다시 시도해주세요.");
   }
 
   revalidatePath("/owner");
@@ -329,7 +338,10 @@ export async function deleteGuesthousePhoto(photoId: string): Promise<void> {
     .remove([photo.photo_path]);
 
   if (removeError) {
-    throw new Error(`Storage 사진 삭제에 실패했습니다: ${removeError.message}`);
+    console.error("[deleteGuesthousePhoto] storage remove failed", {
+      error: serializeSupabaseError(removeError),
+    });
+    throw new Error("사진 삭제에 실패했습니다. 잠시 후 다시 시도해주세요.");
   }
 
   const { error: deleteError } = await supabase
@@ -339,7 +351,10 @@ export async function deleteGuesthousePhoto(photoId: string): Promise<void> {
     .eq("owner_id", owner.id);
 
   if (deleteError) {
-    throw new Error(`사진 정보 삭제에 실패했습니다: ${deleteError.message}`);
+    console.error("[deleteGuesthousePhoto] delete failed", {
+      error: serializeSupabaseError(deleteError),
+    });
+    throw new Error("사진 삭제에 실패했습니다. 잠시 후 다시 시도해주세요.");
   }
 
   revalidatePath("/owner");

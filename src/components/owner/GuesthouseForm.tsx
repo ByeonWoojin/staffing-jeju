@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import type { GuesthouseFormData } from "@/types/database";
 import { updateGuesthouse } from "@/app/owner/guesthouse/edit/actions";
@@ -24,6 +24,7 @@ interface GuesthouseFormProps {
   createAction?: (payload: GuesthouseFormData) => Promise<string | void>;
   cancelHref?: string;
   submitLabel?: string;
+  photoManager?: ReactNode;
 }
 
 const emptyForm: GuesthouseFormData = {
@@ -42,6 +43,7 @@ export function GuesthouseForm({
   createAction,
   cancelHref = "/owner",
   submitLabel,
+  photoManager,
 }: GuesthouseFormProps) {
   const router = useRouter();
   const [form, setForm] = useState<GuesthouseFormData>(
@@ -167,6 +169,11 @@ export function GuesthouseForm({
                 helperText="선택 입력"
               />
             </div>
+            {photoManager && (
+              <div className="border-t border-neutral-100 pt-5 md:col-span-2">
+                {photoManager}
+              </div>
+            )}
           </CardContent>
         </Card>
       </Section>

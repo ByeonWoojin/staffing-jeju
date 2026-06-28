@@ -40,13 +40,14 @@ export default async function EditGuesthousePage() {
         title="게스트하우스 정보 수정"
         description="게스트하우스 기본 정보를 수정합니다."
       />
-      <GuesthouseForm mode="edit" guesthouseId={id} initialData={formData} />
-      <div className="mt-8">
-        <GuesthousePhotoManager
-          guesthouseId={id}
-          photos={photosWithUrls}
-        />
-      </div>
+      <GuesthouseForm
+        mode="edit"
+        guesthouseId={id}
+        initialData={formData}
+        photoManager={
+          <GuesthousePhotoManager guesthouseId={id} photos={photosWithUrls} />
+        }
+      />
     </OwnerLayout>
   );
 }
