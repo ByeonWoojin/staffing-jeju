@@ -2,8 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { getCurrentAuthUser, getProfileById } from "@/lib/auth/onboarding";
 import { isUuid } from "@/lib/uuid";
-import type { JobPost } from "@/types/database";
+import type { JobPost, Profile } from "@/types/database";
 
 const BUMP_INTERVAL_MS = 24 * 60 * 60 * 1000;
 const URGENT_INTERVAL_MS = 30 * 24 * 60 * 60 * 1000;
@@ -52,11 +53,26 @@ function revalidateOwnerRecruitmentPaths(jobPostId?: string) {
   revalidatePath("/owner");
   revalidatePath("/owner/jobs");
   revalidatePath("/owner/applications");
+  revalidatePath("/onboarding/owner/job-post");
 
   if (jobPostId) {
     revalidatePath(`/owner/jobs/${jobPostId}/applications`);
     revalidatePath(`/owner/jobs/${jobPostId}/edit`);
   }
+}
+
+async function getCurrentOwnerProfileOrThrow(): Promise<Profile> {
+  const user = await getCurrentAuthUser();
+  if (!user) {
+    throw new Error("로그인이 필요합니다.");
+  }
+
+  const profile = await getProfileById(user.id);
+  if (!profile || profile.role !== "owner") {
+    throw new Error("사장님 계정만 실행할 수 있는 작업입니다.");
+  }
+
+  return profile;
 }
 
 async function getJobPostOrThrow(jobPostId: string): Promise<JobPost> {
@@ -286,6 +302,50 @@ export async function markUrgentRecruitment(
   revalidatePath("/owner/jobs");
 
   logAction("markUrgentRecruitment:done", jobPostId, {
+    before: current,
+    result: updated,
+  });
+  return updated;
+}
+
+export async function hideRecruitment(jobPostId: string): Promise<JobPost> {
+  console.log("[hideRecruitment] called", jobPostId);
+  logUuidValidation("hideRecruitment", jobPostId);
+  assertValidJobPostId(jobPostId);
+
+  const owner = await getCurrentOwnerProfileOrThrow();
+  const current = await getJobPostOrThrow(jobPostId);
+
+  if (current.owner_id !== owner.id) {
+    logAction("hideRecruitment:owner:error", jobPostId, {
+      ownerId: owner.id,
+      jobPostOwnerId: current.owner_id,
+    });
+    throw new Error("현재 owner가 삭제할 수 있는 모집글이 아닙니다.");
+  }
+
+  if (current.status === "hidden") {
+    revalidateOwnerRecruitmentPaths(jobPostId);
+    logAction("hideRecruitment:already-hidden", jobPostId, {
+      existingRow: current,
+    });
+    return current;
+  }
+
+  const updated = await updateJobPostOrThrow("hideRecruitment", jobPostId, {
+    status: "hidden",
+  });
+
+  if (updated.status !== "hidden") {
+    logAction("hideRecruitment:verify:error", jobPostId, {
+      before: current,
+      result: updated,
+    });
+    throw new Error("모집글 삭제 처리 후 DB 상태가 hidden이 아닙니다.");
+  }
+
+  revalidateOwnerRecruitmentPaths(jobPostId);
+  logAction("hideRecruitment:done", jobPostId, {
     before: current,
     result: updated,
   });

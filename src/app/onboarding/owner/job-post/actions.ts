@@ -186,7 +186,7 @@ export async function createOwnerJobPost(
 
   const { data: existing, error: existingError } = await supabase
     .from("job_posts")
-    .select("id")
+    .select("*")
     .eq("owner_id", ownerId)
     .eq("guesthouse_id", guesthouse.id)
     .maybeSingle();
@@ -194,11 +194,40 @@ export async function createOwnerJobPost(
   if (existingError) {
     throw new Error(`모집글 조회에 실패했습니다: ${existingError.message}`);
   }
-  if (existing) {
+  if (existing && existing.status !== "hidden") {
     return "/owner";
   }
 
   const values = normalizePayload(ownerId, guesthouse.id, payload);
+  if (existing) {
+    const existingJobPost = existing as JobPost;
+    const nextRecruitmentCycle = existingJobPost.recruitment_cycle
+      ? existingJobPost.recruitment_cycle + 1
+      : 1;
+
+    const { data: updated, error } = await supabase
+      .from("job_posts")
+      .update({
+        ...values,
+        recruitment_cycle: nextRecruitmentCycle,
+      })
+      .eq("id", existingJobPost.id)
+      .select("*")
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(`모집글 재등록에 실패했습니다: ${error.message}`);
+    }
+    if (!updated || updated.status !== "open") {
+      throw new Error("모집글 재등록 후 DB 상태 검증에 실패했습니다.");
+    }
+
+    revalidatePath("/onboarding/owner/job-post");
+    revalidatePath("/owner");
+    revalidatePath("/owner/jobs");
+    return "/owner";
+  }
+
   const { error } = await supabase.from("job_posts").insert(values);
 
   if (error) {

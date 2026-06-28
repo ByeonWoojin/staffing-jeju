@@ -134,6 +134,7 @@ export async function getOwnerOnboardingDestination(
     .select("id")
     .eq("owner_id", ownerId)
     .eq("guesthouse_id", guesthouse.id)
+    .neq("status", "hidden")
     .order("created_at", { ascending: true })
     .limit(1)
     .maybeSingle();

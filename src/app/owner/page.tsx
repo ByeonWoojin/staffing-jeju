@@ -39,7 +39,9 @@ export default async function OwnerHomePage() {
               모집글 수정
             </ButtonLink>
           ) : (
-            <ButtonLink href="/owner/jobs/new">스탭 모집글 작성하기</ButtonLink>
+            <ButtonLink href="/onboarding/owner/job-post">
+              모집글 등록하기
+            </ButtonLink>
           )
         }
       />
@@ -76,11 +78,11 @@ export default async function OwnerHomePage() {
             />
           ) : (
             <EmptyState
-              title="아직 스탭 모집글이 없습니다."
-              description="우리 게하의 첫 스탭 모집글을 작성해보세요."
+              title="등록된 모집글이 없습니다."
+              description="새 모집글을 등록해 스탭 모집을 시작해보세요."
               action={
-                <ButtonLink href="/owner/jobs/new" size="sm">
-                  스탭 모집글 작성하기
+                <ButtonLink href="/onboarding/owner/job-post" size="sm">
+                  모집글 등록하기
                 </ButtonLink>
               }
             />

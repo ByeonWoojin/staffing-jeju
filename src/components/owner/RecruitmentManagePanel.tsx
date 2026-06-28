@@ -12,6 +12,7 @@ import {
 import {
   bumpRecruitment,
   closeRecruitment,
+  hideRecruitment,
   markUrgentRecruitment,
   reopenRecruitment,
 } from "@/app/owner/jobs/actions";
@@ -58,7 +59,7 @@ export function RecruitmentManagePanel({
 }: RecruitmentManagePanelProps) {
   const router = useRouter();
   const [pendingAction, setPendingAction] = useState<
-    "close" | "reopen" | "bump" | "urgent" | null
+    "close" | "reopen" | "bump" | "urgent" | "delete" | null
   >(null);
 
   const jobPost = initialJobPost;
@@ -171,6 +172,33 @@ export function RecruitmentManagePanel({
     } catch (error) {
       alert(
         error instanceof Error ? error.message : "급구 처리에 실패했습니다.",
+      );
+    } finally {
+      setPendingAction(null);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (actionDisabledReason) {
+      alert(actionDisabledReason);
+      return;
+    }
+    if (
+      !confirm(
+        "모집글을 삭제하시겠습니까? 삭제 후 현재 모집글 목록에서 보이지 않으며, 새 모집글을 다시 등록할 수 있습니다.",
+      )
+    ) {
+      return;
+    }
+
+    setPendingAction("delete");
+    try {
+      await hideRecruitment(jobPost.id);
+      router.refresh();
+      alert("모집글이 삭제되었습니다.");
+    } catch (error) {
+      alert(
+        error instanceof Error ? error.message : "모집글 삭제에 실패했습니다.",
       );
     } finally {
       setPendingAction(null);
@@ -349,6 +377,17 @@ export function RecruitmentManagePanel({
             onClick={handleReopen}
           >
             {pendingAction === "reopen" ? "처리 중..." : "모집중으로 변경"}
+          </Button>
+        )}
+
+        {jobPost.status !== "hidden" && (
+          <Button
+            variant="outline-danger"
+            size="sm"
+            disabled={!!actionDisabledReason || isActionPending}
+            onClick={handleDelete}
+          >
+            {pendingAction === "delete" ? "처리 중..." : "모집글 삭제"}
           </Button>
         )}
 

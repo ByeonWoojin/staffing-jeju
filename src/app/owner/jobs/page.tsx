@@ -19,7 +19,9 @@ export default async function JobsPage() {
         description="운영 중인 스탭 모집글을 수정하고, 모집 상태를 관리합니다."
         action={
           !currentJobPost ? (
-            <ButtonLink href="/owner/jobs/new">스탭 모집글 작성하기</ButtonLink>
+            <ButtonLink href="/onboarding/owner/job-post">
+              모집글 등록하기
+            </ButtonLink>
           ) : undefined
         }
       />
@@ -32,10 +34,12 @@ export default async function JobsPage() {
         />
       ) : (
         <EmptyState
-          title="아직 스탭 모집글이 없습니다."
-          description="우리 게하의 첫 스탭 모집글을 작성해보세요."
+          title="등록된 모집글이 없습니다."
+          description="새 모집글을 등록해 스탭 모집을 시작해보세요."
           action={
-            <ButtonLink href="/owner/jobs/new">스탭 모집글 작성하기</ButtonLink>
+            <ButtonLink href="/onboarding/owner/job-post">
+              모집글 등록하기
+            </ButtonLink>
           }
         />
       )}

@@ -32,13 +32,23 @@ export default async function AllApplicationsPage() {
 
       {applications.length === 0 ? (
         <EmptyState
-          title="지원자가 없습니다."
-          description="모집글을 작성하고 공유하면 지원자 목록이 여기에 표시됩니다."
+          title={
+            currentJobPost
+              ? "지원자가 없습니다."
+              : "현재 운영 중인 모집글이 없습니다."
+          }
+          description={
+            currentJobPost
+              ? "모집글을 공유하면 지원자 목록이 여기에 표시됩니다."
+              : "모집글을 등록하면 지원자 목록이 표시됩니다."
+          }
           action={
             currentJobPost ? (
               <ButtonLink href="/owner/jobs">스탭 모집 관리</ButtonLink>
             ) : (
-              <ButtonLink href="/owner/jobs/new">스탭 모집글 작성하기</ButtonLink>
+              <ButtonLink href="/onboarding/owner/job-post">
+                모집글 등록하기
+              </ButtonLink>
             )
           }
         />

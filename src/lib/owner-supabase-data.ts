@@ -1,5 +1,6 @@
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getCurrentAuthUser } from "@/lib/auth/onboarding";
+import { isUuid } from "@/lib/uuid";
 import {
   currentOwner,
   getApplicationWithOwnerCheckMock,
@@ -133,6 +134,7 @@ export async function getCurrentJobPost(
       .select("*")
       .eq("owner_id", ownerId)
       .eq("guesthouse_id", guesthouse.id)
+      .neq("status", "hidden")
       .order("updated_at", { ascending: false })
       .limit(1)
       .maybeSingle();
@@ -143,6 +145,7 @@ export async function getCurrentJobPost(
         "current job post",
         `owner_id=${ownerId}, guesthouse_id=${guesthouse.id}에 해당하는 job_post가 없습니다.`,
       );
+      if (isUuid(ownerId) && isUuid(guesthouse.id)) return null;
       return getCurrentJobPostMock(ownerId);
     }
 
@@ -197,7 +200,7 @@ export async function getApplicationsByJobPostId(
     const supabase = createSupabaseAdminClient();
     const { data: jobPost, error: jobPostError } = await supabase
       .from("job_posts")
-      .select("recruitment_cycle")
+      .select("recruitment_cycle, status")
       .eq("id", jobPostId)
       .maybeSingle();
 
@@ -209,6 +212,7 @@ export async function getApplicationsByJobPostId(
       );
       return getApplicationsByJobPostIdMock(jobPostId);
     }
+    if (jobPost.status === "hidden") return [];
 
     const { data, error } = await supabase
       .from("applications")
@@ -236,7 +240,7 @@ export async function getApplicationCountByJobPostId(
     const supabase = createSupabaseAdminClient();
     const { data: jobPost, error: jobPostError } = await supabase
       .from("job_posts")
-      .select("recruitment_cycle")
+      .select("recruitment_cycle, status")
       .eq("id", jobPostId)
       .maybeSingle();
 
@@ -248,6 +252,7 @@ export async function getApplicationCountByJobPostId(
       );
       return 0;
     }
+    if (jobPost.status === "hidden") return 0;
 
     const { count, error } = await supabase
       .from("applications")

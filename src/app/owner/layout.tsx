@@ -17,7 +17,10 @@ export default async function OwnerRouteLayout({
   }
 
   const destination = await getPostLoginDestination(user.id);
-  if (destination !== "/owner") {
+  if (
+    destination !== "/owner" &&
+    destination !== "/onboarding/owner/job-post"
+  ) {
     redirect(destination);
   }
 
