@@ -7,6 +7,7 @@ import type { Profile, UserRole } from "@/types/database";
 
 export type OnboardingDestination =
   | "/"
+  | "/jobs"
   | "/onboarding/role"
   | "/onboarding/owner/guesthouse"
   | "/onboarding/owner/job-post"
@@ -162,7 +163,7 @@ export async function getPostLoginDestination(
   const profile = await getProfileById(userId);
 
   if (!profile) return "/onboarding/role";
-  if (profile.role === "staff") return "/staff/applications";
+  if (profile.role === "staff") return "/jobs";
   if (profile.role !== "owner") return "/";
 
   return getOwnerOnboardingDestination(profile.id);
