@@ -34,6 +34,8 @@ export interface PublicJobFilters {
   q: string;
   region: string;
   start: string;
+  arrivalStart: string;
+  arrivalEnd: string;
   gender: string;
   party: string;
   paid: string;
@@ -52,6 +54,8 @@ const emptyFilters: PublicJobFilters = {
   q: "",
   region: "",
   start: "",
+  arrivalStart: "",
+  arrivalEnd: "",
   gender: "",
   party: "",
   paid: "",
@@ -74,6 +78,8 @@ function normalizeFilters(searchParams: SearchParams): PublicJobFilters {
     q: getQueryValue(searchParams, "q").trim(),
     region: getQueryValue(searchParams, "region"),
     start: getQueryValue(searchParams, "start"),
+    arrivalStart: getQueryValue(searchParams, "arrivalStart"),
+    arrivalEnd: getQueryValue(searchParams, "arrivalEnd"),
     gender: getQueryValue(searchParams, "gender"),
     party: getQueryValue(searchParams, "party"),
     paid: getQueryValue(searchParams, "paid"),
@@ -104,6 +110,32 @@ function isWithinDays(dateText: string, daysText: string) {
   return date >= today && date <= limit;
 }
 
+function parseDateOnly(dateText: string) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateText)) return null;
+
+  const date = new Date(`${dateText}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return null;
+
+  return date;
+}
+
+function isWithinDateRange(dateText: string, startText: string, endText: string) {
+  const date = parseDateOnly(dateText);
+  if (!date) return false;
+
+  let start = parseDateOnly(startText);
+  let end = parseDateOnly(endText);
+
+  if (start && end && start > end) {
+    [start, end] = [end, start];
+  }
+
+  if (start && date < start) return false;
+  if (end && date > end) return false;
+
+  return true;
+}
+
 function includesKeyword(card: PublicJobCard, keyword: string) {
   if (!keyword) return true;
   const target = [
@@ -131,7 +163,22 @@ function applyFilters(jobs: PublicJobCard[], filters: PublicJobFilters) {
   return jobs.filter((card) => {
     if (!includesKeyword(card, filters.q)) return false;
     if (filters.region && card.guesthouse.region !== filters.region) return false;
-    if (filters.start && !isWithinDays(card.jobPost.work_start_date, filters.start)) {
+    if (
+      (filters.arrivalStart || filters.arrivalEnd) &&
+      !isWithinDateRange(
+        card.jobPost.work_start_date,
+        filters.arrivalStart,
+        filters.arrivalEnd,
+      )
+    ) {
+      return false;
+    }
+    if (
+      !filters.arrivalStart &&
+      !filters.arrivalEnd &&
+      filters.start &&
+      !isWithinDays(card.jobPost.work_start_date, filters.start)
+    ) {
       return false;
     }
     if (

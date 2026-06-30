@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { MouseEvent } from "react";
 import { useRouter } from "next/navigation";
 import { toggleFavoriteGuesthouse } from "@/app/jobs/actions";
+import { cn } from "@/lib/cn";
 import { Button, type ButtonProps } from "@/components/ui";
 
 interface FavoriteGuesthouseButtonProps {
@@ -62,7 +63,13 @@ export function FavoriteGuesthouseButton({
       onClick={handleClick}
       aria-pressed={isFavorited}
       aria-label={isFavorited ? "관심 게스트하우스 해제" : "관심 게스트하우스 저장"}
-      className={className}
+      className={cn(
+        isIcon &&
+          (isFavorited
+            ? "border-primary-500 bg-primary-500 text-white shadow-sm hover:bg-primary-600"
+            : "border-neutral-200 bg-neutral-0/90 text-neutral-800 shadow-sm backdrop-blur hover:bg-neutral-0"),
+        className,
+      )}
     >
       {isIcon
         ? isPending

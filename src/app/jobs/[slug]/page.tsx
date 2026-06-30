@@ -2,7 +2,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
-  getConditionSummary,
   getPublicJobBySlug,
   getStipendSummary,
 } from "@/lib/public-job-data";
@@ -23,7 +22,7 @@ function PhotoGrid({
 }) {
   if (photos.length === 0) {
     return (
-      <div className="flex aspect-[16/9] items-center justify-center rounded-md bg-neutral-100 px-4 text-center text-body-sm text-neutral-400">
+      <div className="flex aspect-[16/9] items-center justify-center rounded-md bg-beige px-4 text-center text-body-sm font-semibold text-brown">
         {emptyText}
       </div>
     );
@@ -32,7 +31,7 @@ function PhotoGrid({
   return (
     <div className="grid gap-3 sm:grid-cols-2">
       {photos.map((photo) => (
-        <div key={photo.id} className="relative aspect-[4/3] overflow-hidden rounded-md bg-neutral-100">
+        <div key={photo.id} className="relative aspect-[4/3] overflow-hidden rounded-md bg-beige">
           <Image src={photo.url} alt={photo.altText} fill className="object-cover" sizes="(min-width: 768px) 50vw, 100vw" />
         </div>
       ))}
@@ -47,6 +46,19 @@ function InfoRow({ label, value }: { label: string; value: string }) {
       <dd className="text-body-sm text-neutral-800 whitespace-pre-wrap">{value || "—"}</dd>
     </div>
   );
+}
+
+function getPositiveBadges(
+  jobPost: NonNullable<
+    Awaited<ReturnType<typeof getPublicJobBySlug>>["detail"]
+  >["jobPost"],
+) {
+  return [
+    jobPost.provides_accommodation ? "숙소 제공" : null,
+    jobPost.provides_meal ? "식사 제공" : null,
+    jobPost.stipend_type !== "none" ? "급여 있음" : null,
+    jobPost.has_party ? "파티 있음" : null,
+  ].filter((label): label is string => Boolean(label));
 }
 
 export default async function PublicJobDetailPage({
@@ -81,6 +93,7 @@ export default async function PublicJobDetailPage({
   }
 
   const { jobPost, guesthouse } = detail;
+  const positiveBadges = getPositiveBadges(jobPost);
 
   return (
     <main className="min-h-screen bg-neutral-50">
@@ -89,61 +102,29 @@ export default async function PublicJobDetailPage({
           모집글 목록으로
         </Link>
 
-        <Card padding="none" className="overflow-hidden">
-          <div className="grid gap-0 lg:grid-cols-[1.1fr_0.9fr]">
-            <div className="relative aspect-[4/3] bg-neutral-100 lg:aspect-auto">
-              {detail.imageUrl ? (
-                <Image
-                  src={detail.imageUrl}
-                  alt={`${guesthouse.name} 대표 이미지`}
-                  fill
-                  className="object-cover"
-                  sizes="(min-width: 1024px) 55vw, 100vw"
-                  priority
-                />
-              ) : (
-                <div className="flex h-full min-h-72 items-center justify-center px-4 text-center text-body-sm text-neutral-400">
-                  등록된 사진이 없습니다
-                </div>
-              )}
-            </div>
-            <div className="flex flex-col gap-4 p-5 md:p-6">
-              <p className="text-caption font-semibold text-primary-700">
-                제주 게스트하우스 스탭 모집
-              </p>
-              <div>
+        <Card padding="none" className="overflow-hidden shadow-sm">
+          <div className="flex flex-col gap-5 p-4 md:p-5">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+              <div className="min-w-0">
                 <p className="text-body-sm font-semibold text-neutral-500">
                   {guesthouse.name} · {guesthouse.region}
                 </p>
-                <h1 className="mt-2 text-h1 text-neutral-900">{jobPost.title}</h1>
+                <h1 className="mt-2 text-h2 text-neutral-900 md:text-h1">
+                  {jobPost.title}
+                </h1>
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  {jobPost.is_urgent && <UrgentBadge />}
+                  {positiveBadges.map((label) => (
+                    <Badge
+                      key={label}
+                      className="h-6 border border-neutral-200 bg-neutral-0 px-2 text-[12px] text-neutral-600"
+                    >
+                      {label}
+                    </Badge>
+                  ))}
+                </div>
               </div>
-              <div className="flex flex-wrap items-center gap-2">
-                {jobPost.is_urgent && <UrgentBadge />}
-                {getConditionSummary(jobPost).map((label) => (
-                  <Badge key={label}>{label}</Badge>
-                ))}
-              </div>
-              <dl className="grid gap-2 text-body-sm">
-                <div className="flex justify-between gap-3">
-                  <dt className="text-neutral-500">입도일</dt>
-                  <dd className="font-semibold text-neutral-800">
-                    {formatDate(jobPost.work_start_date)}
-                  </dd>
-                </div>
-                <div className="flex justify-between gap-3">
-                  <dt className="text-neutral-500">최소 근무 기간</dt>
-                  <dd className="font-semibold text-neutral-800">
-                    {jobPost.min_work_period}
-                  </dd>
-                </div>
-                <div className="flex justify-between gap-3">
-                  <dt className="text-neutral-500">모집 인원</dt>
-                  <dd className="font-semibold text-neutral-800">
-                    {jobPost.recruit_count}명
-                  </dd>
-                </div>
-              </dl>
-              <div className="mt-auto grid gap-2 sm:grid-cols-2">
+              <div className="grid gap-2 sm:grid-cols-2 lg:w-72">
                 <FavoriteGuesthouseButton
                   guesthouseId={guesthouse.id}
                   initialFavorited={detail.isFavorited}
@@ -151,10 +132,50 @@ export default async function PublicJobDetailPage({
                 />
                 <ApplyButton />
               </div>
-              <p className="text-caption text-neutral-500">
-                지원하려면 로그인이 필요합니다.
-              </p>
             </div>
+
+            <div className="relative aspect-[4/3] overflow-hidden rounded-md bg-beige sm:aspect-[16/9]">
+              {detail.imageUrl ? (
+                <Image
+                  src={detail.imageUrl}
+                  alt={`${guesthouse.name} 대표 이미지`}
+                  fill
+                  className="object-cover"
+                  sizes="(min-width: 1024px) 960px, 100vw"
+                  priority
+                />
+              ) : (
+                <div className="flex h-full min-h-72 items-center justify-center px-4 text-center text-body-sm font-semibold text-brown">
+                  등록된 사진이 없습니다
+                </div>
+              )}
+            </div>
+
+            <dl className="grid gap-2 rounded-md border border-neutral-100 bg-beige p-4 text-body-sm sm:grid-cols-3">
+              <div>
+                <dt className="text-caption font-semibold text-neutral-500">입도일</dt>
+                <dd className="mt-1 font-bold text-neutral-900">
+                  {formatDate(jobPost.work_start_date)}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-caption font-semibold text-neutral-500">
+                  최소 근무 기간
+                </dt>
+                <dd className="mt-1 font-bold text-neutral-900">
+                  {jobPost.min_work_period}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-caption font-semibold text-neutral-500">근무/휴무</dt>
+                <dd className="mt-1 font-bold text-neutral-900">
+                  주 {jobPost.work_days_per_week}일 · 휴무 {jobPost.off_days_per_week}일
+                </dd>
+              </div>
+            </dl>
+            <p className="text-caption text-neutral-500">
+              지원하려면 로그인이 필요합니다.
+            </p>
           </div>
         </Card>
 
