@@ -11,6 +11,7 @@ export type OnboardingDestination =
   | "/onboarding/owner/guesthouse"
   | "/onboarding/owner/job-post"
   | "/owner"
+  | "/staff/applications"
   | "/staff/coming-soon";
 
 export async function getCurrentAuthUser(): Promise<User | null> {
@@ -161,7 +162,7 @@ export async function getPostLoginDestination(
   const profile = await getProfileById(userId);
 
   if (!profile) return "/onboarding/role";
-  if (profile.role === "staff") return "/staff/coming-soon";
+  if (profile.role === "staff") return "/staff/applications";
   if (profile.role !== "owner") return "/";
 
   return getOwnerOnboardingDestination(profile.id);

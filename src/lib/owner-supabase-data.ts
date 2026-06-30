@@ -1,6 +1,7 @@
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getCurrentAuthUser } from "@/lib/auth/onboarding";
 import { isUuid } from "@/lib/uuid";
+import { attachApplicationPhotoUrls } from "@/lib/application-photo";
 import {
   currentOwner,
   getApplicationWithOwnerCheckMock,
@@ -229,7 +230,7 @@ export async function getApplicationsByJobPostId(
       .order("created_at", { ascending: false });
 
     if (error) throw error;
-    return (data ?? []) as Application[];
+    return attachApplicationPhotoUrls((data ?? []) as Application[]);
   } catch (error) {
     logSupabaseReadError("failed to load applications by job post id", error);
     logMockFallback(
@@ -265,7 +266,8 @@ export async function getApplicationCountByJobPostId(
       .from("applications")
       .select("id", { count: "exact", head: true })
       .eq("job_post_id", jobPostId)
-      .eq("recruitment_cycle", jobPost.recruitment_cycle);
+      .eq("recruitment_cycle", jobPost.recruitment_cycle)
+      .neq("status", "canceled");
 
     if (error) throw error;
     return count ?? 0;
@@ -331,7 +333,11 @@ export async function getApplicationWithOwnerCheck(
     );
     if (!job_post) return null;
 
-    return { application: application as Application, job_post };
+    const [applicationWithPhotoUrl] = await attachApplicationPhotoUrls([
+      application as Application,
+    ]);
+
+    return { application: applicationWithPhotoUrl, job_post };
   } catch (error) {
     logSupabaseReadError("failed to load application with owner check", error);
     logMockFallback(
@@ -439,7 +445,10 @@ export async function getOwnerDashboardData(): Promise<OwnerDashboardData> {
     ? await getApplicationsByJobPostId(current_job_post.id)
     : [];
 
-  const new_application_count = applications.filter(
+  const activeApplications = applications.filter(
+    (application) => application.status !== "canceled",
+  );
+  const new_application_count = activeApplications.filter(
     (a) => a.status === "submitted",
   ).length;
 
@@ -449,7 +458,7 @@ export async function getOwnerDashboardData(): Promise<OwnerDashboardData> {
     current_job_post,
     applications,
     stats: {
-      total_application_count: applications.length,
+      total_application_count: activeApplications.length,
       new_application_count,
     },
   };

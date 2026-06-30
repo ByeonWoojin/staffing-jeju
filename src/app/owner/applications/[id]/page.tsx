@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { OwnerLayout } from "@/components/layout/OwnerLayout";
 import { ApplicationDetail } from "@/components/owner";
-import { markApplicationViewed } from "@/app/owner/applications/actions";
+import { markApplicationViewedDuringRead } from "@/app/owner/applications/actions";
 import { getApplicationWithOwnerCheck } from "@/lib/owner-supabase-data";
 import { isUuid } from "@/lib/uuid";
 import { ButtonLink, PageHeader } from "@/components/ui";
@@ -24,7 +24,7 @@ export default async function ApplicationDetailPage({
   }
 
   if (result.application.status === "submitted" && isUuid(result.application.id)) {
-    await markApplicationViewed(result.application.id);
+    await markApplicationViewedDuringRead(result.application.id);
     result = await getApplicationWithOwnerCheck(id);
 
     if (!result) {

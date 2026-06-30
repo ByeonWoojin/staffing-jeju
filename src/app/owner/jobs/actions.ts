@@ -135,11 +135,54 @@ async function updateJobPostOrThrow(
 export async function closeRecruitment(jobPostId: string): Promise<JobPost> {
   console.log("[closeRecruitment] called", jobPostId);
   logUuidValidation("closeRecruitment", jobPostId);
+  const owner = await getCurrentOwnerProfileOrThrow();
   const current = await getJobPostOrThrow(jobPostId);
 
-  const updated = await updateJobPostOrThrow("closeRecruitment", jobPostId, {
-    status: "closed",
+  logAction("closeRecruitment:owner-check", jobPostId, {
+    currentOwnerId: owner.id,
+    jobPostOwnerId: current.owner_id,
   });
+
+  if (current.owner_id !== owner.id) {
+    logAction("closeRecruitment:owner:error", jobPostId, {
+      currentOwnerId: owner.id,
+      jobPostOwnerId: current.owner_id,
+    });
+    throw new Error("현재 사장님이 관리할 수 있는 모집글이 아닙니다.");
+  }
+  if (current.status === "hidden") {
+    throw new Error("숨김 처리된 모집글은 마감할 수 없습니다.");
+  }
+  if (current.status === "closed") {
+    revalidateOwnerRecruitmentPaths(jobPostId);
+    logAction("closeRecruitment:already-closed", jobPostId, {
+      existingRow: current,
+    });
+    return current;
+  }
+
+  const supabase = createSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from("job_posts")
+    .update({ status: "closed" })
+    .eq("id", jobPostId)
+    .eq("owner_id", owner.id)
+    .neq("status", "hidden")
+    .select("*")
+    .maybeSingle();
+
+  if (error) {
+    logAction("closeRecruitment:update:error", jobPostId, {
+      error: serializeSupabaseError(error),
+    });
+    throw new Error(`모집 마감 처리에 실패했습니다: ${error.message}`);
+  }
+  if (!data) {
+    logAction("closeRecruitment:update:no-row", jobPostId, {});
+    throw new Error("모집 마감 처리 결과가 없습니다.");
+  }
+
+  const updated = data as JobPost;
 
   if (updated.status !== "closed") {
     logAction("closeRecruitment:verify:error", jobPostId, { result: updated });

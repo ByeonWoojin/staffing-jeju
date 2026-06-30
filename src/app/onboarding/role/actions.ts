@@ -17,7 +17,7 @@ async function chooseRole(role: Exclude<UserRole, "admin">) {
   const profile = await createProfileForUser(user, role);
 
   if (profile.role === "staff") {
-    redirect("/staff/coming-soon");
+    redirect("/staff/applications");
   }
 
   const destination = await getOwnerOnboardingDestination(profile.id);

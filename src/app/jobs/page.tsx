@@ -1,7 +1,9 @@
 import Image from "next/image";
 import Link from "next/link";
+import { getCurrentAuthUser } from "@/lib/auth/onboarding";
 import { getPublicJobs } from "@/lib/public-job-data";
 import { formatDate } from "@/lib/owner-utils";
+import { HeaderLoginButton } from "@/components/auth/HeaderLoginButton";
 import { FavoriteGuesthouseButton } from "@/components/jobs/FavoriteGuesthouseButton";
 import { JobsFilterBar } from "@/components/jobs/JobsFilterBar";
 import { Badge, Card, EmptyState, UrgentBadge } from "@/components/ui";
@@ -96,7 +98,11 @@ export default async function PublicJobsPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const { jobs, filters } = await getPublicJobs(await searchParams);
+  const resolvedSearchParams = await searchParams;
+  const [{ jobs, filters }, user] = await Promise.all([
+    getPublicJobs(resolvedSearchParams),
+    getCurrentAuthUser(),
+  ]);
 
   return (
     <main className="min-h-screen bg-neutral-50">
@@ -121,17 +127,21 @@ export default async function PublicJobsPage({
               관심 공고
             </Link>
             <Link
-              href="/staff/coming-soon"
+              href="/staff/applications"
               className="rounded-md px-2.5 py-2 transition-colors hover:bg-neutral-100 focus-ring sm:px-3"
             >
               지원 현황
             </Link>
-            <Link
-              href="/"
-              className="rounded-md border border-neutral-200 px-2.5 py-2 transition-colors hover:bg-neutral-50 focus-ring sm:px-3"
-            >
-              프로필/로그인
-            </Link>
+            {user ? (
+              <Link
+                href="/mypage"
+                className="rounded-md border border-neutral-200 px-2.5 py-2 transition-colors hover:bg-neutral-50 focus-ring sm:px-3"
+              >
+                프로필
+              </Link>
+            ) : (
+              <HeaderLoginButton />
+            )}
           </nav>
         </div>
       </header>

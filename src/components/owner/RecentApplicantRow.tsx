@@ -7,17 +7,20 @@ import {
 import { ApplicationStatusBadge, Card, CardContent } from "@/components/ui";
 
 interface RecentApplicantRowProps {
-  application: Application;
+  application: Application & { representativePhotoUrl?: string | null };
 }
 
 export function RecentApplicantRow({ application }: RecentApplicantRowProps) {
+  const photoSrc =
+    application.representativePhotoUrl ?? application.representative_photo_path;
+
   return (
     <Card padding="sm" hoverable>
       <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3 min-w-0">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={application.representative_photo_path}
+            src={photoSrc}
             alt={`${application.name} 대표사진`}
             className="h-10 w-10 shrink-0 rounded-full object-cover border border-neutral-200"
           />
@@ -51,7 +54,7 @@ export function RecentApplicantRow({ application }: RecentApplicantRowProps) {
 export function RecentApplicantList({
   applications,
 }: {
-  applications: Application[];
+  applications: (Application & { representativePhotoUrl?: string | null })[];
 }) {
   return (
     <div className="flex flex-col gap-3">

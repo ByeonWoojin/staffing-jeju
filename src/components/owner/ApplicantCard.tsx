@@ -8,17 +8,20 @@ import {
 import { ApplicationStatusBadge, Card, CardContent } from "@/components/ui";
 
 interface ApplicantCardProps {
-  application: Application;
+  application: Application & { representativePhotoUrl?: string | null };
 }
 
 export function ApplicantCard({ application }: ApplicantCardProps) {
+  const photoSrc =
+    application.representativePhotoUrl ?? application.representative_photo_path;
+
   return (
     <Card padding="sm" hoverable>
       <CardContent className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex items-start gap-3 min-w-0">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={application.representative_photo_path}
+            src={photoSrc}
             alt={`${application.name} 대표사진`}
             className="h-12 w-12 shrink-0 rounded-full object-cover border border-neutral-200"
           />

@@ -14,7 +14,7 @@ const FILTER_OPTIONS: { value: "all" | ApplicationStatus; label: string }[] = [
 ];
 
 interface ApplicantListProps {
-  applications: Application[];
+  applications: (Application & { representativePhotoUrl?: string | null })[];
 }
 
 export function ApplicantList({ applications }: ApplicantListProps) {

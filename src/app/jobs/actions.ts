@@ -115,7 +115,7 @@ export async function toggleFavoriteGuesthouse(
   return { ok: true, isFavorited: true, message: "관심 게스트하우스로 저장했습니다." };
 }
 
-export async function checkApplyAvailability(): Promise<{
+export async function checkApplyAvailability(slug: string): Promise<{
   ok: boolean;
   message: string;
   redirectTo?: string;
@@ -150,8 +150,42 @@ export async function checkApplyAvailability(): Promise<{
     };
   }
 
+  const supabase = createSupabaseAdminClient();
+  const { data: jobPost, error: jobPostError } = await supabase
+    .from("job_posts")
+    .select("status")
+    .eq("slug", slug)
+    .maybeSingle();
+
+  if (jobPostError) {
+    console.error("[jobs/actions] apply job lookup failed", {
+      slug,
+      message: jobPostError.message,
+      code: jobPostError.code,
+      details: jobPostError.details,
+    });
+    return {
+      ok: false,
+      message: "모집글을 확인하지 못했습니다. 잠시 후 다시 시도해주세요.",
+    };
+  }
+  if (!jobPost) {
+    return {
+      ok: false,
+      message: "존재하지 않는 모집글입니다.",
+      redirectTo: "/jobs",
+    };
+  }
+  if (jobPost.status !== "open") {
+    return {
+      ok: false,
+      message: "모집이 종료된 공고입니다.",
+    };
+  }
+
   return {
     ok: true,
-    message: "지원서 작성 기능은 다음 단계에서 연결됩니다.",
+    message: "지원서를 작성해주세요.",
+    redirectTo: `/jobs/${slug}/apply`,
   };
 }

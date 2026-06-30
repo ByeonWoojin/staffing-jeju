@@ -130,7 +130,7 @@ export default async function PublicJobDetailPage({
                   initialFavorited={detail.isFavorited}
                   fullWidth
                 />
-                <ApplyButton />
+                <ApplyButton slug={jobPost.slug} />
               </div>
             </div>
 

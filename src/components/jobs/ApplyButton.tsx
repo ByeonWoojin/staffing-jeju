@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { checkApplyAvailability } from "@/app/jobs/actions";
 import { Button } from "@/components/ui";
 
-export function ApplyButton() {
+export function ApplyButton({ slug }: { slug: string }) {
   const router = useRouter();
   const [isPending, setIsPending] = useState(false);
 
@@ -14,8 +14,10 @@ export function ApplyButton() {
 
     setIsPending(true);
     try {
-      const result = await checkApplyAvailability();
-      alert(result.message);
+      const result = await checkApplyAvailability(slug);
+      if (!result.ok) {
+        alert(result.message);
+      }
       if (result.redirectTo) router.push(result.redirectTo);
     } catch (error) {
       console.error("[ApplyButton] check failed", error);
