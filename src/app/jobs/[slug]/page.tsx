@@ -9,7 +9,7 @@ import { getGenderConditionLabel } from "@/lib/labels";
 import { formatDate } from "@/lib/owner-utils";
 import { ApplyButton } from "@/components/jobs/ApplyButton";
 import { FavoriteGuesthouseButton } from "@/components/jobs/FavoriteGuesthouseButton";
-import { Badge, Card, EmptyState, UrgentBadge } from "@/components/ui";
+import { Badge, Button, Card, EmptyState, UrgentBadge } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
 
@@ -93,6 +93,7 @@ export default async function PublicJobDetailPage({
   }
 
   const { jobPost, guesthouse } = detail;
+  const isClosed = jobPost.status === "closed";
   const positiveBadges = getPositiveBadges(jobPost);
 
   return (
@@ -113,6 +114,11 @@ export default async function PublicJobDetailPage({
                   {jobPost.title}
                 </h1>
                 <div className="mt-3 flex flex-wrap items-center gap-2">
+                  {isClosed && (
+                    <Badge className="h-6 border border-neutral-200 bg-neutral-800 px-2 text-[12px] font-bold text-white">
+                      모집 마감
+                    </Badge>
+                  )}
                   {jobPost.is_urgent && <UrgentBadge />}
                   {positiveBadges.map((label) => (
                     <Badge
@@ -130,7 +136,18 @@ export default async function PublicJobDetailPage({
                   initialFavorited={detail.isFavorited}
                   fullWidth
                 />
-                <ApplyButton slug={jobPost.slug} />
+                {isClosed ? (
+                  <div className="flex flex-col gap-2">
+                    <Button size="lg" fullWidth disabled>
+                      모집 마감
+                    </Button>
+                    <p className="text-caption font-semibold text-neutral-500">
+                      이미 마감된 공고입니다.
+                    </p>
+                  </div>
+                ) : (
+                  <ApplyButton slug={jobPost.slug} />
+                )}
               </div>
             </div>
 
@@ -174,7 +191,7 @@ export default async function PublicJobDetailPage({
               </div>
             </dl>
             <p className="text-caption text-neutral-500">
-              지원하려면 로그인이 필요합니다.
+              {isClosed ? "모집 마감된 공고입니다." : "지원하려면 로그인이 필요합니다."}
             </p>
           </div>
         </Card>

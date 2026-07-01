@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "seed:demo-jobs": "node scripts/seed-demo-jobs.mjs",
+    "seed:demo-jobs:delete": "node scripts/delete-demo-jobs.mjs"
   },
   "dependencies": {
     "@fontsource/pretendard": "^5.2.5",

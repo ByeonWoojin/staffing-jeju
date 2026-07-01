@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { getStaffFavoritesData } from "@/lib/staff-favorite-data";
 import { formatDate } from "@/lib/owner-utils";
+import { AppHeader } from "@/components/layout/AppHeader";
 import { FavoriteGuesthouseButton } from "@/components/jobs/FavoriteGuesthouseButton";
 import { Badge, ButtonLink, Card, EmptyState, PageHeader, UrgentBadge } from "@/components/ui";
 
@@ -27,6 +28,7 @@ export default async function StaffFavoritesPage() {
   if (!authorized) {
     return (
       <main className="min-h-screen bg-neutral-50">
+        <AppHeader active="favorites" isAuthenticated />
         <div className="mx-auto max-w-3xl px-4 py-10 md:px-6">
           <EmptyState
             title="스탭 계정에서 사용할 수 있는 페이지입니다."
@@ -40,7 +42,8 @@ export default async function StaffFavoritesPage() {
 
   return (
     <main className="min-h-screen bg-neutral-50">
-      <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-8 md:px-6 md:py-10">
+      <AppHeader active="favorites" isAuthenticated />
+      <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-6 md:px-6 md:py-8">
         <PageHeader
           title="관심 게스트하우스"
           description="저장한 게스트하우스가 현재 모집 중인지 확인할 수 있습니다."

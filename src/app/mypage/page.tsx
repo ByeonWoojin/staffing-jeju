@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { GoogleLoginButton } from "@/components/auth/GoogleLoginButton";
 import { LogoutButton } from "@/components/auth/LogoutButton";
+import { AppHeader } from "@/components/layout/AppHeader";
 import { getCurrentAuthUser, getProfileById } from "@/lib/auth/onboarding";
 import {
   Badge,
@@ -63,20 +64,23 @@ const ownerMenuItems = [
 
 function LoginRequiredState() {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-neutral-50 px-4 py-10">
-      <div className="w-full max-w-md">
-        <EmptyState
-          title="로그인이 필요합니다."
-          description="마이페이지는 로그인 후 사용할 수 있습니다."
-          action={
-            <div className="grid gap-3">
-              <GoogleLoginButton />
-              <ButtonLink href="/jobs" variant="outline" fullWidth>
-                공고 둘러보기
-              </ButtonLink>
-            </div>
-          }
-        />
+    <main className="min-h-screen bg-neutral-50">
+      <AppHeader active="profile" />
+      <div className="flex min-h-[calc(100vh-3rem)] items-center justify-center px-4 py-10">
+        <div className="w-full max-w-md">
+          <EmptyState
+            title="로그인이 필요합니다."
+            description="마이페이지는 로그인 후 사용할 수 있습니다."
+            action={
+              <div className="grid gap-3">
+                <GoogleLoginButton />
+                <ButtonLink href="/jobs" variant="outline" fullWidth>
+                  공고 둘러보기
+                </ButtonLink>
+              </div>
+            }
+          />
+        </div>
       </div>
     </main>
   );
@@ -122,7 +126,8 @@ export default async function MyPage() {
 
   return (
     <main className="min-h-screen bg-neutral-50">
-      <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-8 md:px-6 md:py-10">
+      <AppHeader active="profile" isAuthenticated />
+      <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-6 md:px-6 md:py-8">
         <PageHeader
           title="마이페이지"
           description="계정 정보와 자주 사용하는 메뉴를 확인할 수 있습니다."

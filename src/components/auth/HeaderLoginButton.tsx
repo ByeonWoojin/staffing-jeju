@@ -2,8 +2,13 @@
 
 import { useState } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { cn } from "@/lib/cn";
 
-export function HeaderLoginButton() {
+interface HeaderLoginButtonProps {
+  className?: string;
+}
+
+export function HeaderLoginButton({ className }: HeaderLoginButtonProps) {
   const [isLoading, setIsLoading] = useState(false);
 
   const handleLogin = async () => {
@@ -29,7 +34,10 @@ export function HeaderLoginButton() {
       type="button"
       onClick={handleLogin}
       disabled={isLoading}
-      className="rounded-md border border-neutral-200 px-2.5 py-2 transition-colors hover:bg-neutral-50 focus-ring disabled:cursor-not-allowed disabled:text-neutral-400 sm:px-3"
+      className={cn(
+        "rounded-md border border-neutral-200 px-2.5 py-2 transition-colors hover:bg-neutral-50 focus-ring disabled:cursor-not-allowed disabled:text-neutral-400 sm:px-3",
+        className,
+      )}
     >
       {isLoading ? "이동 중" : "로그인"}
     </button>

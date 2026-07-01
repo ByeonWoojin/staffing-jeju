@@ -47,8 +47,18 @@ export interface PublicJobFilters {
 export interface PublicJobsResult {
   jobs: PublicJobCard[];
   filters: PublicJobFilters;
+  pagination: PublicJobsPagination;
   viewerProfile: Profile | null;
 }
+
+export interface PublicJobsPagination {
+  pageSize: number;
+  totalCount: number;
+  totalPages: number;
+  currentPage: number;
+}
+
+const PUBLIC_JOBS_PAGE_SIZE = 20;
 
 const emptyFilters: PublicJobFilters = {
   q: "",
@@ -89,25 +99,25 @@ function normalizeFilters(searchParams: SearchParams): PublicJobFilters {
   };
 }
 
+function normalizePage(searchParams: SearchParams) {
+  const value = searchParams.page;
+  const rawPage = Array.isArray(value) ? value[0] : value;
+  const page = Number(rawPage);
+
+  if (!Number.isFinite(page)) return 1;
+
+  const normalizedPage = Math.floor(page);
+  return normalizedPage >= 1 ? normalizedPage : 1;
+}
+
+function normalizeKeyword(keyword: string) {
+  return keyword.replace(/[%,()]/g, " ").trim();
+}
+
 function getPublicUrl(bucket: "guesthouse-images" | "job-post-images", path: string) {
   const supabase = createSupabaseAdminClient();
   const { data } = supabase.storage.from(bucket).getPublicUrl(path);
   return data.publicUrl;
-}
-
-function isWithinDays(dateText: string, daysText: string) {
-  const days = Number(daysText);
-  if (!Number.isFinite(days) || days <= 0) return true;
-
-  const date = new Date(`${dateText}T00:00:00`);
-  if (Number.isNaN(date.getTime())) return false;
-
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const limit = new Date(today);
-  limit.setDate(today.getDate() + days);
-
-  return date >= today && date <= limit;
 }
 
 function parseDateOnly(dateText: string) {
@@ -117,92 +127,6 @@ function parseDateOnly(dateText: string) {
   if (Number.isNaN(date.getTime())) return null;
 
   return date;
-}
-
-function isWithinDateRange(dateText: string, startText: string, endText: string) {
-  const date = parseDateOnly(dateText);
-  if (!date) return false;
-
-  let start = parseDateOnly(startText);
-  let end = parseDateOnly(endText);
-
-  if (start && end && start > end) {
-    [start, end] = [end, start];
-  }
-
-  if (start && date < start) return false;
-  if (end && date > end) return false;
-
-  return true;
-}
-
-function includesKeyword(card: PublicJobCard, keyword: string) {
-  if (!keyword) return true;
-  const target = [
-    card.jobPost.title,
-    card.guesthouse.name,
-    card.guesthouse.region,
-    card.jobPost.work_content,
-    card.jobPost.description ?? "",
-    card.guesthouse.description ?? "",
-  ]
-    .join(" ")
-    .toLowerCase();
-
-  return target.includes(keyword.toLowerCase());
-}
-
-function matchesBooleanFilter(value: boolean, filter: string) {
-  if (!filter) return true;
-  if (filter === "true") return value;
-  if (filter === "false") return !value;
-  return true;
-}
-
-function applyFilters(jobs: PublicJobCard[], filters: PublicJobFilters) {
-  return jobs.filter((card) => {
-    if (!includesKeyword(card, filters.q)) return false;
-    if (filters.region && card.guesthouse.region !== filters.region) return false;
-    if (
-      (filters.arrivalStart || filters.arrivalEnd) &&
-      !isWithinDateRange(
-        card.jobPost.work_start_date,
-        filters.arrivalStart,
-        filters.arrivalEnd,
-      )
-    ) {
-      return false;
-    }
-    if (
-      !filters.arrivalStart &&
-      !filters.arrivalEnd &&
-      filters.start &&
-      !isWithinDays(card.jobPost.work_start_date, filters.start)
-    ) {
-      return false;
-    }
-    if (
-      filters.gender &&
-      card.jobPost.gender_condition !== (filters.gender as GenderCondition)
-    ) {
-      return false;
-    }
-    if (!matchesBooleanFilter(card.jobPost.has_party, filters.party)) return false;
-    if (!matchesBooleanFilter(card.jobPost.stipend_type !== "none", filters.paid)) {
-      return false;
-    }
-    if (
-      !matchesBooleanFilter(
-        card.jobPost.provides_accommodation,
-        filters.accommodation,
-      )
-    ) {
-      return false;
-    }
-    if (!matchesBooleanFilter(card.jobPost.provides_meal, filters.meal)) return false;
-    if (filters.urgent === "true" && !card.jobPost.is_urgent) return false;
-    return true;
-  });
 }
 
 function sortPhotosByTarget<T extends GuesthousePhoto | JobPostPhoto>(
@@ -266,18 +190,219 @@ async function getFavoriteGuesthouseIds(
   return new Set((data ?? []).map((favorite) => favorite.guesthouse_id as string));
 }
 
-async function getOpenJobCards(viewerProfile: Profile | null) {
+function getNormalizedDateRange(filters: PublicJobFilters) {
+  let start = parseDateOnly(filters.arrivalStart);
+  let end = parseDateOnly(filters.arrivalEnd);
+
+  if (start && end && start > end) {
+    [start, end] = [end, start];
+  }
+
+  return {
+    start: start ? filters.arrivalStart : "",
+    end: end ? filters.arrivalEnd : "",
+  };
+}
+
+function getLegacyStartRange(filters: PublicJobFilters) {
+  if (filters.arrivalStart || filters.arrivalEnd || !filters.start) {
+    return null;
+  }
+
+  const days = Number(filters.start);
+  if (!Number.isFinite(days) || days <= 0) return null;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const limit = new Date(today);
+  limit.setDate(today.getDate() + days);
+
+  return {
+    start: today.toISOString().slice(0, 10),
+    end: limit.toISOString().slice(0, 10),
+  };
+}
+
+function toBooleanFilter(value: string) {
+  if (value === "true") return true;
+  if (value === "false") return false;
+  return null;
+}
+
+type SupabaseQueryBuilder = {
+  eq: (column: string, value: unknown) => SupabaseQueryBuilder;
+  neq: (column: string, value: unknown) => SupabaseQueryBuilder;
+  gte: (column: string, value: unknown) => SupabaseQueryBuilder;
+  in: (column: string, values: readonly unknown[]) => SupabaseQueryBuilder;
+  lte: (column: string, value: unknown) => SupabaseQueryBuilder;
+  order: (
+    column: string,
+    options?: { ascending?: boolean; foreignTable?: string },
+  ) => SupabaseQueryBuilder;
+  or: (filters: string) => SupabaseQueryBuilder;
+  range: (from: number, to: number) => SupabaseQueryBuilder;
+  then: PromiseLike<{
+    data: unknown;
+    count: number | null;
+    error: {
+      message: string;
+      code?: string;
+      details?: string;
+    } | null;
+  }>["then"];
+};
+
+function applyJobPostQueryFilters(
+  query: SupabaseQueryBuilder,
+  filters: PublicJobFilters,
+) {
+  let nextQuery = query.neq("status", "hidden");
+
+  const dateRange = getNormalizedDateRange(filters);
+  if (dateRange.start) {
+    nextQuery = nextQuery.gte("work_start_date", dateRange.start);
+  }
+  if (dateRange.end) {
+    nextQuery = nextQuery.lte("work_start_date", dateRange.end);
+  }
+
+  const legacyStartRange = getLegacyStartRange(filters);
+  if (legacyStartRange) {
+    nextQuery = nextQuery
+      .gte("work_start_date", legacyStartRange.start)
+      .lte("work_start_date", legacyStartRange.end);
+  }
+
+  if (filters.gender) {
+    nextQuery = nextQuery.eq("gender_condition", filters.gender as GenderCondition);
+  }
+
+  const party = toBooleanFilter(filters.party);
+  if (party !== null) {
+    nextQuery = nextQuery.eq("has_party", party);
+  }
+
+  const accommodation = toBooleanFilter(filters.accommodation);
+  if (accommodation !== null) {
+    nextQuery = nextQuery.eq("provides_accommodation", accommodation);
+  }
+
+  const meal = toBooleanFilter(filters.meal);
+  if (meal !== null) {
+    nextQuery = nextQuery.eq("provides_meal", meal);
+  }
+
+  const paid = toBooleanFilter(filters.paid);
+  if (paid === true) {
+    nextQuery = nextQuery.neq("stipend_type", "none");
+  } else if (paid === false) {
+    nextQuery = nextQuery.eq("stipend_type", "none");
+  }
+
+  if (filters.urgent === "true") {
+    nextQuery = nextQuery.eq("is_urgent", true);
+  }
+
+  const keyword = normalizeKeyword(filters.q);
+  if (keyword) {
+    nextQuery = nextQuery.or(
+      `title.ilike.%${keyword}%,work_content.ilike.%${keyword}%,description.ilike.%${keyword}%`,
+    );
+  }
+
+  return nextQuery;
+}
+
+async function getFilteredGuesthouseIds(filters: PublicJobFilters) {
+  if (!filters.region) return null;
+
   const supabase = createSupabaseAdminClient();
-  const { data: jobPosts, error: jobPostError } = await supabase
-    .from("job_posts")
-    .select("*")
-    .eq("status", "open")
+  const { data, error } = await supabase
+    .from("guesthouses")
+    .select("id")
+    .eq("region", filters.region);
+
+  if (error) {
+    console.error("[public-job-data] filtered guesthouse lookup failed", {
+      message: error.message,
+      code: error.code,
+      details: error.details,
+    });
+    return [];
+  }
+
+  return (data ?? []).map((guesthouse) => guesthouse.id as string);
+}
+
+async function getFilteredPublicJobCount(
+  filters: PublicJobFilters,
+  filteredGuesthouseIds: string[] | null,
+) {
+  if (filteredGuesthouseIds && filteredGuesthouseIds.length === 0) return 0;
+
+  const supabase = createSupabaseAdminClient();
+  let query = applyJobPostQueryFilters(
+    supabase.from("job_posts").select("id", {
+      count: "exact",
+      head: true,
+    }) as unknown as SupabaseQueryBuilder,
+    filters,
+  );
+
+  if (filteredGuesthouseIds) {
+    query = query.in("guesthouse_id", filteredGuesthouseIds);
+  }
+
+  const { count, error } = await query;
+
+  if (error) {
+    console.error("[public-job-data] public job count failed", {
+      message: error.message,
+      code: error.code,
+      details: error.details,
+    });
+    return 0;
+  }
+
+  return count ?? 0;
+}
+
+async function getPagedPublicJobCards({
+  viewerProfile,
+  filters,
+  currentPage,
+  filteredGuesthouseIds,
+}: {
+  viewerProfile: Profile | null;
+  filters: PublicJobFilters;
+  currentPage: number;
+  filteredGuesthouseIds: string[] | null;
+}) {
+  if (filteredGuesthouseIds && filteredGuesthouseIds.length === 0) return [];
+
+  const supabase = createSupabaseAdminClient();
+  const from = (currentPage - 1) * PUBLIC_JOBS_PAGE_SIZE;
+  const to = from + PUBLIC_JOBS_PAGE_SIZE - 1;
+  let filteredQuery = applyJobPostQueryFilters(
+    supabase.from("job_posts").select("*") as unknown as SupabaseQueryBuilder,
+    filters,
+  );
+
+  if (filteredGuesthouseIds) {
+    filteredQuery = filteredQuery.in("guesthouse_id", filteredGuesthouseIds);
+  }
+
+  const query = filteredQuery
+    .order("status", { ascending: true })
     .order("is_urgent", { ascending: false })
     .order("bumped_at", { ascending: false })
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .range(from, to);
+
+  const { data: jobPosts, error: jobPostError } = await query;
 
   if (jobPostError) {
-    console.error("[public-job-data] open job lookup failed", {
+    console.error("[public-job-data] paged public job lookup failed", {
       message: jobPostError.message,
       code: jobPostError.code,
       details: jobPostError.details,
@@ -285,11 +410,11 @@ async function getOpenJobCards(viewerProfile: Profile | null) {
     return [];
   }
 
-  const jobs = (jobPosts ?? []) as JobPost[];
-  if (jobs.length === 0) return [];
+  const jobPostRows = (jobPosts ?? []) as JobPost[];
+  if (jobPostRows.length === 0) return [];
 
-  const guesthouseIds = [...new Set(jobs.map((job) => job.guesthouse_id))];
-  const jobPostIds = jobs.map((job) => job.id);
+  const guesthouseIds = [...new Set(jobPostRows.map((job) => job.guesthouse_id))];
+  const jobPostIds = jobPostRows.map((job) => job.id);
 
   const [
     { data: guesthouses, error: guesthouseError },
@@ -314,6 +439,13 @@ async function getOpenJobCards(viewerProfile: Profile | null) {
       guesthouse,
     ]),
   );
+  const jobs = jobPostRows.flatMap((jobPost) => {
+    const guesthouse = guesthouseById.get(jobPost.guesthouse_id);
+    if (!guesthouse) return [];
+    return [{ jobPost, guesthouse }];
+  });
+  if (jobs.length === 0) return [];
+
   const jobPhotosByJobPostId = sortPhotosByTarget(
     (jobPhotos ?? []) as JobPostPhoto[],
     "job_post_id",
@@ -324,10 +456,7 @@ async function getOpenJobCards(viewerProfile: Profile | null) {
   );
   const favoriteIds = await getFavoriteGuesthouseIds(viewerProfile, guesthouseIds);
 
-  return jobs.flatMap((jobPost) => {
-    const guesthouse = guesthouseById.get(jobPost.guesthouse_id);
-    if (!guesthouse) return [];
-
+  return jobs.map(({ jobPost, guesthouse }) => {
     const firstJobPhoto = jobPhotosByJobPostId.get(jobPost.id)?.[0];
     const firstGuesthousePhoto = guesthousePhotosByGuesthouseId.get(guesthouse.id)?.[0];
     const imageUrl = firstJobPhoto
@@ -336,14 +465,12 @@ async function getOpenJobCards(viewerProfile: Profile | null) {
         ? getPublicUrl("guesthouse-images", firstGuesthousePhoto.photo_path)
         : null;
 
-    return [
-      {
-        jobPost,
-        guesthouse,
-        imageUrl,
-        isFavorited: favoriteIds.has(guesthouse.id),
-      },
-    ];
+    return {
+      jobPost,
+      guesthouse,
+      imageUrl,
+      isFavorited: favoriteIds.has(guesthouse.id),
+    };
   });
 }
 
@@ -351,12 +478,31 @@ export async function getPublicJobs(
   searchParams: SearchParams,
 ): Promise<PublicJobsResult> {
   const filters = normalizeFilters(searchParams);
+  const requestedPage = normalizePage(searchParams);
   const viewerProfile = await getViewerProfile();
-  const jobs = await getOpenJobCards(viewerProfile);
+  const filteredGuesthouseIds = await getFilteredGuesthouseIds(filters);
+  const totalCount = await getFilteredPublicJobCount(filters, filteredGuesthouseIds);
+  const totalPages = Math.max(1, Math.ceil(totalCount / PUBLIC_JOBS_PAGE_SIZE));
+  const currentPage = Math.min(requestedPage, totalPages);
+  const jobs =
+    totalCount > 0
+      ? await getPagedPublicJobCards({
+          viewerProfile,
+          filters,
+          currentPage,
+          filteredGuesthouseIds,
+        })
+      : [];
 
   return {
-    jobs: applyFilters(jobs, filters),
+    jobs,
     filters,
+    pagination: {
+      pageSize: PUBLIC_JOBS_PAGE_SIZE,
+      totalCount,
+      totalPages,
+      currentPage,
+    },
     viewerProfile,
   };
 }
@@ -383,7 +529,7 @@ export async function getPublicJobBySlug(
     return { detail: null, viewerProfile };
   }
 
-  if (!jobPost || jobPost.status !== "open") {
+  if (!jobPost || jobPost.status === "hidden") {
     return { detail: null, viewerProfile };
   }
 

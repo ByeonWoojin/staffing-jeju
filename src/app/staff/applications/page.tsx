@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getStaffApplicationsData } from "@/lib/staff-application-data";
 import { formatDate } from "@/lib/owner-utils";
+import { AppHeader } from "@/components/layout/AppHeader";
 import { CancelApplicationButton } from "@/components/jobs/CancelApplicationButton";
 import {
   ApplicationStatusBadge,
@@ -45,6 +46,7 @@ export default async function StaffApplicationsPage({
   if (!authorized) {
     return (
       <main className="min-h-screen bg-neutral-50">
+        <AppHeader active="applications" isAuthenticated />
         <div className="mx-auto max-w-3xl px-4 py-10 md:px-6">
           <EmptyState
             title="스탭 계정에서 사용할 수 있는 페이지입니다."
@@ -58,7 +60,8 @@ export default async function StaffApplicationsPage({
 
   return (
     <main className="min-h-screen bg-neutral-50">
-      <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-8 md:px-6 md:py-10">
+      <AppHeader active="applications" isAuthenticated />
+      <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-6 md:px-6 md:py-8">
         <PageHeader
           title="내 지원 현황"
           description="제출한 지원서와 현재 지원 상태를 확인할 수 있습니다."

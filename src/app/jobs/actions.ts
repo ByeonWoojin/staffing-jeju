@@ -176,6 +176,12 @@ export async function checkApplyAvailability(slug: string): Promise<{
       redirectTo: "/jobs",
     };
   }
+  if (jobPost.status === "closed") {
+    return {
+      ok: false,
+      message: "이미 마감된 공고입니다.",
+    };
+  }
   if (jobPost.status !== "open") {
     return {
       ok: false,

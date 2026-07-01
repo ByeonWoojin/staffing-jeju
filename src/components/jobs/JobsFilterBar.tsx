@@ -294,13 +294,13 @@ export function JobsFilterBar({ filters }: { filters: PublicJobFilters }) {
 
   return (
     <>
-      <section className="sticky top-0 z-30 border-b border-neutral-200 bg-neutral-0/95 backdrop-blur">
-        <div className="mx-auto w-full max-w-7xl px-4 py-3 md:px-6">
+      <section className="sticky top-0 z-30 border-b border-neutral-100/70 bg-neutral-0/95 backdrop-blur">
+        <div className="mx-auto w-full max-w-7xl px-4 py-2.5 md:px-6">
           <div className="mx-auto w-full max-w-3xl">
             <button
               type="button"
               onClick={() => openPanel("region")}
-              className="flex h-12 w-full items-center justify-between gap-3 rounded-pill border border-neutral-200 bg-neutral-0 pl-5 pr-2 text-left shadow-sm transition-colors hover:border-neutral-300 focus-ring md:hidden"
+              className="flex h-11 w-full items-center justify-between gap-3 rounded-pill border border-neutral-200 bg-neutral-0 pl-5 pr-2 text-left shadow-sm transition-colors hover:border-neutral-300 focus-ring md:hidden"
             >
               <span className="min-w-0">
                 <span className="block truncate text-body-sm font-bold text-neutral-900">
@@ -315,7 +315,7 @@ export function JobsFilterBar({ filters }: { filters: PublicJobFilters }) {
               </span>
             </button>
 
-            <div className="hidden min-h-14 overflow-hidden rounded-pill border border-neutral-200 bg-neutral-0 shadow-sm md:grid md:grid-cols-[1fr_auto_1.15fr_auto_1.15fr_auto] md:items-center">
+            <div className="hidden min-h-[52px] overflow-hidden rounded-pill border border-neutral-200 bg-neutral-0 shadow-sm md:grid md:grid-cols-[1fr_auto_1.15fr_auto_1.15fr_auto] md:items-center">
               <SearchSegment
                 label="지역"
                 value={regionLabel}
