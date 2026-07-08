@@ -30,10 +30,9 @@ function logAction(
   jobPostId: string,
   payload: Record<string, unknown>,
 ) {
-  console.log(`[owner/jobs/actions] ${actionName}`, {
-    jobPostId,
-    ...payload,
-  });
+  void actionName;
+  void jobPostId;
+  void payload;
 }
 
 function assertValidJobPostId(jobPostId: string) {
@@ -43,10 +42,8 @@ function assertValidJobPostId(jobPostId: string) {
 }
 
 function logUuidValidation(actionName: string, jobPostId: string) {
-  console.log(`[${actionName}] uuid validation`, {
-    jobPostId,
-    isValidUuid: isUuid(jobPostId),
-  });
+  void actionName;
+  void jobPostId;
 }
 
 function revalidateOwnerRecruitmentPaths(jobPostId?: string) {
@@ -133,7 +130,6 @@ async function updateJobPostOrThrow(
 }
 
 export async function closeRecruitment(jobPostId: string): Promise<JobPost> {
-  console.log("[closeRecruitment] called", jobPostId);
   logUuidValidation("closeRecruitment", jobPostId);
   const owner = await getCurrentOwnerProfileOrThrow();
   const current = await getJobPostOrThrow(jobPostId);
@@ -198,7 +194,6 @@ export async function closeRecruitment(jobPostId: string): Promise<JobPost> {
 }
 
 export async function reopenRecruitment(jobPostId: string): Promise<JobPost> {
-  console.log("[reopenRecruitment] called", jobPostId);
   logUuidValidation("reopenRecruitment", jobPostId);
   const current = await getJobPostOrThrow(jobPostId);
   const nextRecruitmentCycle =
@@ -236,7 +231,6 @@ export async function reopenRecruitment(jobPostId: string): Promise<JobPost> {
 }
 
 export async function bumpRecruitment(jobPostId: string): Promise<JobPost> {
-  console.log("[bumpRecruitment] called", jobPostId);
   logUuidValidation("bumpRecruitment", jobPostId);
   const current = await getJobPostOrThrow(jobPostId);
 
@@ -295,7 +289,6 @@ export async function bumpRecruitment(jobPostId: string): Promise<JobPost> {
 export async function markUrgentRecruitment(
   jobPostId: string,
 ): Promise<JobPost> {
-  console.log("[markUrgentRecruitment] called", jobPostId);
   logUuidValidation("markUrgentRecruitment", jobPostId);
   const current = await getJobPostOrThrow(jobPostId);
 
@@ -352,7 +345,6 @@ export async function markUrgentRecruitment(
 }
 
 export async function hideRecruitment(jobPostId: string): Promise<JobPost> {
-  console.log("[hideRecruitment] called", jobPostId);
   logUuidValidation("hideRecruitment", jobPostId);
   assertValidJobPostId(jobPostId);
 

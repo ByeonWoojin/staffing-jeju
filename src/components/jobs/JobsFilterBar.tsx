@@ -199,7 +199,25 @@ function DateField({
   );
 }
 
+function getFilterStateKey(filters: PublicJobFilters) {
+  return [
+    filters.region,
+    filters.arrivalStart,
+    filters.arrivalEnd,
+    filters.start,
+    filters.accommodation,
+    filters.meal,
+    filters.paid,
+    filters.party,
+    filters.urgent,
+  ].join("|");
+}
+
 export function JobsFilterBar({ filters }: { filters: PublicJobFilters }) {
+  return <JobsFilterBarState key={getFilterStateKey(filters)} filters={filters} />;
+}
+
+function JobsFilterBarState({ filters }: { filters: PublicJobFilters }) {
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [activeSection, setActiveSection] = useState<ActiveSection>("region");
   const [selectedRegion, setSelectedRegion] = useState(filters.region);
@@ -214,24 +232,6 @@ export function JobsFilterBar({ filters }: { filters: PublicJobFilters }) {
   const regionLabel = getRegionLabel(filters.region);
   const dateRangeLabel = getDateRangeLabel(filters);
   const conditionSummary = getConditionSummary(currentConditions);
-
-  useEffect(() => {
-    setSelectedRegion(filters.region);
-    setSelectedDateStart(filters.arrivalStart);
-    setSelectedDateEnd(filters.arrivalEnd);
-    setSelectedQuickDate(filters.start);
-    setSelectedConditions(createConditionState(filters));
-  }, [
-    filters.accommodation,
-    filters.arrivalEnd,
-    filters.arrivalStart,
-    filters.meal,
-    filters.paid,
-    filters.party,
-    filters.region,
-    filters.start,
-    filters.urgent,
-  ]);
 
   useEffect(() => {
     if (!isPanelOpen) return;

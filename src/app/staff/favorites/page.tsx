@@ -45,7 +45,7 @@ export default async function StaffFavoritesPage() {
       <AppHeader active="favorites" isAuthenticated />
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-6 md:px-6 md:py-8">
         <PageHeader
-          title="관심 게스트하우스"
+          title="관심 공고"
           description="저장한 게스트하우스가 현재 모집 중인지 확인할 수 있습니다."
           action={<ButtonLink href="/jobs">모집글 둘러보기</ButtonLink>}
         />
@@ -67,7 +67,9 @@ export default async function StaffFavoritesPage() {
                       <p className="text-caption font-semibold text-neutral-500">
                         {guesthouse.region}
                       </p>
-                      <h2 className="mt-1 text-title text-neutral-900">{guesthouse.name}</h2>
+                      <h2 className="mt-1 truncate text-title text-neutral-900">
+                        {guesthouse.name}
+                      </h2>
                       {guesthouse.description && (
                         <p className="mt-2 line-clamp-2 text-body-sm text-neutral-600">
                           {guesthouse.description}
@@ -86,7 +88,7 @@ export default async function StaffFavoritesPage() {
                         <Badge variant="primary">현재 모집 중</Badge>
                         {currentJobPost.is_urgent && <UrgentBadge />}
                       </div>
-                      <h3 className="mt-2 text-body font-semibold text-neutral-900">
+                      <h3 className="mt-2 line-clamp-2 text-body font-semibold text-neutral-900">
                         {currentJobPost.title}
                       </h3>
                       <p className="mt-1 text-body-sm text-neutral-600">

@@ -109,7 +109,7 @@ export default async function StaffApplicationsPage({
                             ? `${guesthouse.name} · ${guesthouse.region}`
                             : "게스트하우스 정보 없음"}
                         </p>
-                        <h2 className="mt-1 text-title text-neutral-900">
+                        <h2 className="mt-1 line-clamp-2 text-title text-neutral-900">
                           {jobPost?.title ?? "모집글 정보 없음"}
                         </h2>
                       </div>

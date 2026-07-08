@@ -107,10 +107,10 @@ export default async function PublicJobDetailPage({
           <div className="flex flex-col gap-5 p-4 md:p-5">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
               <div className="min-w-0">
-                <p className="text-body-sm font-semibold text-neutral-500">
+                <p className="break-words text-body-sm font-semibold text-neutral-500">
                   {guesthouse.name} · {guesthouse.region}
                 </p>
-                <h1 className="mt-2 text-h2 text-neutral-900 md:text-h1">
+                <h1 className="mt-2 break-words text-h2 text-neutral-900 md:text-h1">
                   {jobPost.title}
                 </h1>
                 <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -139,7 +139,7 @@ export default async function PublicJobDetailPage({
                 {isClosed ? (
                   <div className="flex flex-col gap-2">
                     <Button size="lg" fullWidth disabled>
-                      모집 마감
+                      지원 마감
                     </Button>
                     <p className="text-caption font-semibold text-neutral-500">
                       이미 마감된 공고입니다.

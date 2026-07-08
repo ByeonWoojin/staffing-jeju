@@ -17,6 +17,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
       error,
       id,
       disabled,
+      required,
       children,
       placeholder,
       ...props
@@ -33,6 +34,11 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
             className="text-body-sm font-semibold text-neutral-800"
           >
             {label}
+            {required && (
+              <span className="ml-1 text-danger" aria-hidden="true">
+                *
+              </span>
+            )}
           </label>
         )}
         <div className="relative">
@@ -40,6 +46,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
             ref={ref}
             id={selectId}
             disabled={disabled}
+            required={required}
             aria-invalid={error ? true : undefined}
             aria-describedby={
               error

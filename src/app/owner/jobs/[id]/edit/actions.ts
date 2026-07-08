@@ -92,10 +92,9 @@ function logAction(
   jobPostId: string,
   payload: Record<string, unknown>,
 ) {
-  console.log(`[owner/jobs/edit/actions] ${actionName}`, {
-    jobPostId,
-    ...payload,
-  });
+  void actionName;
+  void jobPostId;
+  void payload;
 }
 
 function assertValidJobPostId(jobPostId: string) {
@@ -105,10 +104,8 @@ function assertValidJobPostId(jobPostId: string) {
 }
 
 function logUuidValidation(actionName: string, jobPostId: string) {
-  console.log(`[${actionName}] uuid validation`, {
-    jobPostId,
-    isValidUuid: isUuid(jobPostId),
-  });
+  void actionName;
+  void jobPostId;
 }
 
 async function getCurrentOwnerOrThrow(): Promise<Profile> {
@@ -246,7 +243,6 @@ export async function updateJobPost(
   jobPostId: string,
   payload: JobPostFormData,
 ): Promise<JobPost> {
-  console.log("[updateJobPost] called", jobPostId);
   logUuidValidation("updateJobPost", jobPostId);
   assertValidJobPostId(jobPostId);
 

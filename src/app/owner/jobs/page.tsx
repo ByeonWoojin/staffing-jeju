@@ -15,7 +15,7 @@ export default async function JobsPage() {
   return (
     <OwnerLayout>
       <PageHeader
-        title="우리 게하 스탭 모집 관리"
+        title="우리 게하 모집글 관리"
         description="운영 중인 스탭 모집글을 수정하고, 모집 상태를 관리합니다."
         action={
           !currentJobPost ? (

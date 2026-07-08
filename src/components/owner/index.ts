@@ -9,3 +9,4 @@ export { ShareLinkBox } from "./ShareLinkBox";
 export { ApplicantCard } from "./ApplicantCard";
 export { ApplicantList } from "./ApplicantList";
 export { ApplicationDetail } from "./ApplicationDetail";
+export { OwnerActionModal } from "./OwnerActionModal";

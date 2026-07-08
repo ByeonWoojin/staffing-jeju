@@ -9,7 +9,10 @@ export interface TextareaProps
 }
 
 export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
-  ({ className, label, helperText, error, id, disabled, ...props }, ref) => {
+  (
+    { className, label, helperText, error, id, disabled, required, ...props },
+    ref,
+  ) => {
     const textareaId = id ?? props.name;
 
     return (
@@ -20,12 +23,18 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
             className="text-body-sm font-semibold text-neutral-800"
           >
             {label}
+            {required && (
+              <span className="ml-1 text-danger" aria-hidden="true">
+                *
+              </span>
+            )}
           </label>
         )}
         <textarea
           ref={ref}
           id={textareaId}
           disabled={disabled}
+          required={required}
           aria-invalid={error ? true : undefined}
           aria-describedby={
             error

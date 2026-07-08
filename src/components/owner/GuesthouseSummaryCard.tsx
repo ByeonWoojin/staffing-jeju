@@ -1,4 +1,8 @@
+"use client";
+
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import type { KeyboardEvent, MouseEvent } from "react";
 import type { Guesthouse } from "@/types/database";
 import {
   ButtonLink,
@@ -16,9 +20,33 @@ interface GuesthouseSummaryCardProps {
 export function GuesthouseSummaryCard({
   guesthouse,
 }: GuesthouseSummaryCardProps) {
+  const router = useRouter();
+  const href = guesthouse ? "/owner/guesthouse/edit" : "/owner/guesthouse/new";
+
+  const navigateToGuesthouseForm = () => {
+    router.push(href);
+  };
+
+  const handleCardKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    event.preventDefault();
+    navigateToGuesthouseForm();
+  };
+
+  const stopCardNavigation = (event: MouseEvent<HTMLElement>) => {
+    event.stopPropagation();
+  };
+
   if (!guesthouse) {
     return (
-      <Card>
+      <Card
+        hoverable
+        role="link"
+        tabIndex={0}
+        className="cursor-pointer focus-ring"
+        onClick={navigateToGuesthouseForm}
+        onKeyDown={handleCardKeyDown}
+      >
         <CardHeader>
           <CardTitle>게스트하우스 정보</CardTitle>
         </CardHeader>
@@ -29,7 +57,11 @@ export function GuesthouseSummaryCard({
           </p>
         </CardContent>
         <CardFooter>
-          <ButtonLink href="/owner/guesthouse/new" size="sm">
+          <ButtonLink
+            href="/owner/guesthouse/new"
+            size="sm"
+            onClick={stopCardNavigation}
+          >
             게스트하우스 등록
           </ButtonLink>
         </CardFooter>
@@ -38,13 +70,20 @@ export function GuesthouseSummaryCard({
   }
 
   return (
-    <Card>
+    <Card
+      hoverable
+      role="link"
+      tabIndex={0}
+      className="cursor-pointer focus-ring"
+      onClick={navigateToGuesthouseForm}
+      onKeyDown={handleCardKeyDown}
+    >
       <CardHeader>
-        <CardTitle>{guesthouse.name}</CardTitle>
+        <CardTitle className="break-words">{guesthouse.name}</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-1.5">
         {guesthouse.description && (
-          <p className="mb-2 text-body-sm text-neutral-600">
+          <p className="mb-2 line-clamp-3 text-body-sm text-neutral-600">
             {guesthouse.description}
           </p>
         )}
@@ -62,7 +101,12 @@ export function GuesthouseSummaryCard({
         </p>
       </CardContent>
       <CardFooter>
-        <ButtonLink href="/owner/guesthouse/edit" variant="outline" size="sm">
+        <ButtonLink
+          href="/owner/guesthouse/edit"
+          variant="outline"
+          size="sm"
+          onClick={stopCardNavigation}
+        >
           정보 수정
         </ButtonLink>
         {guesthouse.map_url && (
@@ -71,6 +115,7 @@ export function GuesthouseSummaryCard({
             target="_blank"
             rel="noopener noreferrer"
             className="text-body-sm font-semibold text-primary-700 hover:text-primary-600 focus-ring rounded-md px-2 py-1"
+            onClick={stopCardNavigation}
           >
             지도 보기
           </Link>

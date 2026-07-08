@@ -250,12 +250,12 @@ export default async function PublicJobsPage({
       <AppHeader isAuthenticated={Boolean(user)} />
 
       <section className="bg-neutral-0">
-        <div className="mx-auto w-full max-w-7xl px-4 pb-2 pt-1 text-center md:px-6 md:pb-3 md:pt-2">
-          <div>
-            <h1 className="text-title text-neutral-900 md:text-h2">
+        <div className="mx-auto w-full max-w-7xl px-4 py-5 text-center md:px-6 md:py-6">
+          <div className="mx-auto max-w-xl">
+            <h1 className="text-h2 text-neutral-900">
               제주 게스트하우스 스탭 모집
             </h1>
-            <p className="mx-auto mt-0.5 max-w-xl text-body-sm text-neutral-600">
+            <p className="mt-1.5 text-body-sm text-neutral-500">
               제주에서 머물며 일할 게스트하우스를 찾아보세요.
             </p>
           </div>
@@ -264,7 +264,7 @@ export default async function PublicJobsPage({
 
       <JobsFilterBar filters={filters} />
 
-      <section className="mx-auto flex w-full max-w-7xl flex-col gap-4 px-4 py-4 md:px-6 md:py-5">
+      <section className="mx-auto flex w-full max-w-7xl flex-col gap-4 px-4 py-5 md:px-6 md:py-6">
         <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h2 className="text-title text-neutral-900">

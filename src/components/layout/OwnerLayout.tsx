@@ -12,10 +12,10 @@ export function OwnerLayout({ children }: OwnerLayoutProps) {
       <OwnerHeader />
       <OwnerMobileNav />
 
-      <div className="page-container py-6 md:py-8">
-        <div className="flex gap-8">
+      <div className="page-container py-5 md:py-7">
+        <div className="flex gap-7">
           <aside className="hidden w-52 shrink-0 md:block">
-            <div className="sticky top-6 rounded-lg border border-neutral-200 bg-neutral-0 p-3">
+            <div className="sticky top-6 rounded-md border border-neutral-100 bg-neutral-0 p-2 shadow-sm">
               <OwnerNav />
             </div>
           </aside>

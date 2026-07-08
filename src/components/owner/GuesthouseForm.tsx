@@ -97,7 +97,6 @@ export function GuesthouseForm({
       } else {
         //TODO: POST guesthouses
         // body: { owner_id, name, region, address_text, map_url, contact_method }
-        console.log("POST guesthouses", form);
         //TODO: Toast로 성공 메시지 표시
         alert("게스트하우스 정보가 저장되었습니다.");
         router.push("/owner/jobs/new");
@@ -172,7 +171,6 @@ export function GuesthouseForm({
               value={form.map_url ?? ""}
               onChange={(e) => updateField("map_url", e.target.value)}
               placeholder="https://map.naver.com/..."
-              helperText="선택 입력"
             />
             <Input
               label="연락 수단"
@@ -190,7 +188,6 @@ export function GuesthouseForm({
                 value={form.description ?? ""}
                 onChange={(e) => updateField("description", e.target.value)}
                 placeholder="게스트하우스 분위기, 주변 환경, 스탭에게 보여주고 싶은 소개를 입력해주세요"
-                helperText="선택 입력"
               />
             </div>
             {photoManager && (

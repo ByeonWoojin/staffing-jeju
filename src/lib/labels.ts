@@ -1,6 +1,6 @@
 export const JOB_STATUS_LABELS = {
   open: "모집중",
-  closed: "마감",
+  closed: "모집 마감",
   hidden: "숨김",
 } as const;
 

@@ -9,9 +9,9 @@ export interface SectionProps extends HTMLAttributes<HTMLElement> {
 }
 
 const spacingStyles = {
-  sm: "mb-6",
-  md: "mb-8",
-  lg: "mb-12",
+  sm: "mb-5",
+  md: "mb-7",
+  lg: "mb-10",
 } as const;
 
 export function Section({
@@ -26,16 +26,22 @@ export function Section({
   return (
     <section className={cn(spacingStyles[spacing], className)} {...props}>
       {(title || description || action) && (
-        <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-          <div className="flex flex-col gap-1">
+        <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0 flex flex-col gap-1">
             {title && (
-              <h2 className="text-h3 text-neutral-800">{title}</h2>
+              <h2 className="break-keep text-title text-neutral-900">
+                {title}
+              </h2>
             )}
             {description && (
               <p className="text-body-sm text-neutral-500">{description}</p>
             )}
           </div>
-          {action && <div className="shrink-0">{action}</div>}
+          {action && (
+            <div className="w-full shrink-0 sm:w-auto [&>*]:w-full sm:[&>*]:w-auto">
+              {action}
+            </div>
+          )}
         </div>
       )}
       {children}

@@ -6,14 +6,7 @@ import {
   RecruitmentSummaryCard,
 } from "@/components/owner";
 import { getOwnerDashboardData } from "@/lib/owner-supabase-data";
-import {
-  ButtonLink,
-  Card,
-  CardContent,
-  EmptyState,
-  PageHeader,
-  Section,
-} from "@/components/ui";
+import { ButtonLink, EmptyState, PageHeader, Section } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
 
@@ -113,25 +106,6 @@ export default async function OwnerHomePage() {
           <RecentApplicantList applications={recentApplications} />
         )}
       </Section>
-
-      {current_job_post && (
-        <Section spacing="sm">
-          <Card padding="sm">
-            <CardContent className="flex flex-wrap gap-3 pt-4">
-              <ButtonLink href="/owner/jobs">스탭 모집 관리</ButtonLink>
-              <ButtonLink
-                href={`/owner/jobs/${current_job_post.id}/applications`}
-                variant="secondary"
-              >
-                지원자 관리
-              </ButtonLink>
-              <ButtonLink href="/owner/guesthouse/edit" variant="outline">
-                게스트하우스 정보 수정
-              </ButtonLink>
-            </CardContent>
-          </Card>
-        </Section>
-      )}
     </OwnerLayout>
   );
 }

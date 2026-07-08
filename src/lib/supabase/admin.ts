@@ -10,11 +10,6 @@ export function createSupabaseAdminClient() {
     throw new Error("Supabase admin 환경변수가 설정되지 않았습니다.");
   }
 
-  console.log("[supabase-admin] create client", {
-    supabaseUrl,
-    hasServiceRoleKey: Boolean(serviceRoleKey),
-  });
-
   return createClient(supabaseUrl, serviceRoleKey, {
     auth: {
       persistSession: false,

@@ -24,7 +24,7 @@ export default async function AllApplicationsPage() {
         action={
           currentJobPost ? (
             <ButtonLink href="/owner/jobs" variant="outline">
-              스탭 모집 관리
+              모집글 관리
             </ButtonLink>
           ) : undefined
         }
@@ -44,7 +44,7 @@ export default async function AllApplicationsPage() {
           }
           action={
             currentJobPost ? (
-              <ButtonLink href="/owner/jobs">스탭 모집 관리</ButtonLink>
+              <ButtonLink href="/owner/jobs">모집글 관리</ButtonLink>
             ) : (
               <ButtonLink href="/onboarding/owner/job-post">
                 모집글 등록하기

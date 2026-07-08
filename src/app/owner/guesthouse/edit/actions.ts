@@ -47,10 +47,9 @@ function logAction(
   guesthouseId: string,
   payload: Record<string, unknown>,
 ) {
-  console.log(`[owner/guesthouse/edit/actions] ${actionName}`, {
-    guesthouseId,
-    ...payload,
-  });
+  void actionName;
+  void guesthouseId;
+  void payload;
 }
 
 function assertValidGuesthouseId(guesthouseId: string) {
@@ -60,10 +59,8 @@ function assertValidGuesthouseId(guesthouseId: string) {
 }
 
 function logUuidValidation(actionName: string, guesthouseId: string) {
-  console.log(`[${actionName}] uuid validation`, {
-    guesthouseId,
-    isValidUuid: isUuid(guesthouseId),
-  });
+  void actionName;
+  void guesthouseId;
 }
 
 async function getCurrentOwnerOrThrow(): Promise<Profile> {
@@ -157,7 +154,6 @@ export async function updateGuesthouse(
   guesthouseId: string,
   payload: GuesthouseFormData,
 ): Promise<Guesthouse> {
-  console.log("[updateGuesthouse] called", guesthouseId);
   logUuidValidation("updateGuesthouse", guesthouseId);
   assertValidGuesthouseId(guesthouseId);
 

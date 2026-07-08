@@ -8,7 +8,10 @@ export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
 }
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(
-  ({ className, label, helperText, error, id, disabled, ...props }, ref) => {
+  (
+    { className, label, helperText, error, id, disabled, required, ...props },
+    ref,
+  ) => {
     const inputId = id ?? props.name;
 
     return (
@@ -19,12 +22,18 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             className="text-body-sm font-semibold text-neutral-800"
           >
             {label}
+            {required && (
+              <span className="ml-1 text-danger" aria-hidden="true">
+                *
+              </span>
+            )}
           </label>
         )}
         <input
           ref={ref}
           id={inputId}
           disabled={disabled}
+          required={required}
           aria-invalid={error ? true : undefined}
           aria-describedby={
             error

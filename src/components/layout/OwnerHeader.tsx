@@ -3,8 +3,8 @@ import { OwnerAccountMenu } from "@/components/auth/OwnerAccountMenu";
 
 export function OwnerHeader() {
   return (
-    <header className="border-b border-neutral-200 bg-neutral-0">
-      <div className="page-container flex min-h-16 items-center justify-between gap-4 py-3">
+    <header className="border-b border-neutral-100 bg-neutral-0">
+      <div className="page-container flex h-14 items-center justify-between gap-4">
         <Link href="/owner" className="flex items-center gap-2 focus-ring rounded-md">
           <span className="flex h-8 w-8 items-center justify-center rounded-md bg-primary-500 text-body-sm font-bold text-white">
             S

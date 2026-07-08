@@ -9,8 +9,8 @@ export interface CardProps extends HTMLAttributes<HTMLDivElement> {
 const paddingStyles = {
   none: "",
   sm: "p-4",
-  md: "p-5 md:p-6",
-  lg: "p-6 md:p-8",
+  md: "p-4 md:p-5",
+  lg: "p-5 md:p-6",
 } as const;
 
 export function Card({
@@ -23,10 +23,10 @@ export function Card({
   return (
     <div
       className={cn(
-        "rounded-lg border border-neutral-200 bg-neutral-0",
+        "rounded-md border border-neutral-100 bg-neutral-0 shadow-sm",
         paddingStyles[padding],
         hoverable &&
-          "transition-all duration-150 hover:border-neutral-300 hover:shadow-sm",
+          "transition-colors duration-150 hover:border-neutral-200 hover:bg-neutral-50/50",
         className,
       )}
       {...props}
@@ -40,7 +40,7 @@ export interface CardHeaderProps extends HTMLAttributes<HTMLDivElement> {}
 
 export function CardHeader({ className, children, ...props }: CardHeaderProps) {
   return (
-    <div className={cn("mb-4 flex flex-col gap-1", className)} {...props}>
+    <div className={cn("mb-3 flex flex-col gap-1", className)} {...props}>
       {children}
     </div>
   );
@@ -50,7 +50,7 @@ export interface CardTitleProps extends HTMLAttributes<HTMLHeadingElement> {}
 
 export function CardTitle({ className, children, ...props }: CardTitleProps) {
   return (
-    <h3 className={cn("text-title text-neutral-800", className)} {...props}>
+    <h3 className={cn("text-title text-neutral-900", className)} {...props}>
       {children}
     </h3>
   );

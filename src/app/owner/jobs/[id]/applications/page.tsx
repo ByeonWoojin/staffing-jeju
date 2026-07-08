@@ -72,7 +72,7 @@ export default async function JobApplicationsPage({
           title="아직 지원자가 없습니다."
           description="공유 링크를 통해 스탭을 모집해보세요."
           action={
-            <ButtonLink href="/owner/jobs">스탭 모집 관리</ButtonLink>
+            <ButtonLink href="/owner/jobs">모집글 관리</ButtonLink>
           }
         />
       ) : (

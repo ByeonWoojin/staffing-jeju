@@ -145,26 +145,6 @@ export function JobPostForm({
         return;
       }
 
-      const payload = {
-        guesthouse_id: guesthouse.id,
-        owner_id: owner.id,
-        slug: "",
-        ...form,
-        age_condition: form.age_condition || null,
-        stipend_description: form.stipend_description || null,
-        party_description: form.party_description || null,
-        preferred_conditions: form.preferred_conditions || null,
-        caution: form.caution || null,
-        extra_info: form.extra_info || null,
-        description: form.description || null,
-        status: "open" as const,
-        bumped_at: new Date().toISOString(),
-        last_bumped_at: null,
-        bump_count: 0,
-      };
-
-      console.log("POST job_posts", payload);
-
       const created = createJobPostFromFormMock(
         owner.id,
         guesthouse.id,

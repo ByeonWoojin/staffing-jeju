@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useParams } from "next/navigation";
 import { OwnerLayout } from "@/components/layout/OwnerLayout";
 import { ShareLinkBox } from "@/components/owner";
@@ -16,37 +16,31 @@ import {
 import type { JobPost } from "@/types/database";
 import { ButtonLink, Card, CardContent, PageHeader, Section } from "@/components/ui";
 
+function getInitialJobPost(jobPostId: string) {
+  //TODO: GET job_posts by id where owner_id = currentOwner.id
+  const owner = getCurrentOwnerMock();
+
+  const fromSession = getCreatedJobPostFromSession<JobPost>();
+  if (fromSession && fromSession.id === jobPostId) {
+    return fromSession;
+  }
+
+  return getOwnerJobPostByIdMock(owner.id, jobPostId);
+}
+
 export default function JobCompletePage() {
   const params = useParams();
   const jobPostId = params.id as string;
-  const [jobPost, setJobPost] = useState<JobPost | null>(null);
-  const [guesthouseName, setGuesthouseName] = useState<string>("");
-
-  useEffect(() => {
-    //TODO: GET job_posts by id where owner_id = currentOwner.id
-    const owner = getCurrentOwnerMock();
-
-    const fromSession = getCreatedJobPostFromSession<JobPost>();
-    if (fromSession && fromSession.id === jobPostId) {
-      setJobPost(fromSession);
-      const gh = getGuesthouseByIdMock(fromSession.guesthouse_id);
-      setGuesthouseName(gh?.name ?? "");
-      return;
-    }
-
-    const fromMock = getOwnerJobPostByIdMock(owner.id, jobPostId);
-    if (fromMock) {
-      setJobPost(fromMock);
-      const gh = getGuesthouseByIdMock(fromMock.guesthouse_id);
-      setGuesthouseName(gh?.name ?? "");
-    }
-  }, [jobPostId]);
+  const [jobPost] = useState<JobPost | null>(() => getInitialJobPost(jobPostId));
+  const guesthouseName = jobPost
+    ? (getGuesthouseByIdMock(jobPost.guesthouse_id)?.name ?? "")
+    : "";
 
   if (!jobPost) {
     return (
       <OwnerLayout>
         <PageHeader title="모집글을 찾을 수 없습니다." />
-        <ButtonLink href="/owner/jobs">스탭 모집 관리</ButtonLink>
+        <ButtonLink href="/owner/jobs">모집글 관리</ButtonLink>
       </OwnerLayout>
     );
   }
@@ -82,7 +76,7 @@ export default function JobCompletePage() {
       </Section>
 
       <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-        <ButtonLink href="/owner/jobs">스탭 모집 관리</ButtonLink>
+        <ButtonLink href="/owner/jobs">모집글 관리</ButtonLink>
         <ButtonLink
           href={`/owner/jobs/${jobPost.id}/applications`}
           variant="secondary"

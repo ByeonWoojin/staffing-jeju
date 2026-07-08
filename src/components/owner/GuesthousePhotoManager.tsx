@@ -91,7 +91,7 @@ export function GuesthousePhotoManager({
           게스트하우스 사진
         </h3>
         <p className="mt-1 text-caption text-neutral-500">
-          JPG, PNG, WEBP 형식만 가능하며 1장당 최대 5MB입니다.
+          공개 공고에서 스탭이 보게 될 게스트하우스 분위기를 확인하세요.
         </p>
       </div>
 
@@ -114,41 +114,55 @@ export function GuesthousePhotoManager({
       </div>
 
       {photos.length === 0 ? (
-        <div className="rounded-md border border-dashed border-neutral-200 px-4 py-8 text-center">
+        <div className="flex aspect-[16/9] items-center justify-center rounded-md border border-dashed border-neutral-200 bg-beige px-4 text-center">
           <p className="text-body-sm text-neutral-500">
             업로드된 사진이 없습니다.
           </p>
         </div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {photos.map((photo, index) => (
-            <div
-              key={photo.id}
-              className="overflow-hidden rounded-lg border border-neutral-200 bg-neutral-0"
-            >
-              <div className="relative aspect-[4/3] bg-neutral-100">
-                <Image
-                  src={photo.publicUrl}
-                  alt={photo.alt_text ?? `게스트하우스 사진 ${index + 1}`}
-                  fill
-                  sizes="(min-width: 1024px) 240px, (min-width: 640px) 50vw, 100vw"
-                  className="object-cover"
-                />
+        <div className="overflow-hidden rounded-md border border-neutral-100 bg-neutral-0">
+          <div className="relative aspect-[16/9] bg-beige">
+            <Image
+              src={photos[0].publicUrl}
+              alt={photos[0].alt_text ?? "게스트하우스 대표 사진"}
+              fill
+              sizes="(min-width: 1024px) 720px, 100vw"
+              className="object-cover"
+            />
+          </div>
+          <div className="grid gap-3 border-t border-neutral-100 bg-neutral-50 p-3 sm:grid-cols-2 lg:grid-cols-3">
+            {photos.map((photo, index) => (
+              <div
+                key={photo.id}
+                className="overflow-hidden rounded-md border border-neutral-100 bg-neutral-0"
+              >
+                <div className="relative aspect-[4/3] bg-neutral-100">
+                  <Image
+                    src={photo.publicUrl}
+                    alt={photo.alt_text ?? `게스트하우스 사진 ${index + 1}`}
+                    fill
+                    sizes="(min-width: 1024px) 220px, (min-width: 640px) 50vw, 100vw"
+                    className="object-cover"
+                  />
+                </div>
+                <div className="flex items-center justify-between gap-3 px-3 py-2">
+                  <p className="text-caption font-semibold text-neutral-500">
+                    사진 {index + 1}
+                  </p>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    disabled={deletingPhotoId !== null}
+                    className="h-8 px-2 text-caption font-semibold text-danger-muted hover:bg-danger-light/50"
+                    onClick={() => handleDelete(photo.id)}
+                  >
+                    {deletingPhotoId === photo.id ? "삭제 중..." : "삭제"}
+                  </Button>
+                </div>
               </div>
-              <div className="flex items-center justify-between gap-3 p-3">
-                <p className="text-caption text-neutral-500">사진 {index + 1}</p>
-                <Button
-                  type="button"
-                  variant="outline-danger"
-                  size="sm"
-                  disabled={deletingPhotoId !== null}
-                  onClick={() => handleDelete(photo.id)}
-                >
-                  {deletingPhotoId === photo.id ? "삭제 중..." : "삭제"}
-                </Button>
-              </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       )}
     </div>

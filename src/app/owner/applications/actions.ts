@@ -33,10 +33,9 @@ function logAction(
   applicationId: string,
   payload: Record<string, unknown>,
 ) {
-  console.log(`[owner/applications/actions] ${actionName}`, {
-    applicationId,
-    ...payload,
-  });
+  void actionName;
+  void applicationId;
+  void payload;
 }
 
 function assertValidApplicationId(applicationId: string) {
@@ -46,10 +45,8 @@ function assertValidApplicationId(applicationId: string) {
 }
 
 function logUuidValidation(actionName: string, applicationId: string) {
-  console.log(`[${actionName}] uuid validation`, {
-    applicationId,
-    isValidUuid: isUuid(applicationId),
-  });
+  void actionName;
+  void applicationId;
 }
 
 async function getCurrentOwnerOrThrow(): Promise<Profile> {
@@ -163,7 +160,6 @@ async function updateApplicationStatusOrThrow({
   jobPost: JobPost;
   owner: Profile;
 }> {
-  console.log(`[${actionName}] called`, applicationId);
   logUuidValidation(actionName, applicationId);
 
   const current = await getApplicationOrThrow(applicationId);
