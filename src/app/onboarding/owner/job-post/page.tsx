@@ -21,8 +21,8 @@ export default async function OwnerJobPostOnboardingPage() {
   }
 
   return (
-    <main className="min-h-screen bg-surface px-5 py-8 md:py-10">
-      <div className="mx-auto w-full max-w-5xl">
+    <main className="min-h-screen bg-surface">
+      <div className="page-container py-8 md:py-10">
         <PageHeader
           title="모집글을 먼저 등록해주세요"
           description="우리 게하의 첫 스탭 모집글을 작성합니다."

@@ -21,8 +21,8 @@ export default async function OwnerGuesthouseOnboardingPage() {
   }
 
   return (
-    <main className="min-h-screen bg-surface px-5 py-8 md:py-10">
-      <div className="mx-auto w-full max-w-5xl">
+    <main className="min-h-screen bg-surface">
+      <div className="page-container py-8 md:py-10">
         <PageHeader
           title="게스트하우스 정보를 먼저 등록해주세요"
           description="지원자에게 보여질 게스트하우스 기본 정보를 입력합니다."

@@ -21,7 +21,7 @@ export function AppHeader({
 }: AppHeaderProps) {
   return (
     <header className="border-b border-neutral-100 bg-neutral-0">
-      <div className="mx-auto flex h-14 w-full max-w-7xl items-center justify-between gap-4 px-4 md:px-6">
+      <div className="page-container flex h-14 items-center justify-between gap-4">
         <Link href="/jobs" className="flex min-w-0 items-center gap-2 focus-ring">
           <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary-500 text-body-sm font-bold text-white">
             S

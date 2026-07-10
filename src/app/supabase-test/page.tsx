@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { Card } from "@/components/ui";
 
 export default function SupabaseTestPage() {
   const [status, setStatus] = useState<"checking" | "success" | "error">(
@@ -34,25 +35,25 @@ export default function SupabaseTestPage() {
   }, []);
 
   return (
-    <main className="flex min-h-screen items-center justify-center px-6">
-      <div className="w-full max-w-md rounded-lg border border-gray-200 p-6">
+    <main className="flex min-h-screen items-center justify-center bg-surface px-5 py-10">
+      <Card className="w-full max-w-md">
         {status === "checking" && (
-          <p className="text-sm text-gray-600">Supabase 연결 확인 중...</p>
+          <p className="text-body-sm text-neutral-600">Supabase 연결 확인 중...</p>
         )}
         {status === "success" && (
-          <p className="text-base font-semibold text-green-700">
+          <p className="text-body font-semibold text-success-muted">
             Supabase 연결 성공
           </p>
         )}
         {status === "error" && (
           <div className="space-y-2">
-            <p className="text-base font-semibold text-red-700">
+            <p className="text-body font-semibold text-danger-muted">
               Supabase 연결 실패
             </p>
-            <p className="text-sm text-gray-700">{errorMessage}</p>
+            <p className="text-body-sm text-neutral-700">{errorMessage}</p>
           </div>
         )}
-      </div>
+      </Card>
     </main>
   );
 }
