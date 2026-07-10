@@ -4,6 +4,7 @@ import { getCurrentAuthUser, getProfileById } from "@/lib/auth/onboarding";
 import { getGenderConditionLabel, getStipendTypeLabel } from "@/lib/labels";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import type {
+  Application,
   GenderCondition,
   Guesthouse,
   GuesthousePhoto,
@@ -28,6 +29,7 @@ export interface PublicJobCard {
 export interface PublicJobDetail extends PublicJobCard {
   jobPostPhotos: PublicJobPhoto[];
   guesthousePhotos: PublicJobPhoto[];
+  viewerApplication: Application | null;
 }
 
 export interface PublicJobFilters {
@@ -188,6 +190,32 @@ async function getFavoriteGuesthouseIds(
   }
 
   return new Set((data ?? []).map((favorite) => favorite.guesthouse_id as string));
+}
+
+async function getViewerApplication(profile: Profile | null, jobPost: JobPost) {
+  if (!profile || profile.role !== "staff") return null;
+
+  const supabase = createSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from("applications")
+    .select("*")
+    .eq("job_post_id", jobPost.id)
+    .eq("staff_id", profile.id)
+    .eq("recruitment_cycle", jobPost.recruitment_cycle)
+    .maybeSingle();
+
+  if (error) {
+    console.error("[public-job-data] viewer application lookup failed", {
+      jobPostId: jobPost.id,
+      staffId: profile.id,
+      message: error.message,
+      code: error.code,
+      details: error.details,
+    });
+    return null;
+  }
+
+  return (data as Application | null) ?? null;
 }
 
 function getNormalizedDateRange(filters: PublicJobFilters) {
@@ -565,6 +593,7 @@ export async function getPublicJobBySlug(
   }
 
   const favoriteIds = await getFavoriteGuesthouseIds(viewerProfile, [job.guesthouse_id]);
+  const viewerApplication = await getViewerApplication(viewerProfile, job);
   const mappedJobPhotos = ((jobPhotos ?? []) as JobPostPhoto[]).map((photo) => ({
     id: photo.id,
     url: getPublicUrl("job-post-images", photo.photo_path),
@@ -587,6 +616,7 @@ export async function getPublicJobBySlug(
       isFavorited: favoriteIds.has(job.guesthouse_id),
       jobPostPhotos: mappedJobPhotos,
       guesthousePhotos: mappedGuesthousePhotos,
+      viewerApplication,
     },
   };
 }
