@@ -66,7 +66,7 @@ export function FavoriteGuesthouseButton({
       className={cn(
         isIcon &&
           (isFavorited
-            ? "border-primary-500 bg-primary-500 text-white shadow-sm hover:bg-primary-600"
+            ? "border-primary-500 bg-primary-500 text-white! shadow-sm hover:bg-primary-600"
             : "border-neutral-200 bg-neutral-0/90 text-neutral-800 shadow-sm backdrop-blur hover:bg-neutral-0"),
         className,
       )}

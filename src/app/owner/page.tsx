@@ -26,17 +26,6 @@ export default async function OwnerHomePage() {
       <PageHeader
         title={`${owner.name}님, 우리 게하 스탭 모집 현황입니다.`}
         description="현재 운영 중인 스탭 모집글과 지원자를 확인하세요."
-        action={
-          current_job_post ? (
-            <ButtonLink href={`/owner/jobs/${current_job_post.id}/edit`}>
-              모집글 수정
-            </ButtonLink>
-          ) : (
-            <ButtonLink href="/onboarding/owner/job-post">
-              모집글 등록하기
-            </ButtonLink>
-          )
-        }
       />
 
       <Section title="요약">

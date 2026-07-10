@@ -106,6 +106,7 @@ export function JobPostPhotoManager({
         />
         <Button
           type="button"
+          variant="soft-primary"
           onClick={handleUpload}
           disabled={!canUpload || isUploading}
           className="shrink-0"

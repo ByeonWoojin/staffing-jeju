@@ -78,7 +78,7 @@ export function OwnerActionModal({
             </Button>
           )}
           <Button
-            variant={tone === "danger" ? "danger" : "primary"}
+            variant={tone === "danger" ? "outline-danger" : "soft-primary"}
             size="sm"
             disabled={pending}
             onClick={onConfirm}

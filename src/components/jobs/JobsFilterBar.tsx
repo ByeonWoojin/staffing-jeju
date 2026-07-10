@@ -310,7 +310,7 @@ function JobsFilterBarState({ filters }: { filters: PublicJobFilters }) {
                   {conditionSummary}
                 </span>
               </span>
-              <span className="inline-flex h-9 shrink-0 items-center justify-center rounded-pill bg-primary-500 px-4 text-body-sm font-bold text-white">
+              <span className="inline-flex h-9 shrink-0 items-center justify-center rounded-pill bg-primary-500 px-4 text-body-sm font-bold! text-white!">
                 검색
               </span>
             </button>
@@ -339,7 +339,7 @@ function JobsFilterBarState({ filters }: { filters: PublicJobFilters }) {
               <button
                 type="button"
                 onClick={() => openPanel("conditions")}
-                className="mr-2 inline-flex h-10 shrink-0 items-center justify-center rounded-pill bg-primary-500 px-5 text-body-sm font-bold text-white transition-colors hover:bg-primary-600 focus-ring"
+                className="mr-2 inline-flex h-10 shrink-0 items-center justify-center rounded-pill bg-primary-500 px-5 text-body-sm font-bold! text-white! transition-colors hover:bg-primary-600 focus-ring"
               >
                 검색
               </button>

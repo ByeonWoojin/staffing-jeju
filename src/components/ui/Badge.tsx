@@ -8,7 +8,7 @@ import {
 } from "@/lib/labels";
 
 const baseStyles =
-  "inline-flex items-center rounded-pill px-2.5 py-1 text-caption font-semibold whitespace-nowrap";
+  "inline-flex h-7 items-center rounded-pill px-3 text-[13px] font-semibold! leading-none whitespace-nowrap";
 
 const variantStyles = {
   /* Job status */
@@ -24,7 +24,7 @@ const variantStyles = {
   "app-canceled": "bg-neutral-100 text-neutral-500",
 
   /* Feature badges */
-  urgent: "bg-primary-500 text-white",
+  urgent: "bg-primary-500 text-white!",
   accommodation: "bg-beige text-brown",
   meal: "bg-beige text-brown",
 

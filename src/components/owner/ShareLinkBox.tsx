@@ -35,7 +35,11 @@ export function ShareLinkBox({ slug, title }: ShareLinkBoxProps) {
         <div className="rounded-md border border-neutral-200 bg-neutral-50 px-4 py-3">
           <p className="break-all text-body-sm text-neutral-700">{shareLink}</p>
         </div>
-        <Button className="mt-4" onClick={handleCopy}>
+        <Button
+          variant="soft-primary"
+          className="mt-4"
+          onClick={handleCopy}
+        >
           {copied ? "복사 완료" : "링크 복사"}
         </Button>
         <p className="mt-3 text-caption text-neutral-400">

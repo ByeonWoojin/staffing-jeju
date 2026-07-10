@@ -5,10 +5,8 @@ import { useRouter } from "next/navigation";
 import type { Guesthouse, JobPost } from "@/types/database";
 import {
   getBumpDisabledReason,
-  getRecruitmentStatusMessage,
   getShareLink,
 } from "@/lib/owner-data";
-import { getJobStatusLabel } from "@/lib/labels";
 import { isUuid } from "@/lib/uuid";
 import {
   bumpRecruitment,
@@ -163,15 +161,12 @@ export function RecruitmentSummaryCard({
         onClick={navigateToJobs}
         onKeyDown={handleCardKeyDown}
       >
-      <CardContent className="pt-5 md:pt-6">
+      <CardContent>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <p className="text-caption text-neutral-500">현재 모집 상태</p>
-            <div className="mt-2 flex items-center gap-2">
+            <div className="mt-2">
               <JobStatusBadge status={jobPost.status} />
-              <span className="text-body-sm text-neutral-600">
-                {getJobStatusLabel(jobPost.status)}
-              </span>
             </div>
           </div>
           <p className="text-body-sm text-neutral-500">
@@ -187,9 +182,6 @@ export function RecruitmentSummaryCard({
             {guesthouse.name} · {guesthouse.region}
           </p>
         )}
-        <p className="mt-3 text-body-sm text-neutral-600">
-          {getRecruitmentStatusMessage(jobPost.status)}
-        </p>
         {(bumpDisabledReason || actionDisabledReason || copyMessage) && (
           <div className="mt-3 space-y-1">
             {jobPost.status === "open" && bumpDisabledReason && (
@@ -243,6 +235,7 @@ export function RecruitmentSummaryCard({
         {jobPost.status === "closed" && (
           <>
             <Button
+              variant="soft-primary"
               size="sm"
               disabled={!!actionDisabledReason || pendingAction !== null}
               onClick={(event) => openActionModal("reopen", event)}
@@ -251,6 +244,7 @@ export function RecruitmentSummaryCard({
             </Button>
             <ButtonLink
               href={`/owner/jobs/${jobPost.id}/edit`}
+              variant="soft-primary"
               size="sm"
               onClick={stopCardNavigation}
             >
@@ -258,7 +252,7 @@ export function RecruitmentSummaryCard({
             </ButtonLink>
             <ButtonLink
               href={`/owner/jobs/${jobPost.id}/applications`}
-              variant="secondary"
+              variant="outline"
               size="sm"
               onClick={stopCardNavigation}
             >

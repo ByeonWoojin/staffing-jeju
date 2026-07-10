@@ -170,6 +170,7 @@ export function ApplicationDetail({
                 </Button>
                 <Button
                   type="button"
+                  variant="outline-danger"
                   onClick={handleCloseRecruitment}
                   disabled={closeRecruitmentDisabled}
                 >

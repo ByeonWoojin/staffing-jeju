@@ -16,6 +16,7 @@ import {
 } from "@/app/owner/jobs/actions";
 import {
   AccommodationBadge,
+  Badge,
   Button,
   ButtonLink,
   Card,
@@ -194,25 +195,16 @@ export function RecruitmentManagePanel({
   return (
     <>
       <Card>
-        <CardContent className="flex flex-col gap-6 pt-5 md:pt-6">
-          <div className="flex flex-wrap items-start justify-between gap-4">
+        <CardContent className="flex flex-col gap-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0 flex-1">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                <div className="min-w-0">
-                  <p className="text-caption font-semibold text-neutral-500">
-                    {guesthouse?.name ?? "—"} · {guesthouse?.region ?? "—"}
-                  </p>
-                  <h2 className="mt-2 break-words text-h3 text-neutral-800">
-                    {jobPost.title}
-                  </h2>
-                </div>
-                <ButtonLink
-                  href={`/owner/jobs/${jobPost.id}/edit`}
-                  size="sm"
-                  className="shrink-0"
-                >
-                  모집글 수정
-                </ButtonLink>
+              <div className="min-w-0">
+                <p className="text-caption font-semibold text-neutral-500">
+                  {guesthouse?.name ?? "—"} · {guesthouse?.region ?? "—"}
+                </p>
+                <h2 className="mt-2 break-words text-h3 text-neutral-800">
+                  {jobPost.title}
+                </h2>
               </div>
               <div className="mt-3 flex flex-wrap items-center gap-2">
                 <JobStatusBadge status={jobPost.status} />
@@ -220,21 +212,30 @@ export function RecruitmentManagePanel({
                 {jobPost.provides_accommodation && <AccommodationBadge />}
                 {jobPost.provides_meal && <MealBadge />}
                 {jobPost.has_party && (
-                  <span className="inline-flex h-7 items-center rounded-pill bg-primary-50 px-3 text-caption font-semibold text-primary-700">
-                    파티 있음
-                  </span>
+                  <Badge variant="primary">파티 있음</Badge>
                 )}
               </div>
             </div>
-            <Link
-              href="/owner/applications"
-              className="shrink-0 rounded-md border border-neutral-100 bg-neutral-50 px-4 py-3 text-center transition-colors hover:border-neutral-200 hover:bg-neutral-100 focus-ring"
-            >
-              <p className="text-h2 font-bold text-neutral-800">
-                {applicationCount}
-              </p>
-              <p className="text-caption text-neutral-500">지원자</p>
-            </Link>
+            <div className="flex w-full items-stretch gap-2 sm:w-32 sm:shrink-0 sm:flex-col">
+              <Link
+                href="/owner/applications"
+                className="flex h-11 min-w-0 flex-1 items-center justify-center gap-1 rounded-md border border-neutral-100 bg-neutral-50 px-3 text-center transition-colors hover:border-neutral-200 hover:bg-neutral-100 focus-ring sm:flex-none"
+              >
+                <span className="text-body font-bold text-neutral-800">
+                  {applicationCount}
+                </span>
+                <span className="text-caption font-medium text-neutral-500">
+                  지원자
+                </span>
+              </Link>
+              <ButtonLink
+                href={`/owner/jobs/${jobPost.id}/edit`}
+                size="sm"
+                fullWidth
+              >
+                모집글 수정
+              </ButtonLink>
+            </div>
           </div>
 
           <dl className="grid gap-4 text-body-sm sm:grid-cols-2 lg:grid-cols-3">
@@ -326,12 +327,13 @@ export function RecruitmentManagePanel({
           )}
         </CardContent>
 
-        <CardFooter className="flex-col items-stretch gap-3 border-t border-neutral-100 px-5 pb-5 sm:flex-row sm:flex-wrap sm:items-center md:px-6 md:pb-6">
+        <CardFooter className="grid grid-cols-2 items-stretch gap-2 border-t border-neutral-100 pt-4 sm:flex sm:flex-row sm:flex-wrap sm:items-center lg:flex-nowrap">
           {jobPost.status === "open" && (
             <>
               <Button
                 variant="soft-primary"
                 size="sm"
+                className="w-full sm:w-auto"
                 disabled={
                   !!urgentDisabledReason ||
                   !!actionDisabledReason ||
@@ -344,6 +346,7 @@ export function RecruitmentManagePanel({
               <Button
                 variant="soft-primary"
                 size="sm"
+                className="w-full sm:w-auto"
                 disabled={
                   !!bumpDisabledReason ||
                   !!actionDisabledReason ||
@@ -358,16 +361,18 @@ export function RecruitmentManagePanel({
 
           <ButtonLink
             href={`/owner/jobs/${jobPost.id}/applications`}
-            variant="secondary"
+            variant="outline"
             size="sm"
+            className="w-full sm:w-auto"
           >
             지원자 관리
           </ButtonLink>
 
           {jobPost.status === "open" && (
             <Button
-              variant="outline-danger"
+              variant="outline"
               size="sm"
+              className="w-full text-danger-muted! sm:w-auto"
               disabled={!!actionDisabledReason || isActionPending}
               onClick={() => openModal("close")}
             >
@@ -377,7 +382,9 @@ export function RecruitmentManagePanel({
 
           {jobPost.status === "closed" && (
             <Button
+              variant="soft-primary"
               size="sm"
+              className="w-full sm:w-auto"
               disabled={!!actionDisabledReason || isActionPending}
               onClick={() => openModal("reopen")}
             >
@@ -389,6 +396,7 @@ export function RecruitmentManagePanel({
             <Button
               variant="outline-danger"
               size="sm"
+              className="w-full border-danger/40 sm:w-auto"
               disabled={!!actionDisabledReason || isActionPending}
               onClick={() => openModal("delete")}
             >

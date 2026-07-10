@@ -100,7 +100,7 @@ function JobsPagination({
               aria-current="page"
               className={cn(
                 baseButtonClassName,
-                "border-primary-500 bg-primary-500 px-0 text-white",
+                "border-primary-500 bg-primary-500 px-0 text-white!",
               )}
             >
               {page}

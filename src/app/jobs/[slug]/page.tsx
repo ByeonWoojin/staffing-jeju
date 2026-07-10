@@ -81,7 +81,7 @@ export default async function PublicJobDetailPage({
             action={
               <Link
                 href="/jobs"
-                className="inline-flex h-11 items-center rounded-md bg-primary-500 px-5 text-body-sm font-semibold text-white hover:bg-primary-600"
+                className="inline-flex h-11 items-center rounded-md bg-primary-500 px-5 text-body-sm font-semibold! text-white! hover:bg-primary-600"
               >
                 모집글 목록 보기
               </Link>

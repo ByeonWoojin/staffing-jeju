@@ -40,7 +40,9 @@ export default function JobCompletePage() {
     return (
       <OwnerLayout>
         <PageHeader title="모집글을 찾을 수 없습니다." />
-        <ButtonLink href="/owner/jobs">모집글 관리</ButtonLink>
+        <ButtonLink href="/owner/jobs" variant="outline">
+          모집글 관리
+        </ButtonLink>
       </OwnerLayout>
     );
   }
@@ -76,10 +78,12 @@ export default function JobCompletePage() {
       </Section>
 
       <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-        <ButtonLink href="/owner/jobs">모집글 관리</ButtonLink>
+        <ButtonLink href="/owner/jobs" variant="outline">
+          모집글 관리
+        </ButtonLink>
         <ButtonLink
           href={`/owner/jobs/${jobPost.id}/applications`}
-          variant="secondary"
+          variant="outline"
         >
           지원자 관리
         </ButtonLink>
