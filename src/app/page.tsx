@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { GoogleLoginButton } from "@/components/auth/GoogleLoginButton";
+import { BrandLogo } from "@/components/brand/BrandLogo";
 import { getCurrentUserDestination } from "@/lib/auth/onboarding";
 import { Card } from "@/components/ui";
 
@@ -36,11 +37,8 @@ export default async function HomePage() {
       />
 
       <div className="page-container relative z-10 flex min-h-screen flex-col py-6 md:py-8">
-        <div className="flex items-center gap-2">
-          <span className="flex h-9 w-9 items-center justify-center rounded-md bg-primary-500 text-body-sm font-bold text-white shadow-sm">
-            S
-          </span>
-          <span className="text-title font-bold text-neutral-900">스탭핑</span>
+        <div className="flex items-center">
+          <BrandLogo className="h-9 sm:h-10" priority />
         </div>
 
         <div className="grid flex-1 items-center gap-8 py-8 lg:grid-cols-[minmax(0,1.25fr)_minmax(360px,0.75fr)] lg:gap-12 lg:py-10">
@@ -86,9 +84,7 @@ export default async function HomePage() {
 
           <Card className="mx-auto w-full max-w-md bg-neutral-0/95 p-5 shadow-md md:p-6">
             <div className="mb-6">
-              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-md bg-primary-500 text-title font-bold text-white">
-                S
-              </div>
+              <BrandLogo className="mb-4 h-10" priority />
               <h2 className="text-h2 text-neutral-900">스탭핑 시작하기</h2>
               <p className="mt-2 text-body-sm text-neutral-500">
                 Google 계정으로 로그인하면 역할에 맞는 화면으로 이동합니다.

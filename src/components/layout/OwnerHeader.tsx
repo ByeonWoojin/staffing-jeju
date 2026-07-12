@@ -1,18 +1,16 @@
 import Link from "next/link";
 import { OwnerAccountMenu } from "@/components/auth/OwnerAccountMenu";
+import { BrandLogo } from "@/components/brand/BrandLogo";
 
 export function OwnerHeader() {
   return (
     <header className="border-b border-neutral-100 bg-neutral-0">
       <div className="page-container flex h-14 items-center justify-between gap-4">
         <Link href="/owner" className="flex items-center gap-2 focus-ring rounded-md">
-          <span className="flex h-8 w-8 items-center justify-center rounded-md bg-primary-500 text-body-sm font-bold text-white">
-            S
+          <BrandLogo className="h-7 sm:h-8" priority />
+          <span className="rounded-pill border border-neutral-200 bg-neutral-0 px-2 py-1 text-caption font-semibold text-neutral-500">
+            사장님
           </span>
-          <div className="flex flex-col">
-            <span className="text-body-sm font-bold text-neutral-800">스탭핑</span>
-            <span className="text-caption text-neutral-500">사장님</span>
-          </div>
         </Link>
 
         <OwnerAccountMenu />

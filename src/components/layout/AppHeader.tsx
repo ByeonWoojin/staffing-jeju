@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { HeaderLoginButton } from "@/components/auth/HeaderLoginButton";
+import { BrandLogo } from "@/components/brand/BrandLogo";
 import { cn } from "@/lib/cn";
 
 export type AppHeaderActiveItem = "favorites" | "applications" | "profile";
@@ -22,13 +23,8 @@ export function AppHeader({
   return (
     <header className="border-b border-neutral-100 bg-neutral-0">
       <div className="page-container flex h-14 items-center justify-between gap-4">
-        <Link href="/jobs" className="flex min-w-0 items-center gap-2 focus-ring">
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary-500 text-body-sm font-bold text-white">
-            S
-          </span>
-          <span className="hidden truncate text-title font-bold text-neutral-900 sm:block">
-            스탭핑
-          </span>
+        <Link href="/jobs" className="flex min-w-0 items-center focus-ring">
+          <BrandLogo className="h-7 sm:h-8" priority />
         </Link>
 
         <nav

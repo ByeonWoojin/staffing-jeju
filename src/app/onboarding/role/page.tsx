@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { chooseOwnerRole, chooseStaffRole } from "@/app/onboarding/role/actions";
+import { BrandLogo } from "@/components/brand/BrandLogo";
 import {
   getCurrentAuthUser,
   getPostLoginDestination,
@@ -30,6 +31,9 @@ export default async function RoleOnboardingPage() {
     <main className="flex min-h-screen items-center justify-center bg-surface px-5 py-10">
       <div className="w-full max-w-2xl">
         <div className="mb-8 text-center">
+          <div className="mb-5 flex justify-center">
+            <BrandLogo className="h-10" priority />
+          </div>
           <h1 className="text-h1 text-neutral-800">역할을 선택해주세요</h1>
           <p className="mt-3 text-body text-neutral-500">
             스탭핑에서 사용할 계정 유형을 선택하면 초기 설정을 이어갑니다.
