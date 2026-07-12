@@ -1,14 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/cn";
 
 interface HeaderLoginButtonProps {
+  children?: ReactNode;
   className?: string;
+  loadingText?: string;
 }
 
-export function HeaderLoginButton({ className }: HeaderLoginButtonProps) {
+export function HeaderLoginButton({
+  children,
+  className,
+  loadingText = "이동 중",
+}: HeaderLoginButtonProps) {
   const [isLoading, setIsLoading] = useState(false);
 
   const handleLogin = async () => {
@@ -39,7 +45,7 @@ export function HeaderLoginButton({ className }: HeaderLoginButtonProps) {
         className,
       )}
     >
-      {isLoading ? "이동 중" : "로그인"}
+      {isLoading ? loadingText : (children ?? "로그인")}
     </button>
   );
 }

@@ -1,6 +1,6 @@
 import "server-only";
 
-import type { User } from "@supabase/supabase-js";
+import { isAuthSessionMissingError, type User } from "@supabase/supabase-js";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseCookieClient } from "@/lib/supabase/server";
 import type { Profile, UserRole } from "@/types/database";
@@ -23,6 +23,10 @@ export async function getCurrentAuthUser(): Promise<User | null> {
   } = await supabase.auth.getUser();
 
   if (error) {
+    if (isAuthSessionMissingError(error)) {
+      return null;
+    }
+
     console.error("[auth/onboarding] get current user failed", {
       message: error.message,
       name: error.name,
