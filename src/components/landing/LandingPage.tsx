@@ -2,6 +2,10 @@ import Image from "next/image";
 import Link from "next/link";
 import { HeaderLoginButton } from "@/components/auth/HeaderLoginButton";
 import { BrandLogo } from "@/components/brand/BrandLogo";
+import {
+  LandingFAQAccordion,
+  type FAQItem,
+} from "@/components/landing/LandingFAQAccordion";
 
 interface FeatureCard {
   title: string;
@@ -60,6 +64,47 @@ const featureCards: FeatureCard[] = [
     visualScale: "scale-100",
   },
 ];
+
+const faqItems: FAQItem[] = [
+  {
+    question: "스탭핑은 어떤 서비스인가요?",
+    answer:
+      "스탭핑은 제주 게스트하우스와 스탭 지원자를 연결하는 구인·구직 플랫폼입니다. 스탭은 제주 게스트하우스 모집글을 탐색하고 지원할 수 있으며, 사장님은 모집글과 지원자를 한곳에서 관리할 수 있습니다.",
+  },
+  {
+    question: "제주 게스트하우스 스탭 모집글은 어떻게 찾나요?",
+    answer:
+      "스탭핑의 ‘모집글 둘러보기’에서 제주 게스트하우스 스탭 모집글을 확인할 수 있습니다. 지역, 입도 가능일, 근무 조건을 선택해 자신에게 맞는 공고를 검색하고 비교할 수 있습니다.",
+  },
+  {
+    question: "마음에 드는 게스트하우스 모집글에는 어떻게 지원하나요?",
+    answer:
+      "모집글에서 근무 기간, 근무일, 휴무일, 주요 업무와 제공 조건을 확인한 뒤 지원할 수 있습니다. Google 계정으로 시작하면 관심 공고를 저장하고 제출한 지원서의 진행 상태도 확인할 수 있습니다.",
+  },
+  {
+    question: "모든 제주 게스트하우스가 숙소·식사·급여를 제공하나요?",
+    answer:
+      "숙소, 식사, 급여 또는 활동비 제공 여부는 게스트하우스와 모집글마다 다릅니다. 지원하기 전에 각 모집글에 표시된 근무 조건과 제공 항목을 반드시 확인해 주세요.",
+  },
+  {
+    question: "게스트하우스 사장님은 스탭핑에서 어떻게 스탭을 모집하나요?",
+    answer:
+      "사장님은 Google 계정으로 시작한 뒤 게스트하우스 정보와 스탭 모집글을 등록할 수 있습니다. 등록한 모집글의 상태를 관리하고 지원자의 지원서와 채용 진행 상태를 한곳에서 확인할 수 있습니다.",
+  },
+];
+
+const faqJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: faqItems.map((item) => ({
+    "@type": "Question",
+    name: item.question,
+    acceptedAnswer: {
+      "@type": "Answer",
+      text: item.answer,
+    },
+  })),
+};
 
 const cardClassName =
   "group relative aspect-[4488/5608] w-[84vw] max-w-[318px] shrink-0 cursor-pointer text-left transition-all duration-200 hover:-translate-y-1 hover:drop-shadow-[0_18px_28px_rgba(31,31,31,0.12)] focus-ring sm:w-full sm:max-w-none";
@@ -266,20 +311,28 @@ function LandingFeatureCards() {
 
 function LandingCTA() {
   return (
-    <section className="bg-[#FFFDF8] py-8 md:py-10">
+    <section className="bg-[#FFFDF8] pb-4 md:pb-10 lg:pb-12">
       <div className={landingContainerClassName}>
-        <div className="mx-auto flex flex-col items-center overflow-hidden rounded-2xl border border-primary-100 bg-[#FFF3E8] px-5 py-8 text-center shadow-sm md:px-8 md:py-10">
-          <h2 className="text-[28px] font-bold leading-9 text-[#1F1F1F] md:text-[32px] md:leading-10">
-            제주에서 좋은 인연을 시작해보세요.
+        <div className="mx-auto flex flex-col items-center overflow-hidden rounded-[28px] border border-primary-100 bg-[#FFF3E8] px-5 py-10 text-center shadow-[0_12px_24px_rgba(31,31,31,0.04)] md:px-8 md:py-16 lg:py-[68px]">
+          <h2 className="max-w-[820px] text-[25px] font-extrabold leading-[1.35] text-[#1F1F1F] sm:text-[28px] md:text-[34px]">
+            <span className="block">
+              낮에는 푸른 바다, 밤에는 밤하늘 별빛 아래서
+            </span>
+            <span className="block">
+              쉼표 하나 찍고,{" "}
+              <span className="text-primary-500">놀당 갑서양</span>
+            </span>
           </h2>
-          <div className="mt-5 flex w-full max-w-md flex-col justify-center gap-3 sm:max-w-none sm:flex-row">
+          <div className="mt-8 flex w-full max-w-[320px] flex-col justify-center gap-3 sm:max-w-none sm:flex-row">
             <Link
               href="/jobs"
-              className={brandCtaClassName}
+              className={`${brandCtaClassName} w-full sm:w-auto sm:min-w-[168px]`}
             >
               모집글 둘러보기
             </Link>
-            <HeaderLoginButton className={googleCtaClassName}>
+            <HeaderLoginButton
+              className={`${googleCtaClassName} w-full sm:w-auto sm:min-w-[190px]`}
+            >
               <GoogleIcon />
               <span>Google로 시작하기</span>
             </HeaderLoginButton>
@@ -290,9 +343,40 @@ function LandingCTA() {
   );
 }
 
+function LandingFAQ() {
+  return (
+    <section
+      id="faq"
+      className="bg-[#FFFDF8] pt-10 pb-12 md:pt-14 md:pb-16 lg:pb-20"
+    >
+      <div className={landingContainerClassName}>
+        <div className="max-w-[760px]">
+          <p className="text-body-sm font-bold text-primary-600">
+            자주 묻는 질문
+          </p>
+          <h2 className="mt-2 text-[28px] font-extrabold leading-9 text-[#1F1F1F] md:text-[36px] md:leading-[1.2]">
+            제주 게스트하우스 스탭 모집이 궁금하다면
+          </h2>
+        </div>
+
+        <div className="mt-7 max-w-[1080px] md:mt-9">
+          <LandingFAQAccordion items={faqItems} />
+        </div>
+
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(faqJsonLd).replace(/</g, "\\u003c"),
+          }}
+        />
+      </div>
+    </section>
+  );
+}
+
 function LandingFooter() {
   return (
-    <footer id="faq" className="bg-[#FFFDF8] py-8 md:py-10">
+    <footer className="bg-[#FFFDF8] py-8 md:py-10">
       <div className={landingContainerClassName}>
         <div className="flex flex-col gap-4 border-t border-primary-100/80 pt-8 text-body-sm text-neutral-600 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-col gap-2">
@@ -313,6 +397,7 @@ export function LandingPage() {
     <main className="min-h-screen bg-[#FFFDF8]">
       <LandingHero />
       <LandingFeatureCards />
+      <LandingFAQ />
       <LandingCTA />
       <LandingFooter />
     </main>
