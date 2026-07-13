@@ -2,6 +2,7 @@ import "server-only";
 
 import { getCurrentAuthUser, getProfileById } from "@/lib/auth/onboarding";
 import { getGenderConditionLabel, getStipendTypeLabel } from "@/lib/labels";
+import { normalizeImageSource } from "@/lib/guesthouse-image";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import type {
   Application,
@@ -137,6 +138,8 @@ function sortPhotosByTarget<T extends GuesthousePhoto | JobPostPhoto>(
 ) {
   const grouped = new Map<string, T[]>();
   for (const photo of photos) {
+    if (!normalizeImageSource(photo.photo_path)) continue;
+
     const targetId = String(photo[targetKey]);
     const current = grouped.get(targetId) ?? [];
     current.push(photo);
@@ -594,18 +597,34 @@ export async function getPublicJobBySlug(
 
   const favoriteIds = await getFavoriteGuesthouseIds(viewerProfile, [job.guesthouse_id]);
   const viewerApplication = await getViewerApplication(viewerProfile, job);
-  const mappedJobPhotos = ((jobPhotos ?? []) as JobPostPhoto[]).map((photo) => ({
-    id: photo.id,
-    url: getPublicUrl("job-post-images", photo.photo_path),
-    altText: photo.alt_text ?? `${job.title} 사진`,
-  }));
-  const mappedGuesthousePhotos = ((guesthousePhotos ?? []) as GuesthousePhoto[]).map(
-    (photo) => ({
-      id: photo.id,
-      url: getPublicUrl("guesthouse-images", photo.photo_path),
-      altText: photo.alt_text ?? `${guesthouse.name} 사진`,
-    }),
+  const mappedJobPhotos = ((jobPhotos ?? []) as JobPostPhoto[]).flatMap(
+    (photo) => {
+      const photoPath = normalizeImageSource(photo.photo_path);
+      return photoPath
+        ? [
+            {
+              id: photo.id,
+              url: getPublicUrl("job-post-images", photoPath),
+              altText: photo.alt_text ?? `${job.title} 사진`,
+            },
+          ]
+        : [];
+    },
   );
+  const mappedGuesthousePhotos = (
+    (guesthousePhotos ?? []) as GuesthousePhoto[]
+  ).flatMap((photo) => {
+    const photoPath = normalizeImageSource(photo.photo_path);
+    return photoPath
+      ? [
+          {
+            id: photo.id,
+            url: getPublicUrl("guesthouse-images", photoPath),
+            altText: photo.alt_text ?? `${guesthouse.name} 사진`,
+          },
+        ]
+      : [];
+  });
 
   return {
     viewerProfile,

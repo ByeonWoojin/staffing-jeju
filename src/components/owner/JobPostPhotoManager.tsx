@@ -8,6 +8,10 @@ import {
   deleteJobPostPhoto,
   uploadJobPostPhoto,
 } from "@/app/owner/jobs/[id]/edit/actions";
+import {
+  DEFAULT_GUESTHOUSE_IMAGE,
+  DEFAULT_GUESTHOUSE_IMAGE_ALT,
+} from "@/lib/guesthouse-image";
 import { Button, FieldInfoTooltip } from "@/components/ui";
 
 interface JobPostPhotoWithUrl extends JobPostPhoto {
@@ -125,9 +129,18 @@ export function JobPostPhotoManager({
       </p>
 
       {photos.length === 0 ? (
-        <div className="rounded-md border border-dashed border-neutral-200 px-4 py-8 text-center">
-          <p className="text-body-sm text-neutral-500">
-            업로드된 사진이 없습니다.
+        <div className="overflow-hidden rounded-md border border-dashed border-neutral-200 bg-neutral-0">
+          <div className="relative aspect-[16/9] max-h-[320px] bg-beige">
+            <Image
+              src={DEFAULT_GUESTHOUSE_IMAGE}
+              alt={DEFAULT_GUESTHOUSE_IMAGE_ALT}
+              fill
+              sizes="(min-width: 1024px) 720px, 100vw"
+              className="object-cover"
+            />
+          </div>
+          <p className="px-4 py-3 text-center text-body-sm text-neutral-500">
+            등록된 사진이 없어요. 모집글 사진을 추가해 주세요.
           </p>
         </div>
       ) : (

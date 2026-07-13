@@ -5,19 +5,26 @@ import { formatDate } from "@/lib/owner-utils";
 import { AppHeader } from "@/components/layout/AppHeader";
 import { FavoriteGuesthouseButton } from "@/components/jobs/FavoriteGuesthouseButton";
 import { Badge, ButtonLink, Card, EmptyState, PageHeader, UrgentBadge } from "@/components/ui";
+import {
+  getGuesthouseImageAlt,
+  getGuesthouseImageSource,
+} from "@/lib/guesthouse-image";
 
 export const dynamic = "force-dynamic";
 
-function GuesthouseImage({ src, alt }: { src: string | null; alt: string }) {
+function GuesthouseImage({
+  src,
+  guesthouseName,
+}: {
+  src: string | null;
+  guesthouseName: string;
+}) {
+  const imageSrc = getGuesthouseImageSource(src);
+  const imageAlt = getGuesthouseImageAlt(guesthouseName, src);
+
   return (
     <div className="relative aspect-[4/3] overflow-hidden rounded-md bg-neutral-100 sm:w-48 sm:shrink-0">
-      {src ? (
-        <Image src={src} alt={alt} fill className="object-cover" sizes="192px" />
-      ) : (
-        <div className="flex h-full items-center justify-center px-4 text-center text-body-sm text-neutral-400">
-          등록된 사진이 없습니다
-        </div>
-      )}
+      <Image src={imageSrc} alt={imageAlt} fill className="object-cover" sizes="192px" />
     </div>
   );
 }
@@ -60,7 +67,10 @@ export default async function StaffFavoritesPage() {
           <div className="grid gap-4">
             {items.map(({ guesthouse, currentJobPost, imageUrl }) => (
               <Card key={guesthouse.id} className="flex flex-col gap-4 sm:flex-row">
-                <GuesthouseImage src={imageUrl} alt={`${guesthouse.name} 대표 이미지`} />
+                <GuesthouseImage
+                  src={imageUrl}
+                  guesthouseName={guesthouse.name}
+                />
                 <div className="flex min-w-0 flex-1 flex-col gap-3">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div className="min-w-0">

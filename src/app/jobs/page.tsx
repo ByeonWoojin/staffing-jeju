@@ -8,6 +8,10 @@ import { JobsFilterBar } from "@/components/jobs/JobsFilterBar";
 import { AppHeader } from "@/components/layout/AppHeader";
 import { Badge, Card, EmptyState, UrgentBadge } from "@/components/ui";
 import { cn } from "@/lib/cn";
+import {
+  getGuesthouseImageAlt,
+  getGuesthouseImageSource,
+} from "@/lib/guesthouse-image";
 
 export const dynamic = "force-dynamic";
 
@@ -157,6 +161,8 @@ function JobCard({
     `주 ${jobPost.work_days_per_week}일 근무`,
     `주 ${jobPost.off_days_per_week}일 휴무`,
   ];
+  const cardImageSrc = getGuesthouseImageSource(imageUrl);
+  const cardImageAlt = getGuesthouseImageAlt(guesthouse.name, imageUrl);
 
   return (
     <Card
@@ -170,19 +176,13 @@ function JobCard({
         aria-label={`${jobPost.title} 상세 보기`}
       />
       <div className="relative aspect-[4/3] overflow-hidden rounded-md bg-beige">
-        {imageUrl ? (
-          <Image
-            src={imageUrl}
-            alt={`${guesthouse.name} 대표 이미지`}
-            fill
-            className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
-            sizes="(min-width: 1280px) 25vw, (min-width: 768px) 50vw, 100vw"
-          />
-        ) : (
-          <div className="flex h-full items-center justify-center px-4 text-center text-body-sm font-semibold text-brown">
-            사진 준비 중
-          </div>
-        )}
+        <Image
+          src={cardImageSrc}
+          alt={cardImageAlt}
+          fill
+          className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+          sizes="(min-width: 1280px) 25vw, (min-width: 768px) 50vw, 100vw"
+        />
         {isClosed && <div className="absolute inset-0 bg-neutral-900/35" />}
         <div className="absolute right-3 top-3 z-20">
           <FavoriteGuesthouseButton

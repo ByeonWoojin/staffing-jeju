@@ -2,6 +2,7 @@ import "server-only";
 
 import { redirect } from "next/navigation";
 import { getCurrentAuthUser, getProfileById } from "@/lib/auth/onboarding";
+import { normalizeImageSource } from "@/lib/guesthouse-image";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import type { Guesthouse, GuesthousePhoto, JobPost, Profile } from "@/types/database";
 
@@ -101,6 +102,8 @@ export async function getStaffFavoritesData(): Promise<StaffFavoritesData> {
   }
   const photoByGuesthouseId = new Map<string, GuesthousePhoto>();
   for (const photo of (photos ?? []) as GuesthousePhoto[]) {
+    if (!normalizeImageSource(photo.photo_path)) continue;
+
     if (!photoByGuesthouseId.has(photo.guesthouse_id)) {
       photoByGuesthouseId.set(photo.guesthouse_id, photo);
     }
@@ -118,7 +121,7 @@ export async function getStaffFavoritesData(): Promise<StaffFavoritesData> {
         {
           guesthouse,
           currentJobPost: jobPostByGuesthouseId.get(guesthouseId) ?? null,
-          imageUrl: photo ? getGuesthousePhotoUrl(photo.photo_path) : null,
+          imageUrl: photo ? getGuesthousePhotoUrl(photo.photo_path.trim()) : null,
         },
       ];
     }),

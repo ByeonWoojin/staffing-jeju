@@ -3,6 +3,11 @@
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import type { TouchEvent } from "react";
+import {
+  DEFAULT_GUESTHOUSE_IMAGE,
+  DEFAULT_GUESTHOUSE_IMAGE_ALT,
+  normalizeImageSource,
+} from "@/lib/guesthouse-image";
 
 export interface JobImageSlide {
   id: string;
@@ -19,13 +24,28 @@ const AUTO_ROLLING_INTERVAL_MS = 4500;
 const SWIPE_THRESHOLD_PX = 44;
 
 export function JobImageSlider({ images, fallbackAlt }: JobImageSliderProps) {
+  const slides = images.flatMap((image) => {
+    const url = normalizeImageSource(image.url);
+    return url ? [{ ...image, url }] : [];
+  });
+  const visibleImages =
+    slides.length > 0
+      ? slides
+      : [
+          {
+            id: "default-guesthouse-thumbnail",
+            url: DEFAULT_GUESTHOUSE_IMAGE,
+            altText: DEFAULT_GUESTHOUSE_IMAGE_ALT,
+          },
+        ];
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
   const [interactionKey, setInteractionKey] = useState(0);
   const touchStartXRef = useRef<number | null>(null);
   const touchStartYRef = useRef<number | null>(null);
-  const hasMultipleImages = images.length > 1;
+  const hasMultipleImages = visibleImages.length > 1;
+  const safeCurrentIndex = currentIndex % visibleImages.length;
 
   useEffect(() => {
     const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -47,18 +67,22 @@ export function JobImageSlider({ images, fallbackAlt }: JobImageSliderProps) {
 
     const intervalId = window.setInterval(() => {
       if (document.visibilityState !== "visible") return;
-      setCurrentIndex((index) => (index + 1) % images.length);
+      setCurrentIndex((index) => (index + 1) % visibleImages.length);
     }, AUTO_ROLLING_INTERVAL_MS);
 
     return () => {
       window.clearInterval(intervalId);
     };
-  }, [hasMultipleImages, images.length, interactionKey, isPaused, prefersReducedMotion]);
-
-  if (images.length === 0) return null;
+  }, [
+    hasMultipleImages,
+    visibleImages.length,
+    interactionKey,
+    isPaused,
+    prefersReducedMotion,
+  ]);
 
   const moveTo = (nextIndex: number) => {
-    setCurrentIndex((nextIndex + images.length) % images.length);
+    setCurrentIndex((nextIndex + visibleImages.length) % visibleImages.length);
     setInteractionKey((key) => key + 1);
   };
 
@@ -89,7 +113,7 @@ export function JobImageSlider({ images, fallbackAlt }: JobImageSliderProps) {
       return;
     }
 
-    moveTo(deltaX < 0 ? currentIndex + 1 : currentIndex - 1);
+    moveTo(deltaX < 0 ? safeCurrentIndex + 1 : safeCurrentIndex - 1);
   };
 
   return (
@@ -100,7 +124,7 @@ export function JobImageSlider({ images, fallbackAlt }: JobImageSliderProps) {
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
-      {images.map((image, index) => (
+      {visibleImages.map((image, index) => (
         <Image
           key={image.id}
           src={image.url}
@@ -109,7 +133,7 @@ export function JobImageSlider({ images, fallbackAlt }: JobImageSliderProps) {
           priority={index === 0}
           sizes="(min-width: 1024px) 720px, 100vw"
           className={`object-cover transition-opacity duration-500 ease-out motion-reduce:transition-none ${
-            index === currentIndex ? "opacity-100" : "opacity-0"
+            index === safeCurrentIndex ? "opacity-100" : "opacity-0"
           }`}
         />
       ))}
@@ -119,7 +143,7 @@ export function JobImageSlider({ images, fallbackAlt }: JobImageSliderProps) {
           <button
             type="button"
             aria-label="이전 이미지"
-            onClick={() => moveTo(currentIndex - 1)}
+            onClick={() => moveTo(safeCurrentIndex - 1)}
             className="absolute left-3 top-1/2 z-10 flex size-11 -translate-y-1/2 items-center justify-center rounded-full bg-neutral-0/80 text-neutral-900 shadow-sm backdrop-blur transition-colors hover:bg-neutral-0 focus-ring"
           >
             <span aria-hidden="true" className="text-[28px] leading-none">
@@ -129,7 +153,7 @@ export function JobImageSlider({ images, fallbackAlt }: JobImageSliderProps) {
           <button
             type="button"
             aria-label="다음 이미지"
-            onClick={() => moveTo(currentIndex + 1)}
+            onClick={() => moveTo(safeCurrentIndex + 1)}
             className="absolute right-3 top-1/2 z-10 flex size-11 -translate-y-1/2 items-center justify-center rounded-full bg-neutral-0/80 text-neutral-900 shadow-sm backdrop-blur transition-colors hover:bg-neutral-0 focus-ring"
           >
             <span aria-hidden="true" className="text-[28px] leading-none">
@@ -138,12 +162,12 @@ export function JobImageSlider({ images, fallbackAlt }: JobImageSliderProps) {
           </button>
 
           <div className="absolute inset-x-0 bottom-3 z-10 flex justify-center gap-2 px-4">
-            {images.map((image, index) => (
+            {visibleImages.map((image, index) => (
               <button
                 key={image.id}
                 type="button"
                 aria-label={`${index + 1}번째 이미지 보기`}
-                aria-current={index === currentIndex ? "true" : undefined}
+                aria-current={index === safeCurrentIndex ? "true" : undefined}
                 onClick={() => moveTo(index)}
                 className={`size-2.5 rounded-full transition-colors focus-ring ${
                   index === currentIndex
