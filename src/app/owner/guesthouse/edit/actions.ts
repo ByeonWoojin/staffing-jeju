@@ -181,6 +181,7 @@ export async function updateGuesthouse(
     .from("guesthouses")
     .update(values)
     .eq("id", guesthouseId)
+    .eq("owner_id", owner.id)
     .select("*")
     .maybeSingle();
 

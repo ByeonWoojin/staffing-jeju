@@ -203,7 +203,7 @@ async function insertApplicationStatusLog({
       code: error.code,
       details: error.details,
     });
-    throw new Error(`지원 상태 로그 기록에 실패했습니다: ${error.message}`);
+    throw new Error("지원 상태 로그 기록에 실패했습니다.");
   }
 }
 
@@ -324,6 +324,7 @@ export async function submitJobApplication(
             status: "submitted",
           })
           .eq("id", existingApplication.id)
+          .eq("staff_id", profile.id)
           .eq("status", "canceled")
           .select("*")
           .maybeSingle();

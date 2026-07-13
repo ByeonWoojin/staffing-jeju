@@ -278,6 +278,7 @@ export async function updateJobPost(
     .from("job_posts")
     .update(values)
     .eq("id", jobPostId)
+    .eq("owner_id", owner.id)
     .select("*")
     .maybeSingle();
 

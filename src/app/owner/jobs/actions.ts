@@ -100,6 +100,7 @@ async function getJobPostOrThrow(jobPostId: string): Promise<JobPost> {
 async function updateJobPostOrThrow(
   actionName: string,
   jobPostId: string,
+  ownerId: string,
   values: Partial<JobPost>,
 ): Promise<JobPost> {
   assertValidJobPostId(jobPostId);
@@ -111,6 +112,7 @@ async function updateJobPostOrThrow(
     .from("job_posts")
     .update(values)
     .eq("id", jobPostId)
+    .eq("owner_id", ownerId)
     .select("*")
     .maybeSingle();
 
@@ -127,6 +129,26 @@ async function updateJobPostOrThrow(
 
   logAction(`${actionName}:update:success`, jobPostId, { result: data });
   return data as JobPost;
+}
+
+function assertOwnerCanManageJobPost(
+  actionName: string,
+  jobPostId: string,
+  owner: Profile,
+  jobPost: JobPost,
+) {
+  logAction(`${actionName}:owner-check`, jobPostId, {
+    currentOwnerId: owner.id,
+    jobPostOwnerId: jobPost.owner_id,
+  });
+
+  if (jobPost.owner_id !== owner.id) {
+    logAction(`${actionName}:owner:error`, jobPostId, {
+      currentOwnerId: owner.id,
+      jobPostOwnerId: jobPost.owner_id,
+    });
+    throw new Error("현재 사장님이 관리할 수 있는 모집글이 아닙니다.");
+  }
 }
 
 export async function closeRecruitment(jobPostId: string): Promise<JobPost> {
@@ -195,7 +217,10 @@ export async function closeRecruitment(jobPostId: string): Promise<JobPost> {
 
 export async function reopenRecruitment(jobPostId: string): Promise<JobPost> {
   logUuidValidation("reopenRecruitment", jobPostId);
+  const owner = await getCurrentOwnerProfileOrThrow();
   const current = await getJobPostOrThrow(jobPostId);
+  assertOwnerCanManageJobPost("reopenRecruitment", jobPostId, owner, current);
+
   const nextRecruitmentCycle =
     current.status === "closed"
       ? current.recruitment_cycle + 1
@@ -204,6 +229,7 @@ export async function reopenRecruitment(jobPostId: string): Promise<JobPost> {
   const updated = await updateJobPostOrThrow(
     "reopenRecruitment",
     jobPostId,
+    owner.id,
     {
       status: "open",
       recruitment_cycle: nextRecruitmentCycle,
@@ -232,7 +258,9 @@ export async function reopenRecruitment(jobPostId: string): Promise<JobPost> {
 
 export async function bumpRecruitment(jobPostId: string): Promise<JobPost> {
   logUuidValidation("bumpRecruitment", jobPostId);
+  const owner = await getCurrentOwnerProfileOrThrow();
   const current = await getJobPostOrThrow(jobPostId);
+  assertOwnerCanManageJobPost("bumpRecruitment", jobPostId, owner, current);
 
   if (current.status !== "open") {
     logAction("bumpRecruitment:status:error", jobPostId, {
@@ -256,11 +284,16 @@ export async function bumpRecruitment(jobPostId: string): Promise<JobPost> {
 
   const now = new Date().toISOString();
   const nextBumpCount = current.bump_count + 1;
-  const updated = await updateJobPostOrThrow("bumpRecruitment", jobPostId, {
-    bumped_at: now,
-    last_bumped_at: now,
-    bump_count: nextBumpCount,
-  });
+  const updated = await updateJobPostOrThrow(
+    "bumpRecruitment",
+    jobPostId,
+    owner.id,
+    {
+      bumped_at: now,
+      last_bumped_at: now,
+      bump_count: nextBumpCount,
+    },
+  );
 
   if (
     updated.bump_count !== nextBumpCount ||
@@ -290,7 +323,14 @@ export async function markUrgentRecruitment(
   jobPostId: string,
 ): Promise<JobPost> {
   logUuidValidation("markUrgentRecruitment", jobPostId);
+  const owner = await getCurrentOwnerProfileOrThrow();
   const current = await getJobPostOrThrow(jobPostId);
+  assertOwnerCanManageJobPost(
+    "markUrgentRecruitment",
+    jobPostId,
+    owner,
+    current,
+  );
 
   if (current.status !== "open") {
     logAction("markUrgentRecruitment:status:error", jobPostId, {
@@ -320,6 +360,7 @@ export async function markUrgentRecruitment(
   const updated = await updateJobPostOrThrow(
     "markUrgentRecruitment",
     jobPostId,
+    owner.id,
     {
       is_urgent: true,
       last_urgent_marked_at: now,
@@ -367,9 +408,14 @@ export async function hideRecruitment(jobPostId: string): Promise<JobPost> {
     return current;
   }
 
-  const updated = await updateJobPostOrThrow("hideRecruitment", jobPostId, {
-    status: "hidden",
-  });
+  const updated = await updateJobPostOrThrow(
+    "hideRecruitment",
+    jobPostId,
+    owner.id,
+    {
+      status: "hidden",
+    },
+  );
 
   if (updated.status !== "hidden") {
     logAction("hideRecruitment:verify:error", jobPostId, {

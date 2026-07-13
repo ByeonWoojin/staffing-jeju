@@ -186,11 +186,13 @@ function serializeSupabaseError(error: unknown) {
 async function deleteExistingJobPostPhotos(
   supabase: ReturnType<typeof createSupabaseAdminClient>,
   jobPostId: string,
+  ownerId: string,
 ) {
   const { data: photos, error: photoError } = await supabase
     .from("job_post_photos")
     .select("*")
-    .eq("job_post_id", jobPostId);
+    .eq("job_post_id", jobPostId)
+    .eq("owner_id", ownerId);
 
   if (photoError) {
     console.error("[createOwnerJobPost] hidden photo lookup failed", {
@@ -218,7 +220,8 @@ async function deleteExistingJobPostPhotos(
   const { error: deleteError } = await supabase
     .from("job_post_photos")
     .delete()
-    .eq("job_post_id", jobPostId);
+    .eq("job_post_id", jobPostId)
+    .eq("owner_id", ownerId);
 
   if (deleteError) {
     console.error("[createOwnerJobPost] hidden photo row cleanup failed", {
@@ -270,7 +273,7 @@ export async function createOwnerJobPost(
       ? existingJobPost.recruitment_cycle + 1
       : 1;
 
-    await deleteExistingJobPostPhotos(supabase, existingJobPost.id);
+    await deleteExistingJobPostPhotos(supabase, existingJobPost.id, ownerId);
 
     const { data: updated, error } = await supabase
       .from("job_posts")
@@ -279,6 +282,7 @@ export async function createOwnerJobPost(
         recruitment_cycle: nextRecruitmentCycle,
       })
       .eq("id", existingJobPost.id)
+      .eq("owner_id", ownerId)
       .select("*")
       .maybeSingle();
 

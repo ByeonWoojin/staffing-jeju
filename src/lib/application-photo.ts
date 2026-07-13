@@ -73,7 +73,7 @@ export async function uploadApplicationPhoto(path: string, file: File) {
       path,
       message: error.message,
     });
-    throw new Error(`대표사진 업로드에 실패했습니다: ${error.message}`);
+    throw new Error("대표사진 업로드에 실패했습니다. 잠시 후 다시 시도해주세요.");
   }
 }
 

@@ -83,7 +83,8 @@ export async function toggleFavoriteGuesthouse(
     const { error } = await supabase
       .from("staff_favorite_guesthouses")
       .delete()
-      .eq("id", existing.id);
+      .eq("id", existing.id)
+      .eq("staff_id", profile.id);
 
     if (error) {
       console.error("[jobs/actions] favorite delete failed", error);
