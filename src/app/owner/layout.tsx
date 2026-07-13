@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
+import { OwnerAccountProvider } from "@/components/auth/OwnerAccountMenu";
 import {
   getCurrentAuthUser,
+  getProfileById,
   getPostLoginDestination,
 } from "@/lib/auth/onboarding";
 
@@ -16,6 +18,7 @@ export default async function OwnerRouteLayout({
     redirect("/");
   }
 
+  const profile = await getProfileById(user.id);
   const destination = await getPostLoginDestination(user.id);
   if (
     destination !== "/owner" &&
@@ -24,5 +27,17 @@ export default async function OwnerRouteLayout({
     redirect(destination);
   }
 
-  return children;
+  return (
+    <OwnerAccountProvider
+      account={{
+        name:
+          typeof profile?.name === "string" && profile.name.trim()
+            ? profile.name
+            : null,
+        email: user.email ?? profile?.email ?? null,
+      }}
+    >
+      {children}
+    </OwnerAccountProvider>
+  );
 }

@@ -1,54 +1,31 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { createContext, useContext, type ReactNode } from "react";
 import { LogoutButton } from "@/components/auth/LogoutButton";
 
-interface OwnerAccountState {
+export interface OwnerAccountMenuAccount {
   name: string | null;
   email: string | null;
 }
 
+const OwnerAccountContext = createContext<OwnerAccountMenuAccount | null>(null);
+
+export function OwnerAccountProvider({
+  account,
+  children,
+}: {
+  account: OwnerAccountMenuAccount | null;
+  children: ReactNode;
+}) {
+  return (
+    <OwnerAccountContext.Provider value={account}>
+      {children}
+    </OwnerAccountContext.Provider>
+  );
+}
+
 export function OwnerAccountMenu() {
-  const [account, setAccount] = useState<OwnerAccountState | null>(null);
-
-  useEffect(() => {
-    let isMounted = true;
-
-    async function loadAccount() {
-      const supabase = createSupabaseBrowserClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (!user) {
-        if (isMounted) setAccount(null);
-        return;
-      }
-
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("name, email")
-        .eq("id", user.id)
-        .maybeSingle();
-
-      if (!isMounted) return;
-
-      setAccount({
-        name:
-          typeof profile?.name === "string" && profile.name.trim()
-            ? profile.name
-            : null,
-        email: user.email ?? profile?.email ?? null,
-      });
-    }
-
-    void loadAccount();
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+  const account = useContext(OwnerAccountContext);
 
   return (
     <div className="flex min-w-0 items-center gap-3">
