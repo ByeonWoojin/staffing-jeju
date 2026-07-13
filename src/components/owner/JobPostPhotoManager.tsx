@@ -8,7 +8,7 @@ import {
   deleteJobPostPhoto,
   uploadJobPostPhoto,
 } from "@/app/owner/jobs/[id]/edit/actions";
-import { Button } from "@/components/ui";
+import { Button, FieldInfoTooltip } from "@/components/ui";
 
 interface JobPostPhotoWithUrl extends JobPostPhoto {
   publicUrl: string;
@@ -87,9 +87,15 @@ export function JobPostPhotoManager({
   return (
     <div className="flex flex-col gap-5">
       <div>
-        <h3 className="text-body-sm font-semibold text-neutral-800">
-          모집글 사진
-        </h3>
+        <div className="flex items-center gap-1.5">
+          <h3 className="text-body-sm font-semibold text-neutral-800">
+            모집글 사진
+          </h3>
+          <FieldInfoTooltip
+            label="모집글 사진"
+            helpText="첫 번째 이미지는 모집글의 대표 이미지로 사용되며, 모집글 목록과 상세 화면에서 게스트하우스를 소개하는 이미지로 표시됩니다."
+          />
+        </div>
         <p className="mt-1 text-caption text-neutral-500">
           근무 공간, 공용 공간, 스탭 숙소 등 지원자에게 보여주고 싶은
           사진을 등록해주세요.

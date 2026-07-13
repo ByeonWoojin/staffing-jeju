@@ -1,16 +1,30 @@
 import { forwardRef, type TextareaHTMLAttributes } from "react";
 import { cn } from "@/lib/cn";
+import { FormLabelWithHelp } from "./FieldHelp";
 
 export interface TextareaProps
   extends TextareaHTMLAttributes<HTMLTextAreaElement> {
   label?: string;
+  labelMeta?: string;
+  labelHelpText?: string;
   helperText?: string;
   error?: string;
 }
 
 export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
   (
-    { className, label, helperText, error, id, disabled, required, ...props },
+    {
+      className,
+      label,
+      labelMeta,
+      labelHelpText,
+      helperText,
+      error,
+      id,
+      disabled,
+      required,
+      ...props
+    },
     ref,
   ) => {
     const textareaId = id ?? props.name;
@@ -18,17 +32,13 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
     return (
       <div className="flex w-full flex-col gap-1.5">
         {label && (
-          <label
+          <FormLabelWithHelp
             htmlFor={textareaId}
-            className="text-body-sm font-semibold text-neutral-800"
-          >
-            {label}
-            {required && (
-              <span className="ml-1 text-danger" aria-hidden="true">
-                *
-              </span>
-            )}
-          </label>
+            label={label}
+            required={required}
+            metaText={labelMeta}
+            helpText={labelHelpText}
+          />
         )}
         <textarea
           ref={ref}

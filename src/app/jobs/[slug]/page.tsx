@@ -10,6 +10,7 @@ import { getGenderConditionLabel } from "@/lib/labels";
 import { formatDate } from "@/lib/owner-utils";
 import { ApplyButton } from "@/components/jobs/ApplyButton";
 import { FavoriteGuesthouseButton } from "@/components/jobs/FavoriteGuesthouseButton";
+import { JobImageSlider } from "@/components/jobs/JobImageSlider";
 import { JobDetailSectionNav } from "@/components/jobs/JobDetailSectionNav";
 import { AppHeader } from "@/components/layout/AppHeader";
 import {
@@ -175,29 +176,6 @@ function createGuideTextBlocks(jobPost: JobPost): TextBlock[] {
     createTextBlock("주의사항", jobPost.caution),
     createTextBlock("추가 안내", jobPost.extra_info),
   ].filter(isTextBlock);
-}
-
-function HeroImage({
-  photo,
-  alt,
-}: {
-  photo: DetailPhoto | null;
-  alt: string;
-}) {
-  if (!photo) return null;
-
-  return (
-    <div className="relative aspect-[16/9] overflow-hidden rounded-md bg-neutral-100">
-      <Image
-        src={photo.url}
-        alt={photo.altText || alt}
-        fill
-        className="object-cover"
-        sizes="(min-width: 1024px) 720px, 100vw"
-        priority
-      />
-    </div>
-  );
 }
 
 function PhotoStrip({ photos }: { photos: DetailPhoto[] }) {
@@ -389,10 +367,18 @@ function SupportCard({
 
   return (
     <Card className="flex flex-col gap-5">
-      <div className="flex flex-wrap items-center gap-2">
-        <JobStatusBadge status={jobPost.status} />
-        {jobPost.is_urgent && <UrgentBadge />}
-        {canceledApplication && <ApplicationStatusBadge status="canceled" />}
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
+          <JobStatusBadge status={jobPost.status} />
+          {jobPost.is_urgent && <UrgentBadge />}
+          {canceledApplication && <ApplicationStatusBadge status="canceled" />}
+        </div>
+        <FavoriteGuesthouseButton
+          guesthouseId={guesthouse.id}
+          initialFavorited={detail.isFavorited}
+          presentation="icon"
+          className="size-10 shrink-0 rounded-full px-0 text-lg"
+        />
       </div>
 
       <div>
@@ -419,12 +405,6 @@ function SupportCard({
       </dl>
 
       <div className="grid gap-2">
-        <FavoriteGuesthouseButton
-          guesthouseId={guesthouse.id}
-          initialFavorited={detail.isFavorited}
-          size="md"
-          fullWidth
-        />
         <SupportAction detail={detail} isClosed={isClosed} />
       </div>
     </Card>
@@ -499,11 +479,14 @@ export default async function PublicJobDetailPage({
   const { jobPost, guesthouse } = detail;
   const isClosed = jobPost.status === "closed";
   const positiveBadges = getPositiveBadges(jobPost);
-  const primaryPhoto = detail.jobPostPhotos[0] ?? detail.guesthousePhotos[0] ?? null;
+  const heroPhotos =
+    detail.jobPostPhotos.length > 0
+      ? detail.jobPostPhotos
+      : detail.guesthousePhotos;
   const heroUsesGuesthousePhoto =
-    !detail.jobPostPhotos[0] && Boolean(detail.guesthousePhotos[0]);
+    detail.jobPostPhotos.length === 0 && detail.guesthousePhotos.length > 0;
   const guesthousePhotosForSection = heroUsesGuesthousePhoto
-    ? detail.guesthousePhotos.slice(1)
+    ? []
     : detail.guesthousePhotos;
   const summaryItems = createSummaryItems(jobPost);
   const stickyItems = createStickyItems(jobPost);
@@ -545,29 +528,28 @@ export default async function PublicJobDetailPage({
                   <h1 className="mt-2 break-words text-h2 text-neutral-900 md:text-h1">
                     {jobPost.title}
                   </h1>
-                  <div className="mt-3 flex flex-wrap items-center gap-2">
-                    <JobStatusBadge status={jobPost.status} />
-                    {jobPost.is_urgent && <UrgentBadge />}
-                    {positiveBadges.map((label) => (
-                      <Badge key={label}>{label}</Badge>
-                    ))}
+                  <div className="mt-3 flex items-start justify-between gap-3">
+                    <div className="flex min-w-0 flex-wrap items-center gap-2">
+                      <JobStatusBadge status={jobPost.status} />
+                      {jobPost.is_urgent && <UrgentBadge />}
+                      {positiveBadges.map((label) => (
+                        <Badge key={label}>{label}</Badge>
+                      ))}
+                    </div>
+                    <FavoriteGuesthouseButton
+                      guesthouseId={guesthouse.id}
+                      initialFavorited={detail.isFavorited}
+                      presentation="icon"
+                      className="size-10 shrink-0 rounded-full px-0 text-lg lg:hidden"
+                    />
                   </div>
-                </div>
-
-                <div className="lg:hidden">
-                  <FavoriteGuesthouseButton
-                    guesthouseId={guesthouse.id}
-                    initialFavorited={detail.isFavorited}
-                    size="md"
-                    fullWidth
-                  />
                 </div>
               </div>
             </section>
 
-            <HeroImage
-              photo={primaryPhoto}
-              alt={`${guesthouse.name} 대표 이미지`}
+            <JobImageSlider
+              images={heroPhotos}
+              fallbackAlt={`${guesthouse.name} 대표 이미지`}
             />
 
             <SummaryGrid items={summaryItems} />

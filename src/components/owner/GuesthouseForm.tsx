@@ -6,6 +6,7 @@ import type { GuesthouseFormData } from "@/types/database";
 import { updateGuesthouse } from "@/app/owner/guesthouse/edit/actions";
 import { JEJU_REGION_OPTIONS } from "@/lib/labels";
 import { isUuid } from "@/lib/uuid";
+import { GuesthousePhotoPicker } from "@/components/owner/GuesthousePhotoManager";
 import {
   Button,
   ButtonLink,
@@ -23,7 +24,10 @@ interface GuesthouseFormProps {
   mode: "create" | "edit";
   guesthouseId?: string;
   initialData?: GuesthouseFormData;
-  createAction?: (payload: GuesthouseFormData) => Promise<string | void>;
+  createAction?: (
+    payload: GuesthouseFormData,
+    photoFormData?: FormData,
+  ) => Promise<string | void>;
   cancelHref?: string;
   submitLabel?: string;
   photoManager?: ReactNode;
@@ -65,6 +69,7 @@ export function GuesthouseForm({
   const [form, setForm] = useState<GuesthouseFormData>(
     normalizeInitialData(initialData),
   );
+  const [guesthousePhotoFiles, setGuesthousePhotoFiles] = useState<File[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const isMockEdit =
     mode === "edit" && (!guesthouseId || !isUuid(guesthouseId));
@@ -83,7 +88,13 @@ export function GuesthouseForm({
     if (mode === "create") {
       if (createAction) {
         try {
-          const redirectTo = await createAction(form);
+          const photoFormData =
+            guesthousePhotoFiles.length > 0 ? new FormData() : undefined;
+          guesthousePhotoFiles.forEach((file) => {
+            photoFormData?.append("photos", file);
+          });
+
+          const redirectTo = await createAction(form, photoFormData);
           if (redirectTo) {
             router.push(redirectTo);
           }
@@ -193,6 +204,14 @@ export function GuesthouseForm({
             {photoManager && (
               <div className="border-t border-neutral-100 pt-5 md:col-span-2">
                 {photoManager}
+              </div>
+            )}
+            {mode === "create" && createAction && (
+              <div className="border-t border-neutral-100 pt-5 md:col-span-2">
+                <GuesthousePhotoPicker
+                  disabled={isSubmitting}
+                  onFilesChange={setGuesthousePhotoFiles}
+                />
               </div>
             )}
           </CardContent>

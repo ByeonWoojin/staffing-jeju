@@ -119,6 +119,9 @@ export function ApplicationForm({
               className="text-body-sm font-semibold text-neutral-800"
             >
               대표사진
+              <span className="ml-1 text-danger" aria-hidden="true">
+                *
+              </span>
             </label>
             <input
               id="representativePhoto"
@@ -129,13 +132,15 @@ export function ApplicationForm({
               className="block h-11 w-full rounded-md border border-neutral-200 bg-neutral-0 px-3 py-2 text-body-sm text-neutral-800 file:mr-3 file:rounded-md file:border-0 file:bg-primary-50 file:px-3 file:py-1.5 file:text-caption file:font-bold file:text-primary-700 focus-ring"
             />
             <p className="text-[13px] text-neutral-500">
-              JPG, PNG, WEBP 형식만 가능하며 최대 5MB입니다.
+              본인을 가장 잘 나타내는 이미지를 넣어주세요. JPG, PNG,
+              WEBP 형식만 가능하며 최대 5MB입니다.
             </p>
           </div>
         </div>
 
         <Textarea
           label="자기소개 또는 지원 메시지"
+          labelHelpText="사장님이 보시는 메시지예요! 따뜻한 성격을 많이 어필하면 좋아요!"
           name="introduction"
           required
           placeholder="게스트하우스 경험, 가능한 업무, 제주에서 일하고 싶은 이유를 적어주세요."

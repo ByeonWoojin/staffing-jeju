@@ -1,8 +1,11 @@
 import { forwardRef, type SelectHTMLAttributes } from "react";
 import { cn } from "@/lib/cn";
+import { FormLabelWithHelp } from "./FieldHelp";
 
 export interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
   label?: string;
+  labelMeta?: string;
+  labelHelpText?: string;
   helperText?: string;
   error?: string;
   placeholder?: string;
@@ -13,6 +16,8 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
     {
       className,
       label,
+      labelMeta,
+      labelHelpText,
       helperText,
       error,
       id,
@@ -29,17 +34,13 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
     return (
       <div className="flex w-full flex-col gap-1.5">
         {label && (
-          <label
+          <FormLabelWithHelp
             htmlFor={selectId}
-            className="text-body-sm font-semibold text-neutral-800"
-          >
-            {label}
-            {required && (
-              <span className="ml-1 text-danger" aria-hidden="true">
-                *
-              </span>
-            )}
-          </label>
+            label={label}
+            required={required}
+            metaText={labelMeta}
+            helpText={labelHelpText}
+          />
         )}
         <div className="relative">
           <select

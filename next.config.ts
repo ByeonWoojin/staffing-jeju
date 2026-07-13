@@ -17,6 +17,11 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: process.cwd(),
   },
+  experimental: {
+    serverActions: {
+      bodySizeLimit: "30mb",
+    },
+  },
   images: supabaseHostname
     ? {
         remotePatterns: [

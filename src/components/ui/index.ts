@@ -16,6 +16,8 @@ export type { SelectProps } from "./Select";
 export { Checkbox } from "./Checkbox";
 export type { CheckboxProps } from "./Checkbox";
 
+export { FieldInfoTooltip, FormLabelWithHelp } from "./FieldHelp";
+
 export {
   Card,
   CardHeader,

@@ -62,7 +62,7 @@ export function FavoriteGuesthouseButton({
       disabled={isPending}
       onClick={handleClick}
       aria-pressed={isFavorited}
-      aria-label={isFavorited ? "관심 게스트하우스 해제" : "관심 게스트하우스 저장"}
+      aria-label={isFavorited ? "관심 게스트하우스 삭제" : "관심 게스트하우스 추가"}
       className={cn(
         isIcon &&
           (isFavorited

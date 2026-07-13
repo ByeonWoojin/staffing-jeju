@@ -20,10 +20,12 @@ export function AppHeader({
   active,
   isAuthenticated = false,
 }: AppHeaderProps) {
+  const logoHref = isAuthenticated ? "/jobs" : "/";
+
   return (
     <header className="border-b border-neutral-100 bg-neutral-0">
       <div className="page-container flex h-14 items-center justify-between gap-4">
-        <Link href="/jobs" className="flex min-w-0 items-center focus-ring">
+        <Link href={logoHref} className="flex min-w-0 items-center focus-ring">
           <BrandLogo className="h-7 sm:h-8" priority />
         </Link>
 

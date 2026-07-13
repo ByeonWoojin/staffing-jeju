@@ -151,12 +151,18 @@ function JobCard({
     jobPost.stipend_type !== "none" ? "급여 있음" : null,
     jobPost.has_party ? "파티 있음" : null,
   ].filter((label): label is string => Boolean(label));
+  const conditionItems = [
+    `입도일 ${formatDate(jobPost.work_start_date)}`,
+    `최소 ${jobPost.min_work_period}`,
+    `주 ${jobPost.work_days_per_week}일 근무`,
+    `주 ${jobPost.off_days_per_week}일 휴무`,
+  ];
 
   return (
     <Card
       hoverable
-      padding="none"
-      className="group relative border-transparent bg-transparent shadow-none"
+      padding="md"
+      className="group relative overflow-hidden"
     >
       <Link
         href={`/jobs/${jobPost.slug}`}
@@ -201,29 +207,29 @@ function JobCard({
 
       <div
         className={cn(
-          "relative z-0 pt-3 transition-colors group-hover:text-primary-700",
+          "relative z-0 pt-4 transition-colors md:pt-5",
           isClosed && "opacity-70",
         )}
       >
-        <p className="truncate text-body-sm font-bold text-neutral-900">
+        <p className="truncate text-body-sm font-semibold text-neutral-500">
           {guesthouse.name} · {guesthouse.region}
         </p>
-        <h2 className="mt-1 line-clamp-2 min-h-[2.75rem] text-body-sm font-semibold text-neutral-800">
+        <h2 className="mt-2 line-clamp-2 min-h-[2.75rem] text-[15px] font-semibold leading-[1.4] text-neutral-900 [word-break:keep-all] md:text-[16px]">
           {jobPost.title}
         </h2>
-        <p className="mt-1 truncate text-caption text-neutral-500">
-          입도일 {formatDate(jobPost.work_start_date)}
-        </p>
-        <p className="mt-0.5 truncate text-caption text-neutral-500">
-          최소 {jobPost.min_work_period} · 주 {jobPost.work_days_per_week}일 근무 · 주{" "}
-          {jobPost.off_days_per_week}일 휴무
-        </p>
-        <div className="mt-3 flex min-h-6 gap-1.5 overflow-hidden">
+        <div className="mt-3 flex flex-wrap gap-x-2.5 gap-y-1.5 text-caption font-medium text-neutral-500">
+          {conditionItems.map((item) => (
+            <span key={item} className="whitespace-nowrap">
+              {item}
+            </span>
+          ))}
+        </div>
+        <div className="mt-3.5 flex min-h-6 flex-wrap gap-2 overflow-visible">
           {positiveChips.slice(0, 3).map((label) => (
             <Badge
               key={label}
               variant="default"
-              className="h-5 max-w-[6.5rem] shrink-0 truncate border border-neutral-200 bg-neutral-0 px-2 text-[11px] font-semibold text-neutral-600"
+              className="h-6 max-w-full shrink-0 truncate border border-neutral-200 bg-neutral-0 px-2.5 text-[11px] font-semibold text-neutral-600"
             >
               {label}
             </Badge>

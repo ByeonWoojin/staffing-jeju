@@ -1,15 +1,29 @@
 import { forwardRef, type InputHTMLAttributes } from "react";
 import { cn } from "@/lib/cn";
+import { FormLabelWithHelp } from "./FieldHelp";
 
 export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   label?: string;
+  labelMeta?: string;
+  labelHelpText?: string;
   helperText?: string;
   error?: string;
 }
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(
   (
-    { className, label, helperText, error, id, disabled, required, ...props },
+    {
+      className,
+      label,
+      labelMeta,
+      labelHelpText,
+      helperText,
+      error,
+      id,
+      disabled,
+      required,
+      ...props
+    },
     ref,
   ) => {
     const inputId = id ?? props.name;
@@ -17,17 +31,13 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
     return (
       <div className="flex w-full flex-col gap-1.5">
         {label && (
-          <label
+          <FormLabelWithHelp
             htmlFor={inputId}
-            className="text-body-sm font-semibold text-neutral-800"
-          >
-            {label}
-            {required && (
-              <span className="ml-1 text-danger" aria-hidden="true">
-                *
-              </span>
-            )}
-          </label>
+            label={label}
+            required={required}
+            metaText={labelMeta}
+            helpText={labelHelpText}
+          />
         )}
         <input
           ref={ref}

@@ -248,12 +248,12 @@ function CardContent({ card }: { card: FeatureCard }) {
         sizes="(min-width: 1024px) 276px, (min-width: 640px) 45vw, 84vw"
         className="object-contain drop-shadow-[0_12px_20px_rgba(31,31,31,0.08)]"
       />
-      <span className="absolute inset-x-[9%] bottom-[7%] top-[26%] z-10 flex flex-col overflow-hidden">
-        <span className="flex shrink-0 flex-col gap-3">
-          <span className="m-0 block max-w-full text-[18px] font-extrabold leading-[1.25] text-[#1F1F1F] sm:text-[20px]">
+      <span className="absolute inset-x-[7%] bottom-[7%] top-[26%] z-10 flex flex-col overflow-hidden sm:inset-x-[8%] lg:inset-x-[10.5%]">
+        <span className="flex shrink-0 flex-col gap-3 [text-wrap:pretty] [word-break:keep-all]">
+          <span className="m-0 block max-w-full text-[18px] font-extrabold leading-[1.25] tracking-normal text-[#1F1F1F] sm:text-[19px] lg:text-[20px]">
             <span className="line-clamp-2">{card.title}</span>
           </span>
-          <span className="m-0 block overflow-hidden text-[14px] font-semibold leading-[1.5] text-neutral-600 sm:text-[15px]">
+          <span className="m-0 block overflow-hidden text-[14px] font-semibold leading-[1.55] text-neutral-600 sm:text-[15px]">
             <span className="line-clamp-3">{card.description}</span>
           </span>
         </span>
@@ -383,9 +383,17 @@ function LandingFooter() {
             <BrandLogo className="h-8" />
             <p className="font-semibold text-neutral-700">© 2026 스탭핑</p>
           </div>
-          <p className="font-medium text-neutral-700">
-            제주 게스트하우스와 스탭을 자연스럽게 연결합니다.
-          </p>
+          <div className="flex flex-col gap-2 sm:items-end">
+            <p className="font-medium text-neutral-700">
+              제주 게스트하우스와 스탭을 자연스럽게 연결합니다.
+            </p>
+            <a
+              href="mailto:bwj0721@naver.com"
+              className="font-medium text-neutral-600 transition-colors hover:text-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2"
+            >
+              문의: bwj0721@naver.com
+            </a>
+          </div>
         </div>
       </div>
     </footer>
