@@ -21,6 +21,12 @@ export function ApplicationForm({
   const router = useRouter();
   const [isPending, setIsPending] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const currentYear = new Date().getFullYear();
+  const exampleBirthYear = 2000;
+  const exampleAge = currentYear - exampleBirthYear + 1;
+  const ageHelpText = `출생연도를 기준으로 계산한 연 나이를 입력해 주세요.
+연 나이 = 현재 연도 - 출생연도 + 1
+${currentYear}년 기준 ${exampleBirthYear}년생은 ${exampleAge}세입니다.`;
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -65,6 +71,8 @@ export function ApplicationForm({
           />
           <Input
             label="나이"
+            labelHelpText={ageHelpText}
+            labelHelpAriaLabel="나이 입력 기준 안내"
             name="age"
             type="number"
             min={1}

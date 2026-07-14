@@ -557,7 +557,7 @@ export async function getPublicJobBySlug(
       code: jobPostError.code,
       details: jobPostError.details,
     });
-    return { detail: null, viewerProfile };
+    throw new Error("모집글 상세 정보를 불러오지 못했습니다.");
   }
 
   if (!jobPost || jobPost.status === "hidden") {
@@ -592,7 +592,7 @@ export async function getPublicJobBySlug(
       jobPhotoError,
       guesthousePhotoError,
     });
-    return { detail: null, viewerProfile };
+    throw new Error("모집글 관련 정보를 불러오지 못했습니다.");
   }
 
   const favoriteIds = await getFavoriteGuesthouseIds(viewerProfile, [job.guesthouse_id]);

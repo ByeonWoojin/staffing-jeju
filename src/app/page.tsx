@@ -9,6 +9,10 @@ const title = "제주도 게스트하우스 스탭 모집·지원 | 스탭핑";
 const ogTitle = "제주 게스트하우스 스탭 모집부터 지원까지 | 스탭핑";
 const description =
   "제주도 게스트하우스 스탭 모집 플랫폼 스탭핑에서 지역, 입도 가능일, 근무 조건에 맞는 모집글을 찾아보세요. 관심 공고를 저장하고 게스트하우스별 조건을 비교할 수 있습니다. 원하는 모집글에 지원하고 지원 현황도 확인할 수 있습니다.";
+const ogDescription =
+  "제주도 게스트하우스 스탭 모집 플랫폼 스탭핑에서 지역과 근무 조건에 맞는 모집글을 찾아보고 지원할 수 있습니다.";
+const twitterDescription =
+  "제주 게스트하우스 모집글을 조건별로 확인하고 원하는 공고에 지원해 보세요.";
 const siteUrl = "https://staffing-jeju.vercel.app/";
 const ogImage = "/images/og/staffing-og.png";
 const ogImageAlt = "제주도 게스트하우스 스탭 모집 플랫폼 스탭핑";
@@ -23,7 +27,7 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: ogTitle,
-    description,
+    description: ogDescription,
     url: siteUrl,
     siteName: "스탭핑",
     locale: "ko_KR",
@@ -40,7 +44,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: ogTitle,
-    description,
+    description: twitterDescription,
     images: [ogImage],
   },
   robots: {

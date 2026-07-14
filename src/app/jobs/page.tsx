@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { getCurrentAuthUser } from "@/lib/auth/onboarding";
@@ -14,6 +15,38 @@ import {
 } from "@/lib/guesthouse-image";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "제주 게스트하우스 스탭 모집글 찾기",
+  description:
+    "제주 게스트하우스 스탭 모집글을 스탭핑에서 확인해 보세요. 지역, 입도 가능일, 근무 조건을 기준으로 공고를 탐색할 수 있습니다. 관심 모집글을 저장하고 원하는 게스트하우스에 지원할 수 있습니다.",
+  alternates: {
+    canonical: "/jobs",
+  },
+  openGraph: {
+    title: "제주 게스트하우스 스탭 모집글 찾기 | 스탭핑",
+    description:
+      "제주 지역과 입도 가능일, 근무 조건을 비교해 자신에게 맞는 게스트하우스 모집글을 찾아보세요.",
+    url: "/jobs",
+    images: [
+      {
+        url: "/images/og/staffing-og.png",
+        alt: "스탭핑 제주 게스트하우스 스탭 모집글 목록",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "제주 게스트하우스 스탭 모집글 찾기 | 스탭핑",
+    description:
+      "제주 게스트하우스 모집글을 지역과 근무 조건별로 찾아볼 수 있습니다.",
+    images: ["/images/og/staffing-og.png"],
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
+};
 
 type JobsSearchParams = Record<string, string | string[] | undefined>;
 

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { GoogleLoginButton } from "@/components/auth/GoogleLoginButton";
@@ -14,8 +15,10 @@ import {
   EmptyState,
   PageHeader,
 } from "@/components/ui";
+import { privatePageMetadata } from "@/lib/seo/private-metadata";
 
 export const dynamic = "force-dynamic";
+export const metadata: Metadata = privatePageMetadata;
 
 async function getApplicationTarget(slug: string) {
   const supabase = createSupabaseAdminClient();

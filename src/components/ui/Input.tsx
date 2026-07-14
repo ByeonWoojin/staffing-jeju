@@ -6,6 +6,7 @@ export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   label?: string;
   labelMeta?: string;
   labelHelpText?: string;
+  labelHelpAriaLabel?: string;
   helperText?: string;
   error?: string;
 }
@@ -17,6 +18,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
       label,
       labelMeta,
       labelHelpText,
+      labelHelpAriaLabel,
       helperText,
       error,
       id,
@@ -37,6 +39,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             required={required}
             metaText={labelMeta}
             helpText={labelHelpText}
+            helpAriaLabel={labelHelpAriaLabel}
           />
         )}
         <input

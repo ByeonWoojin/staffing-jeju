@@ -21,6 +21,9 @@ import {
   UrgentBadge,
 } from "@/components/ui";
 import { cn } from "@/lib/cn";
+import { privatePageMetadata } from "@/lib/seo/private-metadata";
+
+export const metadata = privatePageMetadata;
 
 const BRAND_COLORS = [
   { name: "Primary", hex: "#E35336", className: "bg-primary-500" },

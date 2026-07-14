@@ -6,12 +6,14 @@ import { cn } from "@/lib/cn";
 interface FieldInfoTooltipProps {
   label: string;
   helpText: string;
+  ariaLabel?: string;
   className?: string;
 }
 
 export function FieldInfoTooltip({
   label,
   helpText,
+  ariaLabel,
   className,
 }: FieldInfoTooltipProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -52,7 +54,7 @@ export function FieldInfoTooltip({
     >
       <button
         type="button"
-        aria-label={`${label} 입력 안내`}
+        aria-label={ariaLabel ?? `${label} 입력 안내`}
         aria-expanded={isOpen}
         aria-describedby={isOpen ? tooltipId : undefined}
         onFocus={() => {
@@ -77,7 +79,7 @@ export function FieldInfoTooltip({
         <span
           id={tooltipId}
           role="tooltip"
-          className="absolute left-0 top-full z-50 mt-2 w-[min(17.5rem,calc(100vw-2.5rem))] rounded-xl bg-neutral-900 px-3 py-2.5 text-[13px] font-medium leading-[1.5] text-white shadow-lg"
+          className="absolute left-0 top-full z-50 mt-2 w-[min(17.5rem,calc(100vw-2.5rem))] whitespace-pre-line rounded-xl bg-neutral-900 px-3 py-2.5 text-[13px] font-medium leading-[1.5] text-white shadow-lg"
         >
           {helpText}
           <span
@@ -96,6 +98,7 @@ interface FormLabelWithHelpProps {
   required?: boolean;
   metaText?: string;
   helpText?: string;
+  helpAriaLabel?: string;
   className?: string;
   labelClassName?: string;
 }
@@ -106,6 +109,7 @@ export function FormLabelWithHelp({
   required = false,
   metaText,
   helpText,
+  helpAriaLabel,
   className,
   labelClassName,
 }: FormLabelWithHelpProps) {
@@ -127,7 +131,13 @@ export function FormLabelWithHelp({
           {metaText}
         </span>
       )}
-      {helpText && <FieldInfoTooltip label={label} helpText={helpText} />}
+      {helpText && (
+        <FieldInfoTooltip
+          label={label}
+          helpText={helpText}
+          ariaLabel={helpAriaLabel}
+        />
+      )}
     </div>
   );
 }

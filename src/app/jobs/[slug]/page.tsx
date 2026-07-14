@@ -1,11 +1,11 @@
+import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { type ReactNode } from "react";
 import { notFound } from "next/navigation";
-import {
-  getPublicJobBySlug,
-  getStipendSummary,
-} from "@/lib/public-job-data";
+import { getPublicJobPostBySlug } from "@/lib/jobs/get-public-job-post";
+import { getStipendSummary } from "@/lib/public-job-data";
+import { buildJobPostMetadata } from "@/lib/seo/job-post-metadata";
 import { getGenderConditionLabel } from "@/lib/labels";
 import { formatDate } from "@/lib/owner-utils";
 import { ApplyButton } from "@/components/jobs/ApplyButton";
@@ -19,7 +19,6 @@ import {
   Button,
   ButtonLink,
   Card,
-  EmptyState,
   JobStatusBadge,
   UrgentBadge,
 } from "@/components/ui";
@@ -27,7 +26,7 @@ import {
 export const dynamic = "force-dynamic";
 
 type JobDetail = NonNullable<
-  Awaited<ReturnType<typeof getPublicJobBySlug>>["detail"]
+  Awaited<ReturnType<typeof getPublicJobPostBySlug>>["detail"]
 >;
 type JobPost = JobDetail["jobPost"];
 type Guesthouse = JobDetail["guesthouse"];
@@ -41,6 +40,59 @@ interface DetailItem {
 interface TextBlock {
   title: string;
   value: string;
+}
+
+type JobPageProps = {
+  params: Promise<{ slug: string }>;
+};
+
+export async function generateMetadata({
+  params,
+}: JobPageProps): Promise<Metadata> {
+  const { slug } = await params;
+  const { detail } = await getPublicJobPostBySlug(slug);
+
+  if (!detail) {
+    return {
+      title: "모집글을 찾을 수 없습니다",
+      description: "요청한 제주 게스트하우스 스탭 모집글을 찾을 수 없습니다.",
+      robots: {
+        index: false,
+        follow: false,
+      },
+    };
+  }
+
+  const generated = buildJobPostMetadata(detail);
+
+  return {
+    title: generated.title,
+    description: generated.description,
+    alternates: {
+      canonical: `/jobs/${detail.jobPost.slug}`,
+    },
+    openGraph: {
+      title: generated.ogTitle,
+      description: generated.ogDescription,
+      url: `/jobs/${detail.jobPost.slug}`,
+      siteName: "스탭핑",
+      locale: "ko_KR",
+      type: "website",
+      images: [
+        {
+          url: generated.imageUrl ?? "/images/og/staffing-og.png",
+          alt: generated.imageAlt,
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: generated.ogTitle,
+      description: generated.ogDescription,
+      images: [generated.imageUrl ?? "/images/og/staffing-og.png"],
+    },
+    robots: generated.robots,
+  };
 }
 
 function normalizeText(value: string | null | undefined) {
@@ -252,19 +304,26 @@ function TextBlockList({
     <div
       className={
         withDivider
-          ? "grid gap-5 border-t border-neutral-100 pt-5"
-          : "grid gap-5"
+          ? "divide-y divide-neutral-200 border-t border-neutral-200"
+          : "divide-y divide-neutral-200"
       }
     >
       {blocks.map((block) => (
-        <div key={block.title}>
-          <h3 className="text-body-sm font-semibold text-neutral-900">
+        <section
+          key={block.title}
+          className={
+            withDivider
+              ? "py-5 first:pt-5 last:pb-0"
+              : "py-5 first:pt-0 last:pb-0"
+          }
+        >
+          <h3 className="text-body font-bold text-neutral-900">
             {block.title}
           </h3>
-          <p className="mt-2 whitespace-pre-wrap text-body-sm leading-relaxed text-neutral-700">
+          <p className="mt-3 whitespace-pre-wrap break-words text-body-sm leading-relaxed text-neutral-600">
             {block.value}
           </p>
-        </div>
+        </section>
       ))}
     </div>
   );
@@ -452,28 +511,15 @@ function MobileApplyBar({
 
 export default async function PublicJobDetailPage({
   params,
-}: {
-  params: Promise<{ slug: string }>;
-}) {
+}: JobPageProps) {
   const { slug } = await params;
   if (!slug) notFound();
 
-  const { detail, viewerProfile } = await getPublicJobBySlug(slug);
+  const { detail, viewerProfile } = await getPublicJobPostBySlug(slug);
   const isAuthenticated = Boolean(viewerProfile);
 
   if (!detail) {
-    return (
-      <main className="min-h-screen bg-neutral-50">
-        <AppHeader isAuthenticated={isAuthenticated} />
-        <div className="page-container py-12">
-          <EmptyState
-            title="모집이 종료되었거나 존재하지 않는 공고입니다."
-            description="현재 공개 중인 모집글 목록에서 다른 공고를 확인해주세요."
-            action={<ButtonLink href="/jobs">모집글 목록 보기</ButtonLink>}
-          />
-        </div>
-      </main>
-    );
+    notFound();
   }
 
   const { jobPost, guesthouse } = detail;

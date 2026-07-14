@@ -5,8 +5,10 @@ import {
   getProfileById,
   getPostLoginDestination,
 } from "@/lib/auth/onboarding";
+import { privatePageMetadata } from "@/lib/seo/private-metadata";
 
 export const dynamic = "force-dynamic";
+export const metadata = privatePageMetadata;
 
 export default async function OwnerRouteLayout({
   children,

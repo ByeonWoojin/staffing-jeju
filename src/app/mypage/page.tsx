@@ -12,8 +12,10 @@ import {
   EmptyState,
   PageHeader,
 } from "@/components/ui";
+import { privatePageMetadata } from "@/lib/seo/private-metadata";
 
 export const dynamic = "force-dynamic";
+export const metadata = privatePageMetadata;
 
 const roleLabels = {
   staff: "스탭",
