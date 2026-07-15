@@ -17,12 +17,6 @@ import { trackEvent } from "@/lib/analytics/client";
 import { ANALYTICS_EVENTS } from "@/lib/analytics/events";
 import { isUuid } from "@/lib/uuid";
 import {
-  createJobPostFromFormMock,
-  getCurrentOwnerMock,
-  getOwnerGuesthouseMock,
-} from "@/lib/owner-data";
-import { saveCreatedJobPostToSession } from "@/lib/owner-utils";
-import {
   Button,
   ButtonLink,
   Card,
@@ -423,9 +417,6 @@ export function JobPostForm({
       return;
     }
 
-    const owner = getCurrentOwnerMock();
-    const guesthouse = getOwnerGuesthouseMock(owner.id);
-
     if (mode === "create") {
       if (createAction) {
         try {
@@ -457,18 +448,7 @@ export function JobPostForm({
         return;
       }
 
-      //TODO: GET guesthouse where owner_id = currentOwner.id
-      //TODO: POST job_posts
-      if (!guesthouse) {
-        alert("먼저 게스트하우스 정보를 등록해주세요.");
-        router.push("/owner/guesthouse/new");
-        setIsSubmitting(false);
-        return;
-      }
-
-      const created = createJobPostFromFormMock(owner.id, guesthouse.id, payload);
-      saveCreatedJobPostToSession(created);
-      router.push(`/owner/jobs/${created.id}/complete`);
+      alert("모집글 저장 경로를 확인할 수 없습니다.");
     } else {
       if (!initialData || isMockEdit) {
         alert("개발용 mock 데이터에서는 저장할 수 없습니다.");

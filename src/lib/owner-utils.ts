@@ -32,26 +32,3 @@ export function formatRelativeTime(dateString: string): string {
 
   return formatDate(dateString);
 }
-
-const SESSION_KEY_CREATED_JOB = "staffing_created_job_post";
-
-export function saveCreatedJobPostToSession(jobPost: unknown): void {
-  if (typeof window === "undefined") return;
-  sessionStorage.setItem(SESSION_KEY_CREATED_JOB, JSON.stringify(jobPost));
-}
-
-export function getCreatedJobPostFromSession<T>(): T | null {
-  if (typeof window === "undefined") return null;
-  const raw = sessionStorage.getItem(SESSION_KEY_CREATED_JOB);
-  if (!raw) return null;
-  try {
-    return JSON.parse(raw) as T;
-  } catch {
-    return null;
-  }
-}
-
-export function clearCreatedJobPostFromSession(): void {
-  if (typeof window === "undefined") return;
-  sessionStorage.removeItem(SESSION_KEY_CREATED_JOB);
-}

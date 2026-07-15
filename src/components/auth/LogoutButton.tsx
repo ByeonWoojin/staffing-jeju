@@ -36,9 +36,6 @@ export function LogoutButton({
     if (isSigningOut) return;
 
     setIsSigningOut(true);
-    trackEvent(ANALYTICS_EVENTS.LOGOUT, {
-      user_role: userRole,
-    });
 
     const supabase = createSupabaseBrowserClient();
     const { error } = await supabase.auth.signOut();
@@ -49,6 +46,9 @@ export function LogoutButton({
       return;
     }
 
+    trackEvent(ANALYTICS_EVENTS.LOGOUT, {
+      user_role: userRole,
+    });
     resetAnalyticsUser();
     router.replace(redirectTo);
     router.refresh();

@@ -124,11 +124,7 @@ export function GuesthouseForm({
           );
         }
       } else {
-        //TODO: POST guesthouses
-        // body: { owner_id, name, region, address_text, map_url, contact_method }
-        //TODO: Toast로 성공 메시지 표시
-        alert("게스트하우스 정보가 저장되었습니다.");
-        router.push("/owner/jobs/new");
+        alert("게스트하우스 저장 경로를 확인할 수 없습니다.");
       }
     } else {
       if (!guesthouseId || isMockEdit) {

@@ -1,17 +1,6 @@
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getCurrentAuthUser } from "@/lib/auth/onboarding";
-import { isUuid } from "@/lib/uuid";
 import { attachApplicationPhotoUrls } from "@/lib/application-photo";
-import {
-  currentOwner,
-  getApplicationWithOwnerCheckMock,
-  getApplicationsByJobPostIdMock,
-  getCurrentJobPostMock,
-  getGuesthouseByIdMock,
-  getOwnerGuesthouseMock,
-  getOwnerJobPostByIdMock,
-  type OwnerDashboardData,
-} from "@/lib/owner-data";
 import type {
   Application,
   Guesthouse,
@@ -20,6 +9,17 @@ import type {
   JobPostPhoto,
   Profile,
 } from "@/types/database";
+
+export interface OwnerDashboardData {
+  owner: Profile;
+  guesthouse: Guesthouse | null;
+  current_job_post: JobPost | null;
+  applications: Application[];
+  stats: {
+    total_application_count: number;
+    new_application_count: number;
+  };
+}
 
 function logSupabaseReadError(context: string, error: unknown) {
   if (error && typeof error === "object") {
@@ -40,59 +40,30 @@ function logSupabaseReadError(context: string, error: unknown) {
   });
 }
 
-function logMockFallback(context: string, reason: string) {
-  console.error(`[owner-supabase-data] using mock fallback: ${context}`, {
-    reason,
-  });
-}
-
 export async function getCurrentOwner(): Promise<Profile> {
   try {
     const authUser = await getCurrentAuthUser();
-    if (authUser) {
-      const supabase = createSupabaseAdminClient();
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", authUser.id)
-        .eq("role", "owner")
-        .maybeSingle();
-
-      if (error) throw error;
-      if (data) return data as Profile;
-
-      logMockFallback(
-        "current owner",
-        `auth user id=${authUser.id}에 해당하는 owner profile이 없습니다.`,
-      );
+    if (!authUser) {
+      throw new Error("로그인이 필요합니다.");
     }
 
     const supabase = createSupabaseAdminClient();
-    const devOwnerId = process.env.NEXT_PUBLIC_DEV_OWNER_ID;
-    const baseQuery = supabase.from("profiles").select("*").eq("role", "owner");
-
-    const query = devOwnerId
-      ? baseQuery.eq("id", devOwnerId)
-      : baseQuery.order("created_at", { ascending: true }).limit(1);
-
-    const { data, error } = await query.maybeSingle();
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", authUser.id)
+      .eq("role", "owner")
+      .maybeSingle();
 
     if (error) throw error;
     if (!data) {
-      logMockFallback(
-        "current owner",
-        devOwnerId
-          ? `NEXT_PUBLIC_DEV_OWNER_ID=${devOwnerId}에 해당하는 owner profile이 없습니다.`
-          : "role='owner' profile이 없습니다.",
-      );
-      return currentOwner;
+      throw new Error("사장님 프로필을 찾을 수 없습니다.");
     }
 
     return data as Profile;
   } catch (error) {
     logSupabaseReadError("failed to load current owner", error);
-    logMockFallback("current owner", "Supabase owner profile 조회 실패");
-    return currentOwner;
+    throw new Error("사장님 정보를 불러오지 못했습니다.");
   }
 }
 
@@ -110,22 +81,12 @@ export async function getOwnerGuesthouse(
       .maybeSingle();
 
     if (error) throw error;
-    if (!data) {
-      logMockFallback(
-        "owner guesthouse",
-        `owner_id=${ownerId}에 해당하는 guesthouse가 없습니다.`,
-      );
-      return getOwnerGuesthouseMock(ownerId);
-    }
+    if (!data) return null;
 
     return data as Guesthouse;
   } catch (error) {
     logSupabaseReadError("failed to load owner guesthouse", error);
-    logMockFallback(
-      "owner guesthouse",
-      `owner_id=${ownerId} guesthouse 조회 실패`,
-    );
-    return getOwnerGuesthouseMock(ownerId);
+    throw new Error("게스트하우스 정보를 불러오지 못했습니다.");
   }
 }
 
@@ -148,23 +109,12 @@ export async function getCurrentJobPost(
       .maybeSingle();
 
     if (error) throw error;
-    if (!data) {
-      logMockFallback(
-        "current job post",
-        `owner_id=${ownerId}, guesthouse_id=${guesthouse.id}에 해당하는 job_post가 없습니다.`,
-      );
-      if (isUuid(ownerId) && isUuid(guesthouse.id)) return null;
-      return getCurrentJobPostMock(ownerId);
-    }
+    if (!data) return null;
 
     return data as JobPost;
   } catch (error) {
     logSupabaseReadError("failed to load current job post", error);
-    logMockFallback(
-      "current job post",
-      `owner_id=${ownerId} current job_post 조회 실패`,
-    );
-    return getCurrentJobPostMock(ownerId);
+    throw new Error("모집글 정보를 불러오지 못했습니다.");
   }
 }
 
@@ -182,22 +132,12 @@ export async function getOwnerJobPostById(
       .maybeSingle();
 
     if (error) throw error;
-    if (!data) {
-      logMockFallback(
-        "owner job post by id",
-        `owner_id=${ownerId}, jobPostId=${jobPostId}에 해당하는 job_post가 없습니다.`,
-      );
-      return getOwnerJobPostByIdMock(ownerId, jobPostId);
-    }
+    if (!data) return null;
 
     return data as JobPost;
   } catch (error) {
     logSupabaseReadError("failed to load owner job post by id", error);
-    logMockFallback(
-      "owner job post by id",
-      `owner_id=${ownerId}, jobPostId=${jobPostId} job_post 조회 실패`,
-    );
-    return getOwnerJobPostByIdMock(ownerId, jobPostId);
+    throw new Error("모집글 정보를 불러오지 못했습니다.");
   }
 }
 
@@ -213,13 +153,7 @@ export async function getApplicationsByJobPostId(
       .maybeSingle();
 
     if (jobPostError) throw jobPostError;
-    if (!jobPost) {
-      logMockFallback(
-        "applications by job post id",
-        `jobPostId=${jobPostId}에 해당하는 job_post가 없어 recruitment_cycle을 확인할 수 없습니다.`,
-      );
-      return getApplicationsByJobPostIdMock(jobPostId);
-    }
+    if (!jobPost) return [];
     if (jobPost.status === "hidden") return [];
 
     const { data, error } = await supabase
@@ -233,11 +167,7 @@ export async function getApplicationsByJobPostId(
     return attachApplicationPhotoUrls((data ?? []) as Application[]);
   } catch (error) {
     logSupabaseReadError("failed to load applications by job post id", error);
-    logMockFallback(
-      "applications by job post id",
-      `jobPostId=${jobPostId} applications 조회 실패`,
-    );
-    return getApplicationsByJobPostIdMock(jobPostId);
+    throw new Error("지원자 목록을 불러오지 못했습니다.");
   }
 }
 
@@ -253,13 +183,7 @@ export async function getApplicationCountByJobPostId(
       .maybeSingle();
 
     if (jobPostError) throw jobPostError;
-    if (!jobPost) {
-      logMockFallback(
-        "application count by job post id",
-        `jobPostId=${jobPostId}에 해당하는 job_post가 없어 지원자 수를 0으로 표시합니다.`,
-      );
-      return 0;
-    }
+    if (!jobPost) return 0;
     if (jobPost.status === "hidden") return 0;
 
     const { count, error } = await supabase
@@ -273,11 +197,7 @@ export async function getApplicationCountByJobPostId(
     return count ?? 0;
   } catch (error) {
     logSupabaseReadError("failed to load application count by job post id", error);
-    logMockFallback(
-      "application count by job post id",
-      `jobPostId=${jobPostId} 지원자 수 조회 실패로 0을 표시합니다.`,
-    );
-    return 0;
+    throw new Error("지원자 수를 불러오지 못했습니다.");
   }
 }
 
@@ -340,11 +260,7 @@ export async function getApplicationWithOwnerCheck(
     return { application: applicationWithPhotoUrl, job_post };
   } catch (error) {
     logSupabaseReadError("failed to load application with owner check", error);
-    logMockFallback(
-      "application with owner check",
-      `applicationId=${applicationId} 지원서 조회 실패`,
-    );
-    return getApplicationWithOwnerCheckMock(owner.id, applicationId);
+    throw new Error("지원서 정보를 불러오지 못했습니다.");
   }
 }
 
@@ -360,22 +276,12 @@ export async function getGuesthouseById(
       .maybeSingle();
 
     if (error) throw error;
-    if (!data) {
-      logMockFallback(
-        "guesthouse by id",
-        `guesthouseId=${guesthouseId}에 해당하는 guesthouse가 없습니다.`,
-      );
-      return getGuesthouseByIdMock(guesthouseId);
-    }
+    if (!data) return null;
 
     return data as Guesthouse;
   } catch (error) {
     logSupabaseReadError("failed to load guesthouse by id", error);
-    logMockFallback(
-      "guesthouse by id",
-      `guesthouseId=${guesthouseId} guesthouse 조회 실패`,
-    );
-    return getGuesthouseByIdMock(guesthouseId);
+    throw new Error("게스트하우스 정보를 불러오지 못했습니다.");
   }
 }
 
