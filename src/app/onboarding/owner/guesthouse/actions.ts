@@ -21,6 +21,12 @@ const MAX_PHOTO_COUNT = 5;
 const MAX_PHOTO_SIZE_BYTES = 5 * 1024 * 1024;
 const ALLOWED_PHOTO_TYPES = ["image/jpeg", "image/png", "image/webp"] as const;
 
+export interface CreateOwnerGuesthouseResult {
+  redirectTo: string;
+  guesthouseId?: string;
+  created: boolean;
+}
+
 function normalizeRequiredText(value: string, fieldLabel: string): string {
   const trimmed = value.trim();
   if (!trimmed) {
@@ -108,9 +114,9 @@ async function getOwnerIdOrRedirect(): Promise<string | null> {
 export async function createOwnerGuesthouse(
   payload: GuesthouseFormData,
   photoFormData?: FormData,
-): Promise<string> {
+): Promise<CreateOwnerGuesthouseResult> {
   const ownerId = await getOwnerIdOrRedirect();
-  if (!ownerId) return "/";
+  if (!ownerId) return { redirectTo: "/", created: false };
 
   const supabase = createSupabaseAdminClient();
 
@@ -125,7 +131,7 @@ export async function createOwnerGuesthouse(
   }
 
   if (existing) {
-    return "/onboarding/owner/job-post";
+    return { redirectTo: "/onboarding/owner/job-post", created: false };
   }
 
   const photoFiles = getValidPhotoFiles(photoFormData);
@@ -198,5 +204,9 @@ export async function createOwnerGuesthouse(
   revalidatePath("/onboarding/owner/guesthouse");
   revalidatePath("/onboarding/owner/job-post");
   revalidatePath("/owner");
-  return "/onboarding/owner/job-post";
+  return {
+    redirectTo: "/onboarding/owner/job-post",
+    guesthouseId: createdGuesthouse.id,
+    created: true,
+  };
 }

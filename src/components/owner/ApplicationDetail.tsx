@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Application, JobPost } from "@/types/database";
+import { trackEvent } from "@/lib/analytics/client";
+import { ANALYTICS_EVENTS } from "@/lib/analytics/events";
 import {
   acceptApplication,
   closeRecruitmentAfterHiring,
@@ -57,6 +59,13 @@ export function ApplicationDetail({
     setIsUpdating(true);
     try {
       const result = await acceptApplication(application.id);
+      trackEvent(ANALYTICS_EVENTS.APPLICATION_STATUS_CHANGE, {
+        job_post_id: result.application.job_post_id,
+        application_id: result.application.id,
+        previous_status: application.status,
+        next_status: result.application.status,
+        user_role: "owner",
+      });
       setHiringResult(result);
       router.refresh();
     } catch (error) {
@@ -78,10 +87,18 @@ export function ApplicationDetail({
 
     setIsClosingRecruitment(true);
     try {
-      await closeRecruitmentAfterHiring({
+      const closedJobPost = await closeRecruitmentAfterHiring({
         jobPostId: hiringResult.jobPostId,
         applicationId: hiringResult.applicationId,
       });
+      if (closedJobPost.status !== jobPost.status) {
+        trackEvent(ANALYTICS_EVENTS.JOB_POST_STATUS_CHANGE, {
+          job_post_id: closedJobPost.id,
+          previous_status: jobPost.status,
+          next_status: closedJobPost.status,
+          user_role: "owner",
+        });
+      }
       setHiringResult(null);
       router.refresh();
       alert("모집이 마감되었습니다.");
@@ -99,7 +116,14 @@ export function ApplicationDetail({
     if (!confirm("이 지원자를 불합격 처리하시겠습니까?")) return;
     setIsUpdating(true);
     try {
-      await rejectApplication(application.id);
+      const result = await rejectApplication(application.id);
+      trackEvent(ANALYTICS_EVENTS.APPLICATION_STATUS_CHANGE, {
+        job_post_id: result.job_post_id,
+        application_id: result.id,
+        previous_status: application.status,
+        next_status: result.status,
+        user_role: "owner",
+      });
       router.refresh();
       alert("불합격 처리되었습니다.");
     } catch (error) {

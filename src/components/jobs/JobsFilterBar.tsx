@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import type { PublicJobFilters } from "@/lib/public-job-data";
 import { JEJU_REGION_OPTIONS } from "@/lib/labels";
+import { trackEvent } from "@/lib/analytics/client";
+import { ANALYTICS_EVENTS } from "@/lib/analytics/events";
 import { cn } from "@/lib/cn";
 import { Button } from "@/components/ui";
 
@@ -284,6 +286,26 @@ function JobsFilterBarState({ filters }: { filters: PublicJobFilters }) {
     setSelectedDateEnd(value);
   };
 
+  const handleFilterSubmit = () => {
+    const hasRegionFilter = Boolean(selectedRegion);
+    const hasEntryDateFilter = Boolean(
+      selectedQuickDate || selectedDateStart || selectedDateEnd,
+    );
+    const hasWorkConditionFilter = Object.values(selectedConditions).some(Boolean);
+    const filterCount = [
+      hasRegionFilter,
+      hasEntryDateFilter,
+      hasWorkConditionFilter,
+    ].filter(Boolean).length;
+
+    trackEvent(ANALYTICS_EVENTS.JOB_FILTER_APPLY, {
+      filter_count: filterCount,
+      has_region_filter: hasRegionFilter,
+      has_entry_date_filter: hasEntryDateFilter,
+      has_work_condition_filter: hasWorkConditionFilter,
+    });
+  };
+
   const sectionClassName = (section: ActiveSection) =>
     cn(
       "rounded-lg border p-4 transition-colors",
@@ -362,7 +384,12 @@ function JobsFilterBarState({ filters }: { filters: PublicJobFilters }) {
             aria-labelledby="jobs-filter-title"
             className="absolute inset-x-0 bottom-0 max-h-[92vh] overflow-y-auto rounded-t-lg border border-neutral-200 bg-neutral-0 shadow-lg md:bottom-auto md:left-1/2 md:top-24 md:w-[calc(100vw-32px)] md:max-w-[720px] md:-translate-x-1/2 md:rounded-lg"
           >
-            <form action="/jobs" method="get" className="flex flex-col">
+            <form
+              action="/jobs"
+              method="get"
+              className="flex flex-col"
+              onSubmit={handleFilterSubmit}
+            >
               {selectedRegion && (
                 <input type="hidden" name="region" value={selectedRegion} />
               )}

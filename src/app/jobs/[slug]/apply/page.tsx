@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { GoogleLoginButton } from "@/components/auth/GoogleLoginButton";
 import { ApplicationForm } from "./ApplicationForm";
+import { AnalyticsEventTracker } from "@/components/analytics/AnalyticsEventTracker";
 import { getCurrentAuthUser, getProfileById } from "@/lib/auth/onboarding";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { formatDate } from "@/lib/owner-utils";
@@ -16,6 +17,7 @@ import {
   PageHeader,
 } from "@/components/ui";
 import { privatePageMetadata } from "@/lib/seo/private-metadata";
+import { ANALYTICS_EVENTS } from "@/lib/analytics/events";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = privatePageMetadata;
@@ -95,7 +97,7 @@ function LoginRequiredState() {
         <EmptyState
           title="지원하려면 로그인이 필요합니다."
           description="Google 로그인 후 스탭 역할을 선택하면 지원서를 작성할 수 있습니다."
-          action={<GoogleLoginButton />}
+          action={<GoogleLoginButton ctaLocation="apply_login_required" />}
         />
       </div>
     </main>
@@ -188,6 +190,14 @@ export default async function ApplyPage({
 
   return (
     <main className="min-h-screen bg-neutral-50">
+      <AnalyticsEventTracker
+        eventName={ANALYTICS_EVENTS.APPLICATION_START}
+        properties={{
+          job_post_id: jobPost.id,
+          guesthouse_id: guesthouse.id,
+          source_page: "job_detail",
+        }}
+      />
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-8 md:px-6 md:py-10">
         <Link href={`/jobs/${slug}`} className="text-body-sm font-semibold text-primary-700">
           모집글로 돌아가기
@@ -237,6 +247,8 @@ export default async function ApplyPage({
 
           <ApplicationForm
             slug={slug}
+            jobPostId={jobPost.id}
+            guesthouseId={guesthouse.id}
             defaultName={profile.name}
             defaultPhone={profile.phone ?? ""}
             defaultAvailableStartDate={jobPost.work_start_date}

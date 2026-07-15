@@ -7,7 +7,12 @@ import { isUuid } from "@/lib/uuid";
 import type { Application } from "@/types/database";
 
 export type CancelApplicationResult =
-  | { ok: true; message: string }
+  | {
+      ok: true;
+      message: string;
+      applicationId: string;
+      jobPostId: string;
+    }
   | { ok: false; message: string; redirectTo?: string };
 
 function revalidateApplicationViews(applicationId: string) {
@@ -141,5 +146,10 @@ export async function cancelStaffApplication(
 
   revalidateApplicationViews(application.id);
 
-  return { ok: true, message: "지원이 취소되었습니다." };
+  return {
+    ok: true,
+    message: "지원이 취소되었습니다.",
+    applicationId: application.id,
+    jobPostId: application.job_post_id,
+  };
 }

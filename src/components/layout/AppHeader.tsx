@@ -65,7 +65,10 @@ export function AppHeader({
               프로필
             </Link>
           ) : (
-            <HeaderLoginButton className={accountLinkClassName} />
+            <HeaderLoginButton
+              className={accountLinkClassName}
+              ctaLocation="public_header"
+            />
           )}
         </nav>
       </div>

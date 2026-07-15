@@ -2,18 +2,25 @@
 
 import { useState, type ReactNode } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { trackEvent } from "@/lib/analytics/client";
+import { ANALYTICS_EVENTS } from "@/lib/analytics/events";
 import { cn } from "@/lib/cn";
+import type { UserRole } from "@/types/database";
 
 interface HeaderLoginButtonProps {
   children?: ReactNode;
   className?: string;
   loadingText?: string;
+  ctaLocation?: string;
+  entryRole?: Exclude<UserRole, "admin">;
 }
 
 export function HeaderLoginButton({
   children,
   className,
   loadingText = "이동 중",
+  ctaLocation,
+  entryRole,
 }: HeaderLoginButtonProps) {
   const [isLoading, setIsLoading] = useState(false);
 
@@ -21,6 +28,12 @@ export function HeaderLoginButton({
     if (isLoading) return;
 
     setIsLoading(true);
+    trackEvent(ANALYTICS_EVENTS.AUTH_START, {
+      method: "google",
+      entry_role: entryRole,
+      cta_location: ctaLocation,
+    });
+
     const supabase = createSupabaseBrowserClient();
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",

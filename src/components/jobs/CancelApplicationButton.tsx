@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { cancelStaffApplication } from "@/app/staff/applications/actions";
+import { trackEvent } from "@/lib/analytics/client";
+import { ANALYTICS_EVENTS } from "@/lib/analytics/events";
 import { Button } from "@/components/ui";
 
 export function CancelApplicationButton({
@@ -25,7 +27,13 @@ export function CancelApplicationButton({
         router.push(result.redirectTo);
         return;
       }
-      if (result.ok) router.refresh();
+      if (result.ok) {
+        trackEvent(ANALYTICS_EVENTS.APPLICATION_CANCEL, {
+          job_post_id: result.jobPostId,
+          application_id: result.applicationId,
+        });
+        router.refresh();
+      }
     } catch (error) {
       console.error("[CancelApplicationButton] cancel failed", error);
       alert("지원 취소에 실패했습니다. 잠시 후 다시 시도해주세요.");

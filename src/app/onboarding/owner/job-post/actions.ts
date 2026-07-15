@@ -59,6 +59,13 @@ const STIPEND_VALUES: StipendType[] = [
 ];
 const JOB_POST_IMAGE_BUCKET = "job-post-images";
 
+export interface CreateOwnerJobPostResult {
+  redirectTo: string;
+  jobPostId?: string;
+  guesthouseId?: string;
+  created: boolean;
+}
+
 function normalizeRequiredText(value: string, fieldLabel: string): string {
   const trimmed = value.trim();
   if (!trimmed) {
@@ -233,9 +240,9 @@ async function deleteExistingJobPostPhotos(
 
 export async function createOwnerJobPost(
   payload: JobPostFormData,
-): Promise<string> {
+): Promise<CreateOwnerJobPostResult> {
   const ownerId = await getOwnerIdOrRedirect();
-  if (!ownerId) return "/";
+  if (!ownerId) return { redirectTo: "/", created: false };
 
   const supabase = createSupabaseAdminClient();
 
@@ -249,7 +256,7 @@ export async function createOwnerJobPost(
     throw new Error(`게스트하우스 조회에 실패했습니다: ${guesthouseError.message}`);
   }
   if (!guesthouse) {
-    return "/onboarding/owner/guesthouse";
+    return { redirectTo: "/onboarding/owner/guesthouse", created: false };
   }
 
   const { data: existing, error: existingError } = await supabase
@@ -263,7 +270,7 @@ export async function createOwnerJobPost(
     throw new Error(`모집글 조회에 실패했습니다: ${existingError.message}`);
   }
   if (existing && existing.status !== "hidden") {
-    return "/owner";
+    return { redirectTo: "/owner", created: false };
   }
 
   const values = normalizePayload(ownerId, guesthouse.id, payload);
@@ -296,7 +303,12 @@ export async function createOwnerJobPost(
     revalidatePath("/onboarding/owner/job-post");
     revalidatePath("/owner");
     revalidatePath("/owner/jobs");
-    return `/owner/jobs/${updated.id}/edit`;
+    return {
+      redirectTo: `/owner/jobs/${updated.id}/edit`,
+      jobPostId: updated.id,
+      guesthouseId: updated.guesthouse_id,
+      created: false,
+    };
   }
 
   const { data: created, error } = await supabase
@@ -315,5 +327,10 @@ export async function createOwnerJobPost(
   revalidatePath("/onboarding/owner/job-post");
   revalidatePath("/owner");
   revalidatePath("/owner/jobs");
-  return `/owner/jobs/${created.id}/edit`;
+  return {
+    redirectTo: `/owner/jobs/${created.id}/edit`,
+    jobPostId: created.id,
+    guesthouseId: guesthouse.id,
+    created: true,
+  };
 }

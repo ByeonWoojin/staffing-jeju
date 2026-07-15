@@ -1,11 +1,14 @@
 import Image from "next/image";
 import Link from "next/link";
+import { AnalyticsEventTracker } from "@/components/analytics/AnalyticsEventTracker";
 import { HeaderLoginButton } from "@/components/auth/HeaderLoginButton";
 import { BrandLogo } from "@/components/brand/BrandLogo";
+import { ANALYTICS_EVENTS } from "@/lib/analytics/events";
 import {
   LandingFAQAccordion,
   type FAQItem,
 } from "@/components/landing/LandingFAQAccordion";
+import type { UserRole } from "@/types/database";
 
 interface FeatureCard {
   title: string;
@@ -16,6 +19,8 @@ interface FeatureCard {
   visualMaxHeight: string;
   visualTranslateY: string;
   visualScale: string;
+  analyticsLocation?: string;
+  analyticsEntryRole?: Exclude<UserRole, "admin">;
   priority?: boolean;
   href?: string;
 }
@@ -42,6 +47,8 @@ const featureCards: FeatureCard[] = [
     visualMaxHeight: "max-h-[152px] sm:max-h-[174px] lg:max-h-[162px]",
     visualTranslateY: "translate-y-1",
     visualScale: "scale-100",
+    analyticsLocation: "landing_card_staff",
+    analyticsEntryRole: "staff",
   },
   {
     title: "사장님으로 시작하기",
@@ -52,6 +59,8 @@ const featureCards: FeatureCard[] = [
     visualMaxHeight: "max-h-[150px] sm:max-h-[172px] lg:max-h-[160px]",
     visualTranslateY: "translate-y-1",
     visualScale: "scale-100",
+    analyticsLocation: "landing_card_owner",
+    analyticsEntryRole: "owner",
   },
   {
     title: "간편하게 연결하기",
@@ -62,6 +71,7 @@ const featureCards: FeatureCard[] = [
     visualMaxHeight: "max-h-[140px] sm:max-h-[160px] lg:max-h-[148px]",
     visualTranslateY: "translate-y-1",
     visualScale: "scale-100",
+    analyticsLocation: "landing_card_connect",
   },
 ];
 
@@ -210,7 +220,10 @@ function LandingHero() {
 머무름이 특별해지는 만남을 지금 준비해 보세요.`}
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-              <HeaderLoginButton className={`${googleCtaClassName} w-full sm:w-auto sm:min-w-[190px]`}>
+              <HeaderLoginButton
+                className={`${googleCtaClassName} w-full sm:w-auto sm:min-w-[190px]`}
+                ctaLocation="landing_hero"
+              >
                 <GoogleIcon />
                 <span>Google로 시작하기</span>
               </HeaderLoginButton>
@@ -286,6 +299,8 @@ function LandingFeatureCard({ card }: { card: FeatureCard }) {
     <HeaderLoginButton
       className={`${cardClassName} border-transparent bg-transparent p-0 hover:bg-transparent disabled:text-neutral-400!`}
       loadingText="Google로 이동 중..."
+      ctaLocation={card.analyticsLocation}
+      entryRole={card.analyticsEntryRole}
     >
       <CardContent card={card} />
     </HeaderLoginButton>
@@ -332,6 +347,7 @@ function LandingCTA() {
             </Link>
             <HeaderLoginButton
               className={`${googleCtaClassName} w-full sm:w-auto sm:min-w-[190px]`}
+              ctaLocation="landing_bottom_cta"
             >
               <GoogleIcon />
               <span>Google로 시작하기</span>
@@ -403,6 +419,10 @@ function LandingFooter() {
 export function LandingPage() {
   return (
     <main className="min-h-screen bg-[#FFFDF8]">
+      <AnalyticsEventTracker
+        eventName={ANALYTICS_EVENTS.LANDING_VIEW}
+        properties={{ page: "landing" }}
+      />
       <LandingHero />
       <LandingFeatureCards />
       <LandingFAQ />

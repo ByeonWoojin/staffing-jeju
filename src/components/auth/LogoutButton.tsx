@@ -3,8 +3,14 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import {
+  resetAnalyticsUser,
+  trackEvent,
+} from "@/lib/analytics/client";
+import { ANALYTICS_EVENTS } from "@/lib/analytics/events";
 import { Button } from "@/components/ui";
 import type { ButtonProps } from "@/components/ui";
+import type { UserRole } from "@/types/database";
 
 interface LogoutButtonProps {
   redirectTo?: string;
@@ -12,6 +18,7 @@ interface LogoutButtonProps {
   variant?: ButtonProps["variant"];
   size?: ButtonProps["size"];
   className?: string;
+  userRole?: UserRole;
 }
 
 export function LogoutButton({
@@ -20,6 +27,7 @@ export function LogoutButton({
   variant = "outline",
   size = "sm",
   className,
+  userRole,
 }: LogoutButtonProps) {
   const router = useRouter();
   const [isSigningOut, setIsSigningOut] = useState(false);
@@ -28,6 +36,10 @@ export function LogoutButton({
     if (isSigningOut) return;
 
     setIsSigningOut(true);
+    trackEvent(ANALYTICS_EVENTS.LOGOUT, {
+      user_role: userRole,
+    });
+
     const supabase = createSupabaseBrowserClient();
     const { error } = await supabase.auth.signOut();
 
@@ -37,6 +49,7 @@ export function LogoutButton({
       return;
     }
 
+    resetAnalyticsUser();
     router.replace(redirectTo);
     router.refresh();
   };

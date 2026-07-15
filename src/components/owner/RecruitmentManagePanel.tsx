@@ -7,6 +7,8 @@ import type { Guesthouse, JobPost } from "@/types/database";
 import { formatDate, formatDateTime } from "@/lib/owner-utils";
 import { isUuid } from "@/lib/uuid";
 import { getBumpDisabledReason } from "@/lib/owner-data";
+import { trackEvent } from "@/lib/analytics/client";
+import { ANALYTICS_EVENTS } from "@/lib/analytics/events";
 import {
   bumpRecruitment,
   closeRecruitment,
@@ -124,11 +126,12 @@ export function RecruitmentManagePanel({
     setModalError(null);
 
     try {
+      let updatedJobPost: JobPost | null = null;
       if (modalAction === "close") {
-        await closeRecruitment(jobPost.id);
+        updatedJobPost = await closeRecruitment(jobPost.id);
       }
       if (modalAction === "reopen") {
-        await reopenRecruitment(jobPost.id);
+        updatedJobPost = await reopenRecruitment(jobPost.id);
       }
       if (modalAction === "bump") {
         await bumpRecruitment(jobPost.id);
@@ -137,7 +140,15 @@ export function RecruitmentManagePanel({
         await markUrgentRecruitment(jobPost.id);
       }
       if (modalAction === "delete") {
-        await hideRecruitment(jobPost.id);
+        updatedJobPost = await hideRecruitment(jobPost.id);
+      }
+      if (updatedJobPost && updatedJobPost.status !== jobPost.status) {
+        trackEvent(ANALYTICS_EVENTS.JOB_POST_STATUS_CHANGE, {
+          job_post_id: updatedJobPost.id,
+          previous_status: jobPost.status,
+          next_status: updatedJobPost.status,
+          user_role: "owner",
+        });
       }
       setModalAction(null);
       router.refresh();

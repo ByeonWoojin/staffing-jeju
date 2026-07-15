@@ -75,7 +75,7 @@ function LoginRequiredState() {
             description="마이페이지는 로그인 후 사용할 수 있습니다."
             action={
               <div className="grid gap-3">
-                <GoogleLoginButton />
+                <GoogleLoginButton ctaLocation="mypage_login_required" />
                 <ButtonLink href="/jobs" variant="outline" fullWidth>
                   공고 둘러보기
                 </ButtonLink>
@@ -191,7 +191,12 @@ export default async function MyPage() {
                 현재 계정에서 로그아웃하고 공개 공고 목록으로 이동합니다.
               </p>
             </div>
-            <LogoutButton redirectTo="/" variant="outline-danger" size="md" />
+            <LogoutButton
+              redirectTo="/"
+              variant="outline-danger"
+              size="md"
+              userRole={profile.role}
+            />
           </CardContent>
         </Card>
       </div>

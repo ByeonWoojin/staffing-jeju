@@ -43,7 +43,7 @@ export function OwnerAccountMenu() {
           )}
         </div>
       )}
-      <LogoutButton />
+      <LogoutButton userRole="owner" />
     </div>
   );
 }

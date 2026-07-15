@@ -13,6 +13,8 @@ import { useRouter } from "next/navigation";
 import type { JobPost, JobPostFormData } from "@/types/database";
 import { updateJobPost } from "@/app/owner/jobs/[id]/edit/actions";
 import { GENDER_CONDITION_LABELS, STIPEND_TYPE_LABELS } from "@/lib/labels";
+import { trackEvent } from "@/lib/analytics/client";
+import { ANALYTICS_EVENTS } from "@/lib/analytics/events";
 import { isUuid } from "@/lib/uuid";
 import {
   createJobPostFromFormMock,
@@ -33,7 +35,18 @@ import {
 interface JobPostFormProps {
   mode: "create" | "edit";
   initialData?: JobPost;
-  createAction?: (payload: JobPostFormData) => Promise<string | void>;
+  createAction?: (
+    payload: JobPostFormData,
+  ) => Promise<
+    | string
+    | void
+    | {
+        redirectTo: string;
+        jobPostId?: string;
+        guesthouseId?: string;
+        created?: boolean;
+      }
+  >;
   cancelHref?: string;
   submitLabel?: string;
   photoManager?: ReactNode;
@@ -417,8 +430,21 @@ export function JobPostForm({
       if (createAction) {
         try {
           const redirectTo = await createAction(payload);
-          if (redirectTo) {
+          if (typeof redirectTo === "string") {
             router.push(redirectTo);
+          } else if (redirectTo) {
+            if (
+              redirectTo.created &&
+              redirectTo.jobPostId &&
+              redirectTo.guesthouseId
+            ) {
+              trackEvent(ANALYTICS_EVENTS.JOB_POST_CREATE, {
+                job_post_id: redirectTo.jobPostId,
+                guesthouse_id: redirectTo.guesthouseId,
+                user_role: "owner",
+              });
+            }
+            router.push(redirectTo.redirectTo);
           }
         } catch (error) {
           alert(

@@ -2,13 +2,29 @@
 
 import { useState } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { trackEvent } from "@/lib/analytics/client";
+import { ANALYTICS_EVENTS } from "@/lib/analytics/events";
 import { Button } from "@/components/ui";
+import type { UserRole } from "@/types/database";
 
-export function GoogleLoginButton() {
+interface GoogleLoginButtonProps {
+  ctaLocation?: string;
+  entryRole?: Exclude<UserRole, "admin">;
+}
+
+export function GoogleLoginButton({
+  ctaLocation,
+  entryRole,
+}: GoogleLoginButtonProps = {}) {
   const [isLoading, setIsLoading] = useState(false);
 
   const handleLogin = async () => {
     setIsLoading(true);
+    trackEvent(ANALYTICS_EVENTS.AUTH_START, {
+      method: "google",
+      entry_role: entryRole,
+      cta_location: ctaLocation,
+    });
 
     const supabase = createSupabaseBrowserClient();
     const { error } = await supabase.auth.signInWithOAuth({

@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import type { GuesthouseFormData } from "@/types/database";
 import { updateGuesthouse } from "@/app/owner/guesthouse/edit/actions";
 import { JEJU_REGION_OPTIONS } from "@/lib/labels";
+import { trackEvent } from "@/lib/analytics/client";
+import { ANALYTICS_EVENTS } from "@/lib/analytics/events";
 import { isUuid } from "@/lib/uuid";
 import { GuesthousePhotoPicker } from "@/components/owner/GuesthousePhotoManager";
 import {
@@ -27,7 +29,15 @@ interface GuesthouseFormProps {
   createAction?: (
     payload: GuesthouseFormData,
     photoFormData?: FormData,
-  ) => Promise<string | void>;
+  ) => Promise<
+    | string
+    | void
+    | {
+        redirectTo: string;
+        guesthouseId?: string;
+        created?: boolean;
+      }
+  >;
   cancelHref?: string;
   submitLabel?: string;
   photoManager?: ReactNode;
@@ -95,8 +105,16 @@ export function GuesthouseForm({
           });
 
           const redirectTo = await createAction(form, photoFormData);
-          if (redirectTo) {
+          if (typeof redirectTo === "string") {
             router.push(redirectTo);
+          } else if (redirectTo) {
+            if (redirectTo.created && redirectTo.guesthouseId) {
+              trackEvent(ANALYTICS_EVENTS.GUESTHOUSE_CREATE, {
+                guesthouse_id: redirectTo.guesthouseId,
+                user_role: "owner",
+              });
+            }
+            router.push(redirectTo.redirectTo);
           }
         } catch (error) {
           alert(

@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createSupabaseCookieClient } from "@/lib/supabase/server";
-import { getPostLoginDestination } from "@/lib/auth/onboarding";
+import { getPostLoginDestination, getProfileById } from "@/lib/auth/onboarding";
 
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url);
@@ -35,6 +35,16 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${origin}/`);
   }
 
-  const destination = await getPostLoginDestination(user.id);
-  return NextResponse.redirect(`${origin}${destination}`);
+  const [profile, destination] = await Promise.all([
+    getProfileById(user.id),
+    getPostLoginDestination(user.id),
+  ]);
+  const redirectUrl = new URL(destination, origin);
+
+  if (profile?.role === "staff" || profile?.role === "owner") {
+    redirectUrl.searchParams.set("auth_event", "login");
+    redirectUrl.searchParams.set("user_role", profile.role);
+  }
+
+  return NextResponse.redirect(redirectUrl);
 }

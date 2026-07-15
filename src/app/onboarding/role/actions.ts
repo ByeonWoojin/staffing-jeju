@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import {
-  createProfileForUser,
+  createProfileForUserWithStatus,
   getCurrentAuthUser,
   getOwnerOnboardingDestination,
 } from "@/lib/auth/onboarding";
@@ -14,14 +14,15 @@ async function chooseRole(role: Exclude<UserRole, "admin">) {
     redirect("/");
   }
 
-  const profile = await createProfileForUser(user, role);
+  const { profile, isNewUser } = await createProfileForUserWithStatus(user, role);
+  const authEvent = isNewUser ? "sign_up" : "login";
 
   if (profile.role === "staff") {
-    redirect("/jobs");
+    redirect(`/jobs?auth_event=${authEvent}&user_role=staff`);
   }
 
   const destination = await getOwnerOnboardingDestination(profile.id);
-  redirect(destination);
+  redirect(`${destination}?auth_event=${authEvent}&user_role=owner`);
 }
 
 export async function chooseOwnerRole() {

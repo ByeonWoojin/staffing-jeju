@@ -4,12 +4,16 @@ import { useState } from "react";
 import type { MouseEvent } from "react";
 import { useRouter } from "next/navigation";
 import { toggleFavoriteGuesthouse } from "@/app/jobs/actions";
+import { trackEvent } from "@/lib/analytics/client";
+import { ANALYTICS_EVENTS } from "@/lib/analytics/events";
 import { cn } from "@/lib/cn";
 import { Button, type ButtonProps } from "@/components/ui";
 
 interface FavoriteGuesthouseButtonProps {
   guesthouseId: string;
+  jobPostId?: string;
   initialFavorited: boolean;
+  sourcePage?: "job_list" | "job_detail" | "favorites";
   size?: ButtonProps["size"];
   fullWidth?: boolean;
   presentation?: "text" | "icon";
@@ -18,7 +22,9 @@ interface FavoriteGuesthouseButtonProps {
 
 export function FavoriteGuesthouseButton({
   guesthouseId,
+  jobPostId,
   initialFavorited,
+  sourcePage,
   size = "sm",
   fullWidth = false,
   presentation = "text",
@@ -43,6 +49,16 @@ export function FavoriteGuesthouseButton({
       }
 
       setIsFavorited(result.isFavorited);
+      trackEvent(
+        result.isFavorited
+          ? ANALYTICS_EVENTS.FAVORITE_ADD
+          : ANALYTICS_EVENTS.FAVORITE_REMOVE,
+        {
+          job_post_id: jobPostId,
+          guesthouse_id: guesthouseId,
+          source_page: sourcePage,
+        },
+      );
       router.refresh();
     } catch (error) {
       console.error("[FavoriteGuesthouseButton] toggle failed", error);

@@ -6,6 +6,7 @@ import { notFound } from "next/navigation";
 import { getPublicJobPostBySlug } from "@/lib/jobs/get-public-job-post";
 import { getStipendSummary } from "@/lib/public-job-data";
 import { buildJobPostMetadata } from "@/lib/seo/job-post-metadata";
+import { AnalyticsEventTracker } from "@/components/analytics/AnalyticsEventTracker";
 import { getGenderConditionLabel } from "@/lib/labels";
 import { formatDate } from "@/lib/owner-utils";
 import { ApplyButton } from "@/components/jobs/ApplyButton";
@@ -22,6 +23,7 @@ import {
   JobStatusBadge,
   UrgentBadge,
 } from "@/components/ui";
+import { ANALYTICS_EVENTS } from "@/lib/analytics/events";
 
 export const dynamic = "force-dynamic";
 
@@ -434,6 +436,8 @@ function SupportCard({
         </div>
         <FavoriteGuesthouseButton
           guesthouseId={guesthouse.id}
+          jobPostId={jobPost.id}
+          sourcePage="job_detail"
           initialFavorited={detail.isFavorited}
           presentation="icon"
           className="size-10 shrink-0 rounded-full px-0 text-lg"
@@ -553,6 +557,15 @@ export default async function PublicJobDetailPage({
 
   return (
     <main className="min-h-screen bg-neutral-50">
+      <AnalyticsEventTracker
+        eventName={ANALYTICS_EVENTS.JOB_DETAIL_VIEW}
+        properties={{
+          job_post_id: jobPost.id,
+          guesthouse_id: guesthouse.id,
+          region: guesthouse.region,
+          job_status: jobPost.status,
+        }}
+      />
       <AppHeader isAuthenticated={isAuthenticated} />
 
       <div className="page-container flex flex-col gap-6 py-6 pb-32 md:py-8 lg:pb-10">
@@ -584,6 +597,8 @@ export default async function PublicJobDetailPage({
                     </div>
                     <FavoriteGuesthouseButton
                       guesthouseId={guesthouse.id}
+                      jobPostId={jobPost.id}
+                      sourcePage="job_detail"
                       initialFavorited={detail.isFavorited}
                       presentation="icon"
                       className="size-10 shrink-0 rounded-full px-0 text-lg lg:hidden"

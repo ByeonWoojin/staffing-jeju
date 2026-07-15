@@ -3,10 +3,14 @@
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { submitJobApplication } from "./actions";
+import { trackEvent } from "@/lib/analytics/client";
+import { ANALYTICS_EVENTS } from "@/lib/analytics/events";
 import { Button, Card, Input, Select, Textarea } from "@/components/ui";
 
 interface ApplicationFormProps {
   slug: string;
+  jobPostId: string;
+  guesthouseId: string;
   defaultName: string;
   defaultPhone: string;
   defaultAvailableStartDate: string;
@@ -14,6 +18,8 @@ interface ApplicationFormProps {
 
 export function ApplicationForm({
   slug,
+  jobPostId,
+  guesthouseId,
   defaultName,
   defaultPhone,
   defaultAvailableStartDate,
@@ -48,6 +54,10 @@ ${currentYear}년 기준 ${exampleBirthYear}년생은 ${exampleAge}세입니다.
       }
 
       alert(result.message);
+      trackEvent(ANALYTICS_EVENTS.APPLICATION_SUBMIT, {
+        job_post_id: result.jobPostId || jobPostId,
+        guesthouse_id: result.guesthouseId || guesthouseId,
+      });
       router.push(result.redirectTo);
       router.refresh();
     } catch (error) {

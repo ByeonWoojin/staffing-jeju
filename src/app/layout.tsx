@@ -1,4 +1,7 @@
 import type { Metadata } from "next";
+import { GoogleAnalytics } from "@next/third-parties/google";
+import { AnalyticsProvider } from "@/components/analytics/AnalyticsProvider";
+import { AuthAnalyticsBridge } from "@/components/analytics/AuthAnalyticsBridge";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -31,9 +34,25 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const analyticsEnabled = process.env.VERCEL_ENV === "production";
+  const gaMeasurementId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
+  const mixpanelToken = process.env.NEXT_PUBLIC_MIXPANEL_TOKEN;
+
   return (
     <html lang="ko" data-scroll-behavior="smooth">
-      <body className="min-h-screen antialiased">{children}</body>
+      <body className="min-h-screen antialiased">
+        <AnalyticsProvider
+          enabled={analyticsEnabled}
+          gaMeasurementId={gaMeasurementId}
+          mixpanelToken={mixpanelToken}
+        >
+          <AuthAnalyticsBridge />
+          {children}
+        </AnalyticsProvider>
+      </body>
+      {analyticsEnabled && gaMeasurementId ? (
+        <GoogleAnalytics gaId={gaMeasurementId} />
+      ) : null}
     </html>
   );
 }

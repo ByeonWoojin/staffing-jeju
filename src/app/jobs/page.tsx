@@ -4,6 +4,7 @@ import Link from "next/link";
 import { getCurrentAuthUser } from "@/lib/auth/onboarding";
 import { getPublicJobs } from "@/lib/public-job-data";
 import { formatDate } from "@/lib/owner-utils";
+import { AnalyticsEventTracker } from "@/components/analytics/AnalyticsEventTracker";
 import { FavoriteGuesthouseButton } from "@/components/jobs/FavoriteGuesthouseButton";
 import { JobsFilterBar } from "@/components/jobs/JobsFilterBar";
 import { AppHeader } from "@/components/layout/AppHeader";
@@ -13,6 +14,7 @@ import {
   getGuesthouseImageAlt,
   getGuesthouseImageSource,
 } from "@/lib/guesthouse-image";
+import { ANALYTICS_EVENTS } from "@/lib/analytics/events";
 
 export const dynamic = "force-dynamic";
 
@@ -220,6 +222,8 @@ function JobCard({
         <div className="absolute right-3 top-3 z-20">
           <FavoriteGuesthouseButton
             guesthouseId={guesthouse.id}
+            jobPostId={jobPost.id}
+            sourcePage="job_list"
             initialFavorited={isFavorited}
             presentation="icon"
             className="h-10 w-10 rounded-full px-0 text-lg"
@@ -286,6 +290,10 @@ export default async function PublicJobsPage({
 
   return (
     <main className="min-h-screen bg-neutral-50">
+      <AnalyticsEventTracker
+        eventName={ANALYTICS_EVENTS.JOB_LIST_VIEW}
+        properties={{ result_count: pagination.totalCount }}
+      />
       <AppHeader isAuthenticated={Boolean(user)} />
 
       <section className="bg-neutral-0">

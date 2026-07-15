@@ -88,6 +88,8 @@ export default async function StaffFavoritesPage() {
                     </div>
                     <FavoriteGuesthouseButton
                       guesthouseId={guesthouse.id}
+                      jobPostId={currentJobPost?.id}
+                      sourcePage="favorites"
                       initialFavorited
                     />
                   </div>

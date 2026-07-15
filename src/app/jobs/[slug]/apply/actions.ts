@@ -19,7 +19,13 @@ import { getCurrentAuthUser, getProfileById } from "@/lib/auth/onboarding";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 export type SubmitApplicationResult =
-  | { ok: true; message: string; redirectTo: string }
+  | {
+      ok: true;
+      message: string;
+      redirectTo: string;
+      jobPostId: string;
+      guesthouseId: string;
+    }
   | { ok: false; message: string; redirectTo?: string };
 
 const VALID_GENDERS = new Set<GenderCondition>(["male", "female"]);
@@ -387,6 +393,8 @@ export async function submitJobApplication(
       ok: true,
       message: "지원서가 제출되었습니다. 사장님이 확인하면 지원 상태가 변경됩니다.",
       redirectTo: "/staff/applications?submitted=1",
+      jobPostId: jobPost.id,
+      guesthouseId: jobPost.guesthouse_id,
     };
   } catch (error) {
     console.error("[apply/actions] unexpected error", error);

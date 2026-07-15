@@ -76,8 +76,16 @@ export async function createProfileForUser(
   user: User,
   role: Exclude<UserRole, "admin">,
 ): Promise<Profile> {
+  const { profile } = await createProfileForUserWithStatus(user, role);
+  return profile;
+}
+
+export async function createProfileForUserWithStatus(
+  user: User,
+  role: Exclude<UserRole, "admin">,
+): Promise<{ profile: Profile; isNewUser: boolean }> {
   const existing = await getProfileById(user.id);
-  if (existing) return existing;
+  if (existing) return { profile: existing, isNewUser: false };
 
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
@@ -107,7 +115,7 @@ export async function createProfileForUser(
     throw new Error("profile 생성 결과가 없습니다.");
   }
 
-  return data as Profile;
+  return { profile: data as Profile, isNewUser: true };
 }
 
 export async function getOwnerOnboardingDestination(
