@@ -1,5 +1,7 @@
 import "server-only";
 
+import { type NextRequest, type NextResponse } from "next/server";
+import type { CookieOptions } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 
@@ -34,4 +36,35 @@ export async function createSupabaseCookieClient() {
       },
     },
   });
+}
+
+export function createSupabaseRouteHandlerClient(request: NextRequest) {
+  const { supabaseUrl, supabaseAnonKey } = getSupabaseEnv();
+  const cookiesToSet: Array<{
+    name: string;
+    value: string;
+    options: CookieOptions;
+  }> = [];
+
+  const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
+    cookies: {
+      getAll() {
+        return request.cookies.getAll();
+      },
+      setAll(nextCookies) {
+        cookiesToSet.push(...nextCookies);
+      },
+    },
+  });
+
+  return {
+    supabase,
+    applyCookies(response: NextResponse) {
+      cookiesToSet.forEach(({ name, value, options }) => {
+        response.cookies.set(name, value, options);
+      });
+
+      return response;
+    },
+  };
 }

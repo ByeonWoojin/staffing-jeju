@@ -1,6 +1,12 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { createSupabaseCookieClient } from "@/lib/supabase/server";
+import { createSupabaseRouteHandlerClient } from "@/lib/supabase/server";
 import { getPostLoginDestination, getProfileById } from "@/lib/auth/onboarding";
+
+function createAuthErrorRedirect(origin: string) {
+  const redirectUrl = new URL("/", origin);
+  redirectUrl.searchParams.set("auth_error", "oauth_callback_failed");
+  return redirectUrl;
+}
 
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url);
@@ -8,10 +14,10 @@ export async function GET(request: NextRequest) {
   const origin = requestUrl.origin;
 
   if (!code) {
-    return NextResponse.redirect(`${origin}/`);
+    return NextResponse.redirect(createAuthErrorRedirect(origin));
   }
 
-  const supabase = await createSupabaseCookieClient();
+  const { supabase, applyCookies } = createSupabaseRouteHandlerClient(request);
   const { error } = await supabase.auth.exchangeCodeForSession(code);
 
   if (error) {
@@ -19,7 +25,9 @@ export async function GET(request: NextRequest) {
       message: error.message,
       name: error.name,
     });
-    return NextResponse.redirect(`${origin}/`);
+    return applyCookies(
+      NextResponse.redirect(createAuthErrorRedirect(origin)),
+    );
   }
 
   const {
@@ -32,13 +40,28 @@ export async function GET(request: NextRequest) {
       message: userError?.message,
       name: userError?.name,
     });
-    return NextResponse.redirect(`${origin}/`);
+    return applyCookies(
+      NextResponse.redirect(createAuthErrorRedirect(origin)),
+    );
   }
 
-  const [profile, destination] = await Promise.all([
-    getProfileById(user.id),
-    getPostLoginDestination(user.id),
-  ]);
+  let profile: Awaited<ReturnType<typeof getProfileById>>;
+  let destination: Awaited<ReturnType<typeof getPostLoginDestination>>;
+
+  try {
+    [profile, destination] = await Promise.all([
+      getProfileById(user.id),
+      getPostLoginDestination(user.id),
+    ]);
+  } catch (error) {
+    console.error("[auth/callback] profile destination lookup failed", {
+      message: error instanceof Error ? error.message : "unknown error",
+    });
+    return applyCookies(
+      NextResponse.redirect(createAuthErrorRedirect(origin)),
+    );
+  }
+
   const redirectUrl = new URL(destination, origin);
 
   if (profile?.role === "staff" || profile?.role === "owner") {
@@ -46,5 +69,5 @@ export async function GET(request: NextRequest) {
     redirectUrl.searchParams.set("user_role", profile.role);
   }
 
-  return NextResponse.redirect(redirectUrl);
+  return applyCookies(NextResponse.redirect(redirectUrl));
 }

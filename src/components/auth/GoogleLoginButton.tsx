@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { trackEvent } from "@/lib/analytics/client";
 import { ANALYTICS_EVENTS } from "@/lib/analytics/events";
@@ -16,9 +16,13 @@ export function GoogleLoginButton({
   ctaLocation,
   entryRole,
 }: GoogleLoginButtonProps = {}) {
+  const loginStartedRef = useRef(false);
   const [isLoading, setIsLoading] = useState(false);
 
   const handleLogin = async () => {
+    if (loginStartedRef.current) return;
+
+    loginStartedRef.current = true;
     setIsLoading(true);
     trackEvent(ANALYTICS_EVENTS.AUTH_START, {
       method: "google",
@@ -36,6 +40,7 @@ export function GoogleLoginButton({
 
     if (error) {
       alert(`Google 로그인에 실패했습니다: ${error.message}`);
+      loginStartedRef.current = false;
       setIsLoading(false);
     }
   };
