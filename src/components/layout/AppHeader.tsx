@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { HeaderLoginButton } from "@/components/auth/HeaderLoginButton";
 import { BrandLogo } from "@/components/brand/BrandLogo";
+import { StaffApplicationsNavLink } from "@/components/layout/StaffApplicationsNavLink";
+import { getStaffApplicationStatusSummary } from "@/lib/staff-application-data";
+import type { ApplicationStatusSummary } from "@/lib/application-status";
 import { cn } from "@/lib/cn";
 
 export type AppHeaderActiveItem = "favorites" | "applications" | "profile";
@@ -8,6 +11,8 @@ export type AppHeaderActiveItem = "favorites" | "applications" | "profile";
 interface AppHeaderProps {
   active?: AppHeaderActiveItem;
   isAuthenticated?: boolean;
+  staffId?: string | null;
+  applicationStatusSummaries?: ApplicationStatusSummary[];
 }
 
 const navLinkClassName =
@@ -16,11 +21,20 @@ const activeNavLinkClassName = "bg-primary-50 text-primary-700";
 const accountLinkClassName =
   "rounded-md border border-neutral-200 px-2.5 py-2 transition-colors hover:bg-neutral-50 focus-ring sm:px-3";
 
-export function AppHeader({
+export async function AppHeader({
   active,
   isAuthenticated = false,
+  staffId,
+  applicationStatusSummaries,
 }: AppHeaderProps) {
   const logoHref = isAuthenticated ? "/jobs" : "/";
+  const fetchedStatusSummary =
+    isAuthenticated && (!staffId || !applicationStatusSummaries)
+      ? await getStaffApplicationStatusSummary()
+      : null;
+  const resolvedStaffId = staffId ?? fetchedStatusSummary?.staffId ?? null;
+  const resolvedApplicationStatusSummaries =
+    applicationStatusSummaries ?? fetchedStatusSummary?.summaries ?? [];
 
   return (
     <header className="border-b border-neutral-100 bg-neutral-0">
@@ -43,16 +57,13 @@ export function AppHeader({
           >
             관심 공고
           </Link>
-          <Link
-            href="/staff/applications"
-            className={cn(
-              navLinkClassName,
-              active === "applications" && activeNavLinkClassName,
-            )}
-            aria-current={active === "applications" ? "page" : undefined}
-          >
-            지원 현황
-          </Link>
+          <StaffApplicationsNavLink
+            active={active === "applications"}
+            className={navLinkClassName}
+            activeClassName={activeNavLinkClassName}
+            staffId={resolvedStaffId}
+            statusSummaries={resolvedApplicationStatusSummaries}
+          />
           {isAuthenticated ? (
             <Link
               href="/mypage"

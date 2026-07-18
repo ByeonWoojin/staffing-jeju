@@ -1,4 +1,8 @@
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import {
+  NEW_APPLICATION_STATUS,
+  isNewApplicationStatus,
+} from "@/lib/application-status";
 import { getCurrentAuthUser } from "@/lib/auth/onboarding";
 import { attachApplicationPhotoUrls } from "@/lib/application-photo";
 import type {
@@ -201,6 +205,31 @@ export async function getApplicationCountByJobPostId(
   }
 }
 
+export async function getOwnerNewApplicationCount(
+  ownerId?: string,
+): Promise<number> {
+  const resolvedOwnerId = ownerId ?? (await getCurrentOwner()).id;
+  const currentJobPost = await getCurrentJobPost(resolvedOwnerId);
+
+  if (!currentJobPost) return 0;
+
+  try {
+    const supabase = createSupabaseAdminClient();
+    const { count, error } = await supabase
+      .from("applications")
+      .select("id", { count: "exact", head: true })
+      .eq("job_post_id", currentJobPost.id)
+      .eq("recruitment_cycle", currentJobPost.recruitment_cycle)
+      .eq("status", NEW_APPLICATION_STATUS);
+
+    if (error) throw error;
+    return count ?? 0;
+  } catch (error) {
+    logSupabaseReadError("failed to load owner new application count", error);
+    throw new Error("신규 지원 수를 불러오지 못했습니다.");
+  }
+}
+
 export async function getOwnerApplications(
   ownerId: string,
 ): Promise<Application[]> {
@@ -354,8 +383,8 @@ export async function getOwnerDashboardData(): Promise<OwnerDashboardData> {
   const activeApplications = applications.filter(
     (application) => application.status !== "canceled",
   );
-  const new_application_count = activeApplications.filter(
-    (a) => a.status === "submitted",
+  const new_application_count = activeApplications.filter((application) =>
+    isNewApplicationStatus(application.status),
   ).length;
 
   return {

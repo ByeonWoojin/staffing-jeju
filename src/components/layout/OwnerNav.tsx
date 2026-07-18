@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { formatNewApplicationCount } from "@/lib/application-status";
 import { cn } from "@/lib/cn";
 import { COACHMARK_TARGETS } from "@/lib/onboarding/coachmark-config";
 
@@ -17,7 +18,26 @@ function isNavActive(pathname: string, href: string, exact?: boolean) {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-export function OwnerNav({ className }: { className?: string }) {
+function NewApplicationBadge({ count }: { count: number }) {
+  if (count <= 0) return null;
+
+  return (
+    <span
+      className="inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-pill bg-primary-500 px-1.5 text-[11px] font-bold leading-none text-white"
+      aria-label={`확인하지 않은 신규 지원자 ${count}명`}
+    >
+      {formatNewApplicationCount(count)}
+    </span>
+  );
+}
+
+export function OwnerNav({
+  className,
+  newApplicationCount = 0,
+}: {
+  className?: string;
+  newApplicationCount?: number;
+}) {
   const pathname = usePathname();
 
   return (
@@ -42,14 +62,17 @@ export function OwnerNav({ className }: { className?: string }) {
                 : undefined
             }
             className={cn(
-              "rounded-md px-3 py-2 text-body-sm font-semibold transition-colors duration-150 focus-ring",
+              "flex items-center justify-between gap-2 rounded-md px-3 py-2 text-body-sm font-semibold transition-colors duration-150 focus-ring",
               active
                 ? "bg-primary-50 text-primary-700"
                 : "text-neutral-600 hover:bg-neutral-100 hover:text-neutral-800",
             )}
             aria-current={active ? "page" : undefined}
           >
-            {item.label}
+            <span>{item.label}</span>
+            {item.href === "/owner/applications" && (
+              <NewApplicationBadge count={newApplicationCount} />
+            )}
           </Link>
         );
       })}
@@ -57,7 +80,11 @@ export function OwnerNav({ className }: { className?: string }) {
   );
 }
 
-export function OwnerMobileNav() {
+export function OwnerMobileNav({
+  newApplicationCount = 0,
+}: {
+  newApplicationCount?: number;
+}) {
   const pathname = usePathname();
 
   return (
@@ -82,14 +109,17 @@ export function OwnerMobileNav() {
                 : undefined
             }
             className={cn(
-              "shrink-0 rounded-pill px-3 py-1.5 text-caption font-semibold transition-colors duration-150 focus-ring",
+              "inline-flex shrink-0 items-center gap-1.5 rounded-pill px-3 py-1.5 text-caption font-semibold transition-colors duration-150 focus-ring",
               active
                 ? "bg-primary-50 text-primary-700"
                 : "bg-neutral-50 text-neutral-600 hover:bg-neutral-100",
             )}
             aria-current={active ? "page" : undefined}
           >
-            {item.label}
+            <span>{item.label}</span>
+            {item.href === "/owner/applications" && (
+              <NewApplicationBadge count={newApplicationCount} />
+            )}
           </Link>
         );
       })}

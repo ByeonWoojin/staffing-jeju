@@ -1,18 +1,28 @@
 import type { Application } from "@/types/database";
 import Link from "next/link";
+import { isNewApplicationStatus } from "@/lib/application-status";
 import { formatDate } from "@/lib/owner-utils";
+import { getGenderConditionLabel } from "@/lib/labels";
 import {
-  getGenderConditionLabel,
-} from "@/lib/labels";
-import { ApplicationStatusBadge, Card, CardContent } from "@/components/ui";
+  ApplicationStatusBadge,
+  Badge,
+  Card,
+  CardContent,
+} from "@/components/ui";
 
 interface RecentApplicantRowProps {
   application: Application & { representativePhotoUrl?: string | null };
+  showNewBadge?: boolean;
 }
 
-export function RecentApplicantRow({ application }: RecentApplicantRowProps) {
+export function RecentApplicantRow({
+  application,
+  showNewBadge = false,
+}: RecentApplicantRowProps) {
   const photoSrc =
     application.representativePhotoUrl ?? application.representative_photo_path;
+  const isNewApplication =
+    showNewBadge && isNewApplicationStatus(application.status);
 
   return (
     <Card padding="sm" hoverable>
@@ -26,7 +36,18 @@ export function RecentApplicantRow({ application }: RecentApplicantRowProps) {
           />
           <div className="min-w-0">
             <p className="text-body-sm font-semibold text-neutral-800 truncate">
-              {application.name}{" "}
+              <span className="inline-flex max-w-full items-center gap-1.5">
+                <span className="truncate">{application.name}</span>
+                {isNewApplication && (
+                  <Badge
+                    variant="primary"
+                    className="h-5 px-2 text-[11px]"
+                    aria-label="신규 지원자"
+                  >
+                    신규
+                  </Badge>
+                )}
+              </span>{" "}
               <span className="font-normal text-neutral-500">
                 · {application.age}세 ·{" "}
                 {getGenderConditionLabel(application.gender)}
@@ -53,13 +74,19 @@ export function RecentApplicantRow({ application }: RecentApplicantRowProps) {
 
 export function RecentApplicantList({
   applications,
+  showNewBadge = false,
 }: {
   applications: (Application & { representativePhotoUrl?: string | null })[];
+  showNewBadge?: boolean;
 }) {
   return (
     <div className="flex flex-col gap-3">
       {applications.map((application) => (
-        <RecentApplicantRow key={application.id} application={application} />
+        <RecentApplicantRow
+          key={application.id}
+          application={application}
+          showNewBadge={showNewBadge}
+        />
       ))}
     </div>
   );

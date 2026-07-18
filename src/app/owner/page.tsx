@@ -22,7 +22,7 @@ export default async function OwnerHomePage() {
   const recentApplications = applications.slice(0, 5);
 
   return (
-    <OwnerLayout>
+    <OwnerLayout newApplicationCount={stats.new_application_count}>
       <PageHeader
         title={`${owner.name}님, 우리 게하 스탭 모집 현황입니다.`}
         description="현재 운영 중인 스탭 모집글과 지원자를 확인하세요."
@@ -38,6 +38,7 @@ export default async function OwnerHomePage() {
             label="신규 지원"
             value={stats.new_application_count}
             description="아직 열람하지 않은 지원"
+            hasAlert={stats.new_application_count > 0}
           />
           <OwnerDashboardCard
             label="모집 인원"
@@ -92,7 +93,10 @@ export default async function OwnerHomePage() {
             description="모집글을 공유하면 지원자가 들어옵니다."
           />
         ) : (
-          <RecentApplicantList applications={recentApplications} />
+          <RecentApplicantList
+            applications={recentApplications}
+            showNewBadge
+          />
         )}
       </Section>
     </OwnerLayout>
