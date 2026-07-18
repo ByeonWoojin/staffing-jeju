@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { GoogleAnalytics } from "@next/third-parties/google";
 import { AnalyticsProvider } from "@/components/analytics/AnalyticsProvider";
 import { AuthAnalyticsBridge } from "@/components/analytics/AuthAnalyticsBridge";
+import { Footer } from "@/components/layout/Footer";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -47,7 +48,10 @@ export default function RootLayout({
           mixpanelToken={mixpanelToken}
         >
           <AuthAnalyticsBridge />
-          {children}
+          <div className="flex min-h-screen flex-col">
+            <div className="flex-1">{children}</div>
+            <Footer />
+          </div>
         </AnalyticsProvider>
       </body>
       {analyticsEnabled && gaMeasurementId ? (
