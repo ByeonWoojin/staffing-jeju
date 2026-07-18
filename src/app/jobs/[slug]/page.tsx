@@ -14,6 +14,7 @@ import { FavoriteGuesthouseButton } from "@/components/jobs/FavoriteGuesthouseBu
 import { JobImageSlider } from "@/components/jobs/JobImageSlider";
 import { JobDetailSectionNav } from "@/components/jobs/JobDetailSectionNav";
 import { AppHeader } from "@/components/layout/AppHeader";
+import { RoleCoachmarkController } from "@/components/onboarding/RoleCoachmarkController";
 import {
   ApplicationStatusBadge,
   Badge,
@@ -24,6 +25,7 @@ import {
   UrgentBadge,
 } from "@/components/ui";
 import { ANALYTICS_EVENTS } from "@/lib/analytics/events";
+import { COACHMARK_TARGETS } from "@/lib/onboarding/coachmark-config";
 
 export const dynamic = "force-dynamic";
 
@@ -360,9 +362,11 @@ function DetailSection({
 function SupportAction({
   detail,
   isClosed,
+  coachmarkTarget,
 }: {
   detail: JobDetail;
   isClosed: boolean;
+  coachmarkTarget?: string;
 }) {
   const activeApplication =
     detail.viewerApplication && detail.viewerApplication.status !== "canceled"
@@ -398,7 +402,9 @@ function SupportAction({
     );
   }
 
-  return <ApplyButton slug={detail.jobPost.slug} />;
+  return (
+    <ApplyButton slug={detail.jobPost.slug} coachmarkTarget={coachmarkTarget} />
+  );
 }
 
 function SupportCard({
@@ -406,11 +412,13 @@ function SupportCard({
   stickyItems,
   isClosed,
   isAuthenticated,
+  coachmarkTarget,
 }: {
   detail: JobDetail;
   stickyItems: DetailItem[];
   isClosed: boolean;
   isAuthenticated: boolean;
+  coachmarkTarget?: string;
 }) {
   const { jobPost, guesthouse } = detail;
   const activeApplication =
@@ -468,7 +476,11 @@ function SupportCard({
       </dl>
 
       <div className="grid gap-2">
-        <SupportAction detail={detail} isClosed={isClosed} />
+        <SupportAction
+          detail={detail}
+          isClosed={isClosed}
+          coachmarkTarget={coachmarkTarget}
+        />
       </div>
     </Card>
   );
@@ -477,9 +489,11 @@ function SupportCard({
 function MobileApplyBar({
   detail,
   isClosed,
+  coachmarkTarget,
 }: {
   detail: JobDetail;
   isClosed: boolean;
+  coachmarkTarget?: string;
 }) {
   const activeApplication =
     detail.viewerApplication && detail.viewerApplication.status !== "canceled"
@@ -506,7 +520,10 @@ function MobileApplyBar({
             지원 마감
           </Button>
         ) : (
-          <ApplyButton slug={detail.jobPost.slug} />
+          <ApplyButton
+            slug={detail.jobPost.slug}
+            coachmarkTarget={coachmarkTarget}
+          />
         )}
       </div>
     </div>
@@ -528,6 +545,15 @@ export default async function PublicJobDetailPage({
 
   const { jobPost, guesthouse } = detail;
   const isClosed = jobPost.status === "closed";
+  const activeApplication =
+    detail.viewerApplication && detail.viewerApplication.status !== "canceled"
+      ? detail.viewerApplication
+      : null;
+  const canShowStaffApplyCoachmark =
+    viewerProfile?.role === "staff" && !isClosed && !activeApplication;
+  const staffApplyCoachmarkTarget = canShowStaffApplyCoachmark
+    ? COACHMARK_TARGETS.staffApply
+    : undefined;
   const positiveBadges = getPositiveBadges(jobPost);
   const heroPhotos =
     detail.jobPostPhotos.length > 0
@@ -557,6 +583,9 @@ export default async function PublicJobDetailPage({
 
   return (
     <main className="min-h-screen bg-neutral-50">
+      <RoleCoachmarkController
+        role={canShowStaffApplyCoachmark ? "staff" : null}
+      />
       <AnalyticsEventTracker
         eventName={ANALYTICS_EVENTS.JOB_DETAIL_VIEW}
         properties={{
@@ -689,13 +718,18 @@ export default async function PublicJobDetailPage({
                 stickyItems={stickyItems}
                 isClosed={isClosed}
                 isAuthenticated={isAuthenticated}
+                coachmarkTarget={staffApplyCoachmarkTarget}
               />
             </div>
           </aside>
         </div>
       </div>
 
-      <MobileApplyBar detail={detail} isClosed={isClosed} />
+      <MobileApplyBar
+        detail={detail}
+        isClosed={isClosed}
+        coachmarkTarget={staffApplyCoachmarkTarget}
+      />
     </main>
   );
 }

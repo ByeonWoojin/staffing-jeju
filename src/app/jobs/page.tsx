@@ -1,15 +1,17 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
-import { getCurrentAuthUser } from "@/lib/auth/onboarding";
+import { getCurrentAuthUser, getProfileById } from "@/lib/auth/onboarding";
 import { getPublicJobs } from "@/lib/public-job-data";
 import { formatDate } from "@/lib/owner-utils";
 import { AnalyticsEventTracker } from "@/components/analytics/AnalyticsEventTracker";
 import { FavoriteGuesthouseButton } from "@/components/jobs/FavoriteGuesthouseButton";
 import { JobsFilterBar } from "@/components/jobs/JobsFilterBar";
 import { AppHeader } from "@/components/layout/AppHeader";
+import { RoleCoachmarkController } from "@/components/onboarding/RoleCoachmarkController";
 import { Badge, Card, EmptyState, UrgentBadge } from "@/components/ui";
 import { cn } from "@/lib/cn";
+import { COACHMARK_TARGETS } from "@/lib/onboarding/coachmark-config";
 import {
   getGuesthouseImageAlt,
   getGuesthouseImageSource,
@@ -179,8 +181,10 @@ function JobsPagination({
 
 function JobCard({
   job,
+  coachmarkTarget,
 }: {
   job: Awaited<ReturnType<typeof getPublicJobs>>["jobs"][number];
+  coachmarkTarget?: string;
 }) {
   const { jobPost, guesthouse, imageUrl, isFavorited } = job;
   const isClosed = jobPost.status === "closed";
@@ -204,6 +208,7 @@ function JobCard({
       hoverable
       padding="md"
       className="group relative overflow-hidden"
+      data-coachmark={coachmarkTarget}
     >
       <Link
         href={`/jobs/${jobPost.slug}`}
@@ -287,9 +292,12 @@ export default async function PublicJobsPage({
     getPublicJobs(resolvedSearchParams),
     getCurrentAuthUser(),
   ]);
+  const viewerProfile = user ? await getProfileById(user.id) : null;
+  const viewerRole = viewerProfile?.role === "staff" ? "staff" : null;
 
   return (
     <main className="min-h-screen bg-neutral-50">
+      <RoleCoachmarkController role={viewerRole} />
       <AnalyticsEventTracker
         eventName={ANALYTICS_EVENTS.JOB_LIST_VIEW}
         properties={{ result_count: pagination.totalCount }}
@@ -331,8 +339,14 @@ export default async function PublicJobsPage({
           />
         ) : (
           <div className="grid gap-x-5 gap-y-7 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {jobs.map((job) => (
-              <JobCard key={job.jobPost.id} job={job} />
+            {jobs.map((job, index) => (
+              <JobCard
+                key={job.jobPost.id}
+                job={job}
+                coachmarkTarget={
+                  index === 0 ? COACHMARK_TARGETS.staffJobCard : undefined
+                }
+              />
             ))}
           </div>
         )}

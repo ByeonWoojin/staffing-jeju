@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { OwnerAccountProvider } from "@/components/auth/OwnerAccountMenu";
+import { RoleCoachmarkController } from "@/components/onboarding/RoleCoachmarkController";
 import {
   getCurrentAuthUser,
   getProfileById,
@@ -39,6 +40,7 @@ export default async function OwnerRouteLayout({
         email: user.email ?? profile?.email ?? null,
       }}
     >
+      <RoleCoachmarkController role="owner" />
       {children}
     </OwnerAccountProvider>
   );

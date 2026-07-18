@@ -6,6 +6,7 @@ import type { PublicJobFilters } from "@/lib/public-job-data";
 import { JEJU_REGION_OPTIONS } from "@/lib/labels";
 import { trackEvent } from "@/lib/analytics/client";
 import { ANALYTICS_EVENTS } from "@/lib/analytics/events";
+import { COACHMARK_TARGETS } from "@/lib/onboarding/coachmark-config";
 import { cn } from "@/lib/cn";
 import { Button } from "@/components/ui";
 
@@ -316,7 +317,10 @@ function JobsFilterBarState({ filters }: { filters: PublicJobFilters }) {
 
   return (
     <>
-      <section className="sticky top-0 z-30 border-b border-neutral-100/70 bg-neutral-0/95 backdrop-blur">
+      <section
+        className="sticky top-0 z-30 border-b border-neutral-100/70 bg-neutral-0/95 backdrop-blur"
+        data-coachmark={COACHMARK_TARGETS.staffJobFilter}
+      >
         <div className="mx-auto w-full max-w-7xl px-4 py-2.5 md:px-6">
           <div className="mx-auto w-full max-w-3xl">
             <button

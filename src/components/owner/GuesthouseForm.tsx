@@ -7,6 +7,7 @@ import { updateGuesthouse } from "@/app/owner/guesthouse/edit/actions";
 import { JEJU_REGION_OPTIONS } from "@/lib/labels";
 import { trackEvent } from "@/lib/analytics/client";
 import { ANALYTICS_EVENTS } from "@/lib/analytics/events";
+import { COACHMARK_TARGETS } from "@/lib/onboarding/coachmark-config";
 import { isUuid } from "@/lib/uuid";
 import { GuesthousePhotoPicker } from "@/components/owner/GuesthousePhotoManager";
 import {
@@ -152,7 +153,11 @@ export function GuesthouseForm({
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-8">
       <Section title="게스트하우스 기본 정보">
-        <Card>
+        <Card
+          data-coachmark={
+            mode === "create" ? COACHMARK_TARGETS.ownerGuesthouseForm : undefined
+          }
+        >
           <CardHeader>
             <CardTitle>
               {mode === "create" ? "새 게스트하우스 등록" : "게스트하우스 수정"}

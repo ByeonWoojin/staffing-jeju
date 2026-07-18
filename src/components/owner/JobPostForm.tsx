@@ -15,6 +15,7 @@ import { updateJobPost } from "@/app/owner/jobs/[id]/edit/actions";
 import { GENDER_CONDITION_LABELS, STIPEND_TYPE_LABELS } from "@/lib/labels";
 import { trackEvent } from "@/lib/analytics/client";
 import { ANALYTICS_EVENTS } from "@/lib/analytics/events";
+import { COACHMARK_TARGETS } from "@/lib/onboarding/coachmark-config";
 import { isUuid } from "@/lib/uuid";
 import {
   Button,
@@ -168,13 +169,15 @@ function FormSection({
   title,
   description,
   children,
+  coachmarkTarget,
 }: {
   title: string;
   description: string;
   children: ReactNode;
+  coachmarkTarget?: string;
 }) {
   return (
-    <section className="grid gap-4">
+    <section className="grid gap-4" data-coachmark={coachmarkTarget}>
       <div className="flex flex-col gap-2">
         <h2 className="text-[22px] font-bold leading-tight text-neutral-900 md:text-[24px]">
           {title}
@@ -477,6 +480,9 @@ export function JobPostForm({
       <FormSection
         title="모집 기본 정보"
         description="스탭이 모집글 목록과 상세 화면에서 가장 먼저 확인하는 정보예요."
+        coachmarkTarget={
+          mode === "create" ? COACHMARK_TARGETS.ownerJobPostForm : undefined
+        }
       >
         <div className="grid gap-5 md:grid-cols-2">
           <div className="md:col-span-2">

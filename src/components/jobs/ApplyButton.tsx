@@ -5,7 +5,13 @@ import { useRouter } from "next/navigation";
 import { checkApplyAvailability } from "@/app/jobs/actions";
 import { Button } from "@/components/ui";
 
-export function ApplyButton({ slug }: { slug: string }) {
+export function ApplyButton({
+  slug,
+  coachmarkTarget,
+}: {
+  slug: string;
+  coachmarkTarget?: string;
+}) {
   const router = useRouter();
   const [isPending, setIsPending] = useState(false);
 
@@ -28,7 +34,13 @@ export function ApplyButton({ slug }: { slug: string }) {
   };
 
   return (
-    <Button size="lg" fullWidth disabled={isPending} onClick={handleClick}>
+    <Button
+      size="lg"
+      fullWidth
+      disabled={isPending}
+      onClick={handleClick}
+      data-coachmark={coachmarkTarget}
+    >
       {isPending ? "확인 중..." : "지원하기"}
     </Button>
   );

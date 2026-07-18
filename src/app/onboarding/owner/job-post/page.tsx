@@ -6,6 +6,7 @@ import {
 import { createOwnerJobPost } from "@/app/onboarding/owner/job-post/actions";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { AnalyticsEventTracker } from "@/components/analytics/AnalyticsEventTracker";
+import { RoleCoachmarkController } from "@/components/onboarding/RoleCoachmarkController";
 import { JobPostForm } from "@/components/owner";
 import { PageHeader } from "@/components/ui";
 import { ANALYTICS_EVENTS } from "@/lib/analytics/events";
@@ -40,6 +41,7 @@ export default async function OwnerJobPostOnboardingPage() {
 
   return (
     <main className="min-h-screen bg-surface">
+      <RoleCoachmarkController role="owner" />
       {guesthouseId && (
         <AnalyticsEventTracker
           eventName={ANALYTICS_EVENTS.JOB_POST_START}

@@ -4,6 +4,7 @@ import {
   getPostLoginDestination,
 } from "@/lib/auth/onboarding";
 import { createOwnerGuesthouse } from "@/app/onboarding/owner/guesthouse/actions";
+import { RoleCoachmarkController } from "@/components/onboarding/RoleCoachmarkController";
 import { GuesthouseForm } from "@/components/owner";
 import { PageHeader } from "@/components/ui";
 
@@ -22,6 +23,7 @@ export default async function OwnerGuesthouseOnboardingPage() {
 
   return (
     <main className="min-h-screen bg-surface">
+      <RoleCoachmarkController role="owner" />
       <div className="page-container py-8 md:py-10">
         <PageHeader
           title="게스트하우스 정보를 먼저 등록해주세요"

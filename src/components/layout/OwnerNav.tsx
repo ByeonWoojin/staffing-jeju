@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/cn";
+import { COACHMARK_TARGETS } from "@/lib/onboarding/coachmark-config";
 
 export const OWNER_NAV_ITEMS = [
   { href: "/owner", label: "홈", exact: true },
@@ -35,6 +36,11 @@ export function OwnerNav({ className }: { className?: string }) {
           <Link
             key={item.href}
             href={item.href}
+            data-coachmark={
+              item.href === "/owner/applications"
+                ? COACHMARK_TARGETS.ownerApplications
+                : undefined
+            }
             className={cn(
               "rounded-md px-3 py-2 text-body-sm font-semibold transition-colors duration-150 focus-ring",
               active
@@ -70,6 +76,11 @@ export function OwnerMobileNav() {
           <Link
             key={item.href}
             href={item.href}
+            data-coachmark={
+              item.href === "/owner/applications"
+                ? COACHMARK_TARGETS.ownerApplications
+                : undefined
+            }
             className={cn(
               "shrink-0 rounded-pill px-3 py-1.5 text-caption font-semibold transition-colors duration-150 focus-ring",
               active
