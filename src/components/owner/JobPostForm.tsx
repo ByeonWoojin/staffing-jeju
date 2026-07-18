@@ -15,6 +15,12 @@ import { updateJobPost } from "@/app/owner/jobs/[id]/edit/actions";
 import { GENDER_CONDITION_LABELS, STIPEND_TYPE_LABELS } from "@/lib/labels";
 import { trackEvent } from "@/lib/analytics/client";
 import { ANALYTICS_EVENTS } from "@/lib/analytics/events";
+import {
+  getTodayDateStringInKorea,
+  getWorkStartDateFieldError,
+  isPastDateInKorea,
+  isWorkStartDateErrorMessage,
+} from "@/lib/job-post-date-validation";
 import { COACHMARK_TARGETS } from "@/lib/onboarding/coachmark-config";
 import { isUuid } from "@/lib/uuid";
 import {
@@ -54,6 +60,10 @@ type NumericField =
 
 type JobPostFormState = Omit<JobPostFormData, NumericField> &
   Record<NumericField, string>;
+
+type JobPostFieldErrors = {
+  work_start_date?: string;
+};
 
 const defaultFormData: JobPostFormState = {
   title: "",
@@ -149,6 +159,10 @@ function getNumericValidationMessage(payload: JobPostFormData) {
     return "휴무일 수는 0~6 사이로 입력해 주세요.";
   }
   return null;
+}
+
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
 }
 
 function handleNumericFocus(event: FocusEvent<HTMLInputElement>) {
@@ -355,8 +369,19 @@ export function JobPostForm({
     () => Boolean(initialData?.caution?.trim()),
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<JobPostFieldErrors>({});
+  const [todayInKorea] = useState(() => getTodayDateStringInKorea());
   const isMockEdit =
     mode === "edit" && (!initialData || !isUuid(initialData.id));
+  const initialWorkStartDate =
+    mode === "edit" ? (initialData?.work_start_date ?? null) : null;
+  const hasPastInitialWorkStartDate =
+    Boolean(initialWorkStartDate) &&
+    isPastDateInKorea(initialWorkStartDate ?? "", todayInKorea);
+  const workStartDateMin =
+    mode === "edit" && hasPastInitialWorkStartDate && initialWorkStartDate
+      ? initialWorkStartDate
+      : todayInKorea;
   const workPatternSummary = getWorkPatternSummary(
     form.work_days_per_week,
     form.off_days_per_week,
@@ -367,6 +392,9 @@ export function JobPostForm({
     field: K,
     value: JobPostFormState[K],
   ) => {
+    if (field === "work_start_date") {
+      setFieldErrors((prev) => ({ ...prev, work_start_date: undefined }));
+    }
     setForm((prev) => ({ ...prev, [field]: value }));
   };
 
@@ -411,8 +439,22 @@ export function JobPostForm({
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setFieldErrors({});
 
     const payload = buildSubmitPayload(form);
+    const workStartDateError = getWorkStartDateFieldError(
+      payload.work_start_date,
+      {
+        currentWorkStartDate: initialWorkStartDate,
+        todayInKorea: getTodayDateStringInKorea(),
+      },
+    );
+    if (workStartDateError) {
+      setFieldErrors({ work_start_date: workStartDateError });
+      setIsSubmitting(false);
+      return;
+    }
+
     const numericValidationMessage = getNumericValidationMessage(payload);
     if (numericValidationMessage) {
       alert(numericValidationMessage);
@@ -441,11 +483,12 @@ export function JobPostForm({
             router.push(redirectTo.redirectTo);
           }
         } catch (error) {
-          alert(
-            error instanceof Error
-              ? error.message
-              : "모집글 저장에 실패했습니다.",
-          );
+          const message = getErrorMessage(error, "모집글 저장에 실패했습니다.");
+          if (isWorkStartDateErrorMessage(message)) {
+            setFieldErrors({ work_start_date: message });
+          } else {
+            alert(message);
+          }
         }
         setIsSubmitting(false);
         return;
@@ -464,11 +507,12 @@ export function JobPostForm({
         alert("모집글이 수정되었습니다.");
         router.push("/owner/jobs");
       } catch (error) {
-        alert(
-          error instanceof Error
-            ? error.message
-            : "모집글 수정에 실패했습니다.",
-        );
+        const message = getErrorMessage(error, "모집글 수정에 실패했습니다.");
+        if (isWorkStartDateErrorMessage(message)) {
+          setFieldErrors({ work_start_date: message });
+        } else {
+          alert(message);
+        }
       }
     }
 
@@ -542,10 +586,17 @@ export function JobPostForm({
             label="근무 시작일"
             name="work_start_date"
             type="date"
+            min={workStartDateMin}
             value={form.work_start_date}
             onChange={(event) =>
               updateField("work_start_date", event.target.value)
             }
+            helperText={
+              hasPastInitialWorkStartDate
+                ? "현재 등록된 근무 시작일입니다. 날짜를 변경하려면 오늘 이후로 선택해 주세요."
+                : undefined
+            }
+            error={fieldErrors.work_start_date}
             required
           />
           <Input

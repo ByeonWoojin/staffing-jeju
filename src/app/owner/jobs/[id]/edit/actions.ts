@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getCurrentAuthUser, getProfileById } from "@/lib/auth/onboarding";
+import { normalizeUpdatedWorkStartDate } from "@/lib/job-post-date-validation";
 import { isUuid } from "@/lib/uuid";
 import type {
   JobPost,
@@ -60,7 +61,6 @@ const EDITABLE_FIELDS: EditableJobPostField[] = [
 
 const REQUIRED_TEXT_FIELDS: EditableJobPostField[] = [
   "title",
-  "work_start_date",
   "min_work_period",
   "work_content",
   "work_time",
@@ -160,13 +160,19 @@ function normalizeRequiredText(value: string, fieldName: string): string {
   return trimmed;
 }
 
-function normalizePayload(payload: JobPostFormData): EditableJobPostUpdate {
+function normalizePayload(
+  payload: JobPostFormData,
+  currentWorkStartDate: string,
+): EditableJobPostUpdate {
   const normalized: EditableJobPostUpdate = {
     title: normalizeRequiredText(payload.title, "모집 제목"),
     recruit_count: Number(payload.recruit_count),
     gender_condition: payload.gender_condition,
     age_condition: normalizeOptionalText(payload.age_condition),
-    work_start_date: normalizeRequiredText(payload.work_start_date, "근무 시작일"),
+    work_start_date: normalizeUpdatedWorkStartDate(
+      payload.work_start_date,
+      currentWorkStartDate,
+    ),
     min_work_period: normalizeRequiredText(
       payload.min_work_period,
       "최소 근무 기간",
@@ -263,7 +269,7 @@ export async function updateJobPost(
     throw new Error("현재 owner가 수정할 수 있는 모집글이 아닙니다.");
   }
 
-  const values = normalizePayload(payload);
+  const values = normalizePayload(payload, current.work_start_date);
   const changes = getChangedFields(current, values);
 
   if (changes.length === 0) {

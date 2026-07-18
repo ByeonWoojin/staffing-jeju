@@ -3,6 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getCurrentAuthUser, getProfileById } from "@/lib/auth/onboarding";
+import {
+  isPastDateInKorea,
+  normalizeRequiredDateString,
+  WORK_START_DATE_REOPEN_PAST_ERROR_MESSAGE,
+} from "@/lib/job-post-date-validation";
 import { isUuid } from "@/lib/uuid";
 import type { JobPost, Profile } from "@/types/database";
 
@@ -220,6 +225,14 @@ export async function reopenRecruitment(jobPostId: string): Promise<JobPost> {
   const owner = await getCurrentOwnerProfileOrThrow();
   const current = await getJobPostOrThrow(jobPostId);
   assertOwnerCanManageJobPost("reopenRecruitment", jobPostId, owner, current);
+
+  const workStartDate = normalizeRequiredDateString(
+    current.work_start_date,
+    "근무 시작일",
+  );
+  if (isPastDateInKorea(workStartDate)) {
+    throw new Error(WORK_START_DATE_REOPEN_PAST_ERROR_MESSAGE);
+  }
 
   const nextRecruitmentCycle =
     current.status === "closed"

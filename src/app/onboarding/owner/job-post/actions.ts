@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getCurrentAuthUser, getProfileById } from "@/lib/auth/onboarding";
+import { normalizeNewWorkStartDate } from "@/lib/job-post-date-validation";
 import type {
   GenderCondition,
   JobPost,
@@ -127,7 +128,7 @@ function normalizePayload(
     recruit_count: normalizeInteger(payload.recruit_count, "모집 인원", 1),
     gender_condition: normalizeGender(payload.gender_condition),
     age_condition: normalizeOptionalText(payload.age_condition),
-    work_start_date: normalizeRequiredText(payload.work_start_date, "근무 시작일"),
+    work_start_date: normalizeNewWorkStartDate(payload.work_start_date),
     min_work_period: normalizeRequiredText(
       payload.min_work_period,
       "최소 근무 기간",
