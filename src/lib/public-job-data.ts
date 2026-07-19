@@ -490,10 +490,10 @@ async function getPagedPublicJobCards({
   return jobs.map(({ jobPost, guesthouse }) => {
     const firstJobPhoto = jobPhotosByJobPostId.get(jobPost.id)?.[0];
     const firstGuesthousePhoto = guesthousePhotosByGuesthouseId.get(guesthouse.id)?.[0];
-    const imageUrl = firstJobPhoto
-      ? getPublicUrl("job-post-images", firstJobPhoto.photo_path)
-      : firstGuesthousePhoto
-        ? getPublicUrl("guesthouse-images", firstGuesthousePhoto.photo_path)
+    const imageUrl = firstGuesthousePhoto
+      ? getPublicUrl("guesthouse-images", firstGuesthousePhoto.photo_path)
+      : firstJobPhoto
+        ? getPublicUrl("job-post-images", firstJobPhoto.photo_path)
         : null;
 
     return {
@@ -598,14 +598,14 @@ export async function getPublicJobBySlug(
   const favoriteIds = await getFavoriteGuesthouseIds(viewerProfile, [job.guesthouse_id]);
   const viewerApplication = await getViewerApplication(viewerProfile, job);
   const mappedJobPhotos = ((jobPhotos ?? []) as JobPostPhoto[]).flatMap(
-    (photo) => {
+    (photo, index) => {
       const photoPath = normalizeImageSource(photo.photo_path);
       return photoPath
         ? [
             {
               id: photo.id,
               url: getPublicUrl("job-post-images", photoPath),
-              altText: photo.alt_text ?? `${job.title} 사진`,
+              altText: photo.alt_text ?? `${job.title} 상세 사진 ${index + 1}`,
             },
           ]
         : [];
@@ -613,14 +613,14 @@ export async function getPublicJobBySlug(
   );
   const mappedGuesthousePhotos = (
     (guesthousePhotos ?? []) as GuesthousePhoto[]
-  ).flatMap((photo) => {
+  ).flatMap((photo, index) => {
     const photoPath = normalizeImageSource(photo.photo_path);
     return photoPath
       ? [
           {
             id: photo.id,
             url: getPublicUrl("guesthouse-images", photoPath),
-            altText: photo.alt_text ?? `${guesthouse.name} 사진`,
+            altText: photo.alt_text ?? `${guesthouse.name} 공간 사진 ${index + 1}`,
           },
         ]
       : [];
@@ -631,7 +631,7 @@ export async function getPublicJobBySlug(
     detail: {
       jobPost: job,
       guesthouse: guesthouse as Guesthouse,
-      imageUrl: mappedJobPhotos[0]?.url ?? mappedGuesthousePhotos[0]?.url ?? null,
+      imageUrl: mappedGuesthousePhotos[0]?.url ?? mappedJobPhotos[0]?.url ?? null,
       isFavorited: favoriteIds.has(job.guesthouse_id),
       jobPostPhotos: mappedJobPhotos,
       guesthousePhotos: mappedGuesthousePhotos,

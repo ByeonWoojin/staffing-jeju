@@ -121,22 +121,32 @@ export function JobImageSlider({ images, fallbackAlt }: JobImageSliderProps) {
       className="relative aspect-[16/9] overflow-hidden rounded-md bg-neutral-100"
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
+      onFocusCapture={() => setIsPaused(true)}
+      onBlurCapture={() => setIsPaused(false)}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
-      {visibleImages.map((image, index) => (
-        <Image
-          key={image.id}
-          src={image.url}
-          alt={image.altText || fallbackAlt}
-          fill
-          priority={index === 0}
-          sizes="(min-width: 1024px) 720px, 100vw"
-          className={`object-cover transition-opacity duration-500 ease-out motion-reduce:transition-none ${
-            index === safeCurrentIndex ? "opacity-100" : "opacity-0"
-          }`}
-        />
-      ))}
+      <div
+        className={`flex h-full ${
+          prefersReducedMotion
+            ? ""
+            : "transition-transform duration-500 ease-out"
+        } motion-reduce:transition-none`}
+        style={{ transform: `translateX(-${safeCurrentIndex * 100}%)` }}
+      >
+        {visibleImages.map((image, index) => (
+          <div key={image.id} className="relative h-full min-w-full shrink-0">
+            <Image
+              src={image.url}
+              alt={image.altText || fallbackAlt}
+              fill
+              priority={index === 0}
+              sizes="(min-width: 1024px) 720px, 100vw"
+              className="object-cover"
+            />
+          </div>
+        ))}
+      </div>
 
       {hasMultipleImages && (
         <>
@@ -170,7 +180,7 @@ export function JobImageSlider({ images, fallbackAlt }: JobImageSliderProps) {
                 aria-current={index === safeCurrentIndex ? "true" : undefined}
                 onClick={() => moveTo(index)}
                 className={`size-2.5 rounded-full transition-colors focus-ring ${
-                  index === currentIndex
+                  index === safeCurrentIndex
                     ? "bg-primary-500"
                     : "bg-neutral-0/70 hover:bg-neutral-0"
                 }`}

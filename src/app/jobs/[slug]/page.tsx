@@ -234,22 +234,28 @@ function createGuideTextBlocks(jobPost: JobPost): TextBlock[] {
   ].filter(isTextBlock);
 }
 
-function PhotoStrip({ photos }: { photos: DetailPhoto[] }) {
+function DetailPhotoGallery({ photos }: { photos: DetailPhoto[] }) {
   if (photos.length === 0) return null;
 
   return (
-    <div className="grid gap-3 sm:grid-cols-2">
-      {photos.slice(0, 4).map((photo) => (
+    <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4">
+      {photos.map((photo, index) => (
         <div
           key={photo.id}
-          className="relative aspect-[4/3] overflow-hidden rounded-md bg-neutral-100"
+          className={`relative aspect-[4/3] overflow-hidden rounded-md bg-neutral-100 ${
+            index === 0 && photos.length >= 3 ? "md:col-span-2" : ""
+          }`}
         >
           <Image
             src={photo.url}
             alt={photo.altText}
             fill
             className="object-cover"
-            sizes="(min-width: 768px) 320px, 50vw"
+            sizes={
+              index === 0 && photos.length >= 3
+                ? "(min-width: 768px) 720px, 100vw"
+                : "(min-width: 768px) 340px, 100vw"
+            }
           />
         </div>
       ))}
@@ -555,15 +561,10 @@ export default async function PublicJobDetailPage({
     ? COACHMARK_TARGETS.staffApply
     : undefined;
   const positiveBadges = getPositiveBadges(jobPost);
+  const guesthousePhotos = detail.guesthousePhotos;
+  const jobPostPhotos = detail.jobPostPhotos;
   const heroPhotos =
-    detail.jobPostPhotos.length > 0
-      ? detail.jobPostPhotos
-      : detail.guesthousePhotos;
-  const heroUsesGuesthousePhoto =
-    detail.jobPostPhotos.length === 0 && detail.guesthousePhotos.length > 0;
-  const guesthousePhotosForSection = heroUsesGuesthousePhoto
-    ? []
-    : detail.guesthousePhotos;
+    guesthousePhotos.length > 0 ? guesthousePhotos : jobPostPhotos;
   const summaryItems = createSummaryItems(jobPost);
   const stickyItems = createStickyItems(jobPost);
   const recruitmentItems = createRecruitmentItems(jobPost);
@@ -574,11 +575,11 @@ export default async function PublicJobDetailPage({
   const guideTextBlocks = createGuideTextBlocks(jobPost);
 
   const hasRecruitmentSection =
-    recruitmentItems.length > 0 || recruitmentTextBlocks.length > 0;
+    recruitmentItems.length > 0 ||
+    recruitmentTextBlocks.length > 0 ||
+    jobPostPhotos.length > 0;
   const hasGuesthouseSection =
-    Boolean(guesthouseDescription) ||
-    guesthouseItems.length > 0 ||
-    guesthousePhotosForSection.length > 0;
+    Boolean(guesthouseDescription) || guesthouseItems.length > 0;
   const hasGuideSection = guideItems.length > 0 || guideTextBlocks.length > 0;
 
   return (
@@ -676,6 +677,7 @@ export default async function PublicJobDetailPage({
                     blocks={recruitmentTextBlocks}
                     withDivider={recruitmentItems.length > 0}
                   />
+                  <DetailPhotoGallery photos={jobPostPhotos} />
                 </DetailSection>
               )}
 
@@ -691,7 +693,6 @@ export default async function PublicJobDetailPage({
                     </p>
                   )}
                   <DefinitionGrid items={guesthouseItems} />
-                  <PhotoStrip photos={guesthousePhotosForSection} />
                 </DetailSection>
               )}
 
