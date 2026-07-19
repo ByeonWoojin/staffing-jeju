@@ -31,8 +31,8 @@ const featureCards: FeatureCard[] = [
     description: "원하는 제주 게스트하우스를 찾아보세요.",
     frameSrc: "/images/landing/card-frame-job.png",
     visualSrc: "/images/landing/card-visual-job.png",
-    visualWidth: "w-[70%]",
-    visualMaxHeight: "max-h-[160px] sm:max-h-[184px] lg:max-h-[170px]",
+    visualWidth: "sm:w-[70%]",
+    visualMaxHeight: "max-h-[148px] sm:max-h-[184px] lg:max-h-[170px]",
     visualTranslateY: "translate-y-1",
     visualScale: "scale-100",
     priority: true,
@@ -43,8 +43,8 @@ const featureCards: FeatureCard[] = [
     description: "제주에서 머물며 일할 곳을 찾아보세요.",
     frameSrc: "/images/landing/card-frame-staff.png",
     visualSrc: "/images/landing/card-visual-staff.png",
-    visualWidth: "w-[63%]",
-    visualMaxHeight: "max-h-[152px] sm:max-h-[174px] lg:max-h-[162px]",
+    visualWidth: "sm:w-[63%]",
+    visualMaxHeight: "max-h-[142px] sm:max-h-[174px] lg:max-h-[162px]",
     visualTranslateY: "translate-y-1",
     visualScale: "scale-100",
     analyticsLocation: "landing_card_staff",
@@ -55,8 +55,8 @@ const featureCards: FeatureCard[] = [
     description: "우리 게스트하우스와 맞는 스탭을 만나보세요.",
     frameSrc: "/images/landing/card-frame-owner.png",
     visualSrc: "/images/landing/card-visual-owner.png",
-    visualWidth: "w-[60%]",
-    visualMaxHeight: "max-h-[150px] sm:max-h-[172px] lg:max-h-[160px]",
+    visualWidth: "sm:w-[60%]",
+    visualMaxHeight: "max-h-[140px] sm:max-h-[172px] lg:max-h-[160px]",
     visualTranslateY: "translate-y-1",
     visualScale: "scale-100",
     analyticsLocation: "landing_card_owner",
@@ -67,8 +67,8 @@ const featureCards: FeatureCard[] = [
     description: "지원과 모집 관리를 한곳에서 확인해요.",
     frameSrc: "/images/landing/card-frame-connect.png",
     visualSrc: "/images/landing/card-visual-connect.png",
-    visualWidth: "w-[57%]",
-    visualMaxHeight: "max-h-[140px] sm:max-h-[160px] lg:max-h-[148px]",
+    visualWidth: "sm:w-[57%]",
+    visualMaxHeight: "max-h-[134px] sm:max-h-[160px] lg:max-h-[148px]",
     visualTranslateY: "translate-y-1",
     visualScale: "scale-100",
     analyticsLocation: "landing_card_connect",
@@ -117,7 +117,7 @@ const faqJsonLd = {
 };
 
 const cardClassName =
-  "group relative aspect-[4488/5608] w-[84vw] max-w-[318px] shrink-0 cursor-pointer text-left transition-all duration-200 hover:-translate-y-1 hover:drop-shadow-[0_18px_28px_rgba(31,31,31,0.12)] focus-ring sm:w-full sm:max-w-none";
+  "group relative aspect-[4488/5608] w-[min(calc(100vw-40px),360px)] max-w-[360px] shrink-0 snap-start cursor-pointer text-left transition-all duration-200 hover:-translate-y-1 hover:drop-shadow-[0_18px_28px_rgba(31,31,31,0.12)] focus-ring sm:w-full sm:max-w-none";
 
 const landingContainerClassName = "mx-auto w-full max-w-[1200px] px-5 md:px-8";
 
@@ -258,27 +258,27 @@ function CardContent({ card }: { card: FeatureCard }) {
         alt=""
         fill
         priority={card.priority}
-        sizes="(min-width: 1024px) 276px, (min-width: 640px) 45vw, 84vw"
+        sizes="(min-width: 1024px) 276px, (min-width: 640px) 45vw, calc(100vw - 40px)"
         className="object-contain drop-shadow-[0_12px_20px_rgba(31,31,31,0.08)]"
       />
-      <span className="absolute inset-x-[7%] bottom-[7%] top-[26%] z-10 flex flex-col overflow-hidden sm:inset-x-[8%] lg:inset-x-[10.5%]">
-        <span className="flex shrink-0 flex-col gap-3 [text-wrap:pretty] [word-break:keep-all]">
-          <span className="m-0 block max-w-full text-[18px] font-extrabold leading-[1.25] tracking-normal text-[#1F1F1F] sm:text-[19px] lg:text-[20px]">
+      <span className="absolute inset-x-[7%] bottom-[7%] top-[20%] z-10 flex flex-col overflow-hidden sm:inset-x-[8%] sm:top-[26%] lg:inset-x-[10.5%]">
+        <span className="flex shrink-0 flex-col gap-3 px-6 pt-8 [text-wrap:pretty] [word-break:keep-all] sm:px-0 sm:pt-0">
+          <span className="m-0 block max-w-full text-[22px] font-extrabold leading-[1.25] tracking-normal text-[#1F1F1F] sm:text-[19px] lg:text-[20px]">
             <span className="line-clamp-2">{card.title}</span>
           </span>
-          <span className="m-0 block overflow-hidden text-[14px] font-semibold leading-[1.55] text-neutral-600 sm:text-[15px]">
+          <span className="m-0 block overflow-hidden text-[15px] font-semibold leading-[1.6] text-neutral-600 sm:text-[15px] sm:leading-[1.55]">
             <span className="line-clamp-3">{card.description}</span>
           </span>
         </span>
 
-        <span className="mt-auto flex min-h-0 flex-1 items-end justify-center overflow-hidden pt-4">
+        <span className="mt-auto flex min-h-0 flex-1 items-end justify-center overflow-hidden px-6 pb-7 pt-4 sm:px-0 sm:pb-0">
           <Image
             src={card.visualSrc}
             alt={`${card.title} 비주얼`}
             width={5016}
             height={5016}
-            sizes="(min-width: 1024px) 214px, (min-width: 640px) 220px, 58vw"
-            className={`mx-auto h-auto object-contain transition-transform duration-200 group-hover:scale-[1.03] ${card.visualWidth} ${card.visualMaxHeight} ${card.visualTranslateY} ${card.visualScale}`}
+            sizes="(min-width: 1024px) 214px, (min-width: 640px) 220px, 250px"
+            className={`mx-auto h-auto w-[72%] max-w-[250px] object-contain transition-transform duration-200 group-hover:scale-[1.03] sm:max-w-none ${card.visualWidth} ${card.visualMaxHeight} ${card.visualTranslateY} ${card.visualScale}`}
           />
         </span>
       </span>
@@ -311,10 +311,10 @@ function LandingFeatureCards() {
   return (
     <section
       id="service"
-      className="relative z-20 bg-[#FFFDF8] pb-12 pt-2 md:pb-16 md:pt-4"
+      className="relative z-20 bg-[#FFFDF8] pb-8 pt-2 md:pb-16 md:pt-4"
     >
       <div className={landingContainerClassName}>
-        <div className="-mx-5 flex gap-4 overflow-x-auto px-5 pb-3 [scrollbar-width:none] sm:mx-0 sm:grid sm:grid-cols-2 sm:gap-5 sm:overflow-visible sm:px-0 sm:pb-0 lg:grid-cols-4 [&::-webkit-scrollbar]:hidden">
+        <div className="flex snap-x snap-mandatory gap-4 overflow-x-auto pb-3 [scrollbar-width:none] sm:grid sm:grid-cols-2 sm:gap-5 sm:overflow-visible sm:pb-0 lg:grid-cols-4 [&::-webkit-scrollbar]:hidden">
           {featureCards.map((card) => (
             <LandingFeatureCard key={card.title} card={card} />
           ))}
