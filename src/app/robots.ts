@@ -9,6 +9,6 @@ export default function robots(): MetadataRoute.Robots {
       allow: "/",
       disallow: ["/owner", "/staff/applications", "/staff/favorites", "/auth", "/api"],
     },
-    sitemap: `${SITE_URL}/sitemap.xml`,
+    sitemap: `${SITE_URL}/google-sitemap.xml`,
   };
 }
