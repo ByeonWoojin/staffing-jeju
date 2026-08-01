@@ -9,10 +9,14 @@ import {
   uploadJobPostPhoto,
 } from "@/app/owner/jobs/[id]/edit/actions";
 import {
+  getActionResultMessage,
+  getSafeErrorMessage,
+} from "@/lib/action-result";
+import {
   DEFAULT_GUESTHOUSE_IMAGE,
   DEFAULT_GUESTHOUSE_IMAGE_ALT,
 } from "@/lib/guesthouse-image";
-import { Button, FieldInfoTooltip } from "@/components/ui";
+import { AlertDialog, Button, FieldInfoTooltip } from "@/components/ui";
 
 interface JobPostPhotoWithUrl extends JobPostPhoto {
   publicUrl: string;
@@ -26,6 +30,10 @@ interface JobPostPhotoManagerProps {
 const MAX_PHOTO_COUNT = 5;
 const MAX_PHOTO_SIZE_BYTES = 5 * 1024 * 1024;
 const ALLOWED_PHOTO_TYPES = ["image/jpeg", "image/png", "image/webp"];
+const PHOTO_UPLOAD_FAILED_MESSAGE =
+  "사진 업로드 중 문제가 발생했습니다. 잠시 후 다시 시도해 주세요.";
+const PHOTO_DELETE_FAILED_MESSAGE =
+  "사진 삭제 중 문제가 발생했습니다. 잠시 후 다시 시도해 주세요.";
 
 export function JobPostPhotoManager({
   jobPostId,
@@ -35,24 +43,37 @@ export function JobPostPhotoManager({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [deletingPhotoId, setDeletingPhotoId] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [alertMessage, setAlertMessage] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const canUpload = photos.length < MAX_PHOTO_COUNT;
 
+  const showErrorMessage = (message: string) => {
+    setErrorMessage(message);
+    setAlertMessage(message);
+  };
+
   const handleUpload = async () => {
+    setErrorMessage(null);
+    setSuccessMessage(null);
+
     const file = fileInputRef.current?.files?.[0];
     if (!file) {
-      alert("업로드할 사진을 선택해주세요.");
+      showErrorMessage("업로드할 사진을 선택해주세요.");
       return;
     }
     if (!canUpload) {
-      alert("모집글 사진은 최대 5장까지 등록할 수 있습니다.");
+      showErrorMessage("사진은 최대 5장까지 등록할 수 있습니다.");
       return;
     }
     if (!ALLOWED_PHOTO_TYPES.includes(file.type)) {
-      alert("JPG, PNG, WEBP 형식의 이미지만 업로드할 수 있습니다.");
+      showErrorMessage(
+        "JPG, JPEG, PNG, WEBP 형식의 사진만 등록할 수 있습니다.",
+      );
       return;
     }
     if (file.size > MAX_PHOTO_SIZE_BYTES) {
-      alert("사진은 1장당 최대 5MB까지만 업로드할 수 있습니다.");
+      showErrorMessage("사진 한 장의 용량은 최대 5MB까지 가능합니다.");
       return;
     }
 
@@ -62,12 +83,22 @@ export function JobPostPhotoManager({
 
     setIsUploading(true);
     try {
-      await uploadJobPostPhoto(formData);
+      const result = await uploadJobPostPhoto(formData);
+      if (!result.success) {
+        showErrorMessage(
+          result.code === "UPDATE_FAILED"
+            ? PHOTO_UPLOAD_FAILED_MESSAGE
+            : getActionResultMessage(result, PHOTO_UPLOAD_FAILED_MESSAGE),
+        );
+        return;
+      }
+
       if (fileInputRef.current) fileInputRef.current.value = "";
+      setSuccessMessage(result.message);
       router.refresh();
     } catch (error) {
       console.error("[JobPostPhotoManager] upload failed", error);
-      alert("사진 업로드에 실패했습니다. 잠시 후 다시 시도해주세요.");
+      showErrorMessage(getSafeErrorMessage(error, PHOTO_UPLOAD_FAILED_MESSAGE));
     } finally {
       setIsUploading(false);
     }
@@ -77,12 +108,24 @@ export function JobPostPhotoManager({
     if (!confirm("사진을 삭제하시겠습니까?")) return;
 
     setDeletingPhotoId(photoId);
+    setErrorMessage(null);
+    setSuccessMessage(null);
     try {
-      await deleteJobPostPhoto(photoId);
+      const result = await deleteJobPostPhoto(photoId);
+      if (!result.success) {
+        showErrorMessage(
+          result.code === "UPDATE_FAILED"
+            ? PHOTO_DELETE_FAILED_MESSAGE
+            : getActionResultMessage(result, PHOTO_DELETE_FAILED_MESSAGE),
+        );
+        return;
+      }
+
+      setSuccessMessage(result.message);
       router.refresh();
     } catch (error) {
       console.error("[JobPostPhotoManager] delete failed", error);
-      alert("사진 삭제에 실패했습니다. 잠시 후 다시 시도해주세요.");
+      showErrorMessage(getSafeErrorMessage(error, PHOTO_DELETE_FAILED_MESSAGE));
     } finally {
       setDeletingPhotoId(null);
     }
@@ -127,6 +170,22 @@ export function JobPostPhotoManager({
       <p className="text-caption text-neutral-500">
         JPG, PNG, WEBP 형식만 가능하며 1장당 최대 5MB입니다.
       </p>
+      {errorMessage && (
+        <p
+          role="alert"
+          className="rounded-md border border-danger/20 bg-danger-light px-3 py-2 text-[13px] font-medium text-danger-muted"
+        >
+          {errorMessage}
+        </p>
+      )}
+      {successMessage && (
+        <p
+          role="status"
+          className="rounded-md border border-primary-100 bg-primary-50 px-3 py-2 text-[13px] font-semibold text-primary-700"
+        >
+          {successMessage}
+        </p>
+      )}
 
       {photos.length === 0 ? (
         <div className="overflow-hidden rounded-md border border-dashed border-neutral-200 bg-neutral-0">
@@ -175,6 +234,11 @@ export function JobPostPhotoManager({
           ))}
         </div>
       )}
+      <AlertDialog
+        open={alertMessage !== null}
+        message={alertMessage ?? ""}
+        onClose={() => setAlertMessage(null)}
+      />
     </div>
   );
 }

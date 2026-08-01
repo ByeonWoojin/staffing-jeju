@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import type { Application, JobPost } from "@/types/database";
 import { trackEvent } from "@/lib/analytics/client";
 import { ANALYTICS_EVENTS } from "@/lib/analytics/events";
+import { getSafeErrorMessage } from "@/lib/action-result";
 import {
   acceptApplication,
   closeRecruitmentAfterHiring,
@@ -18,6 +19,7 @@ import {
   getGenderConditionLabel,
 } from "@/lib/labels";
 import {
+  AlertDialog,
   ApplicationStatusBadge,
   Button,
   ButtonLink,
@@ -42,6 +44,7 @@ export function ApplicationDetail({
   const [isClosingRecruitment, setIsClosingRecruitment] = useState(false);
   const [hiringResult, setHiringResult] =
     useState<AcceptApplicationResult | null>(null);
+  const [alertMessage, setAlertMessage] = useState<string | null>(null);
 
   const application = initialApplication;
   const photoSrc =
@@ -69,8 +72,11 @@ export function ApplicationDetail({
       setHiringResult(result);
       router.refresh();
     } catch (error) {
-      alert(
-        error instanceof Error ? error.message : "채용합격 처리에 실패했습니다.",
+      setAlertMessage(
+        getSafeErrorMessage(
+          error,
+          "채용합격 처리에 실패했습니다. 잠시 후 다시 시도해 주세요.",
+        ),
       );
     } finally {
       setIsUpdating(false);
@@ -101,10 +107,13 @@ export function ApplicationDetail({
       }
       setHiringResult(null);
       router.refresh();
-      alert("모집이 마감되었습니다.");
+      setAlertMessage("모집이 마감되었습니다.");
     } catch (error) {
-      alert(
-        error instanceof Error ? error.message : "모집 마감 처리에 실패했습니다.",
+      setAlertMessage(
+        getSafeErrorMessage(
+          error,
+          "모집 마감 처리에 실패했습니다. 잠시 후 다시 시도해 주세요.",
+        ),
       );
     } finally {
       setIsClosingRecruitment(false);
@@ -125,10 +134,13 @@ export function ApplicationDetail({
         user_role: "owner",
       });
       router.refresh();
-      alert("불합격 처리되었습니다.");
+      setAlertMessage("불합격 처리되었습니다.");
     } catch (error) {
-      alert(
-        error instanceof Error ? error.message : "불합격 처리에 실패했습니다.",
+      setAlertMessage(
+        getSafeErrorMessage(
+          error,
+          "불합격 처리에 실패했습니다. 잠시 후 다시 시도해 주세요.",
+        ),
       );
     } finally {
       setIsUpdating(false);
@@ -329,6 +341,11 @@ export function ApplicationDetail({
           </CardContent>
         </Card>
       </Section>
+      <AlertDialog
+        open={alertMessage !== null}
+        message={alertMessage ?? ""}
+        onClose={() => setAlertMessage(null)}
+      />
     </div>
   );
 }

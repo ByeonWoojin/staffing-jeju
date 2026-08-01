@@ -36,6 +36,32 @@ type EditableJobPostField =
 
 type EditableJobPostUpdate = Pick<JobPost, EditableJobPostField>;
 
+export type JobPostUpdateActionCode =
+  | "SUCCESS"
+  | "NO_CHANGES"
+  | "VALIDATION_ERROR"
+  | "UNAUTHORIZED"
+  | "NOT_FOUND"
+  | "UPDATE_FAILED";
+
+export type JobPostUpdateActionResult = {
+  success: boolean;
+  code: JobPostUpdateActionCode;
+  message: string;
+  fieldErrors?: Partial<Record<EditableJobPostField, string[]>>;
+};
+
+export type JobPostPhotoActionResult = {
+  success: boolean;
+  code:
+    | "SUCCESS"
+    | "VALIDATION_ERROR"
+    | "UNAUTHORIZED"
+    | "NOT_FOUND"
+    | "UPDATE_FAILED";
+  message: string;
+};
+
 const EDITABLE_FIELDS: EditableJobPostField[] = [
   "title",
   "recruit_count",
@@ -92,9 +118,10 @@ function logAction(
   jobPostId: string,
   payload: Record<string, unknown>,
 ) {
-  void actionName;
-  void jobPostId;
-  void payload;
+  console.info(`[owner-job-edit] ${actionName}`, {
+    job_post_id: jobPostId,
+    ...payload,
+  });
 }
 
 function assertValidJobPostId(jobPostId: string) {
@@ -143,7 +170,11 @@ async function getJobPostOrThrow(jobPostId: string): Promise<JobPost> {
     throw new Error("모집글을 찾을 수 없습니다.");
   }
 
-  logAction("getJobPostOrThrow:success", jobPostId, { result: data });
+  logAction("getJobPostOrThrow:success", jobPostId, {
+    owner_id: data.owner_id,
+    guesthouse_id: data.guesthouse_id,
+    success: true,
+  });
   return data as JobPost;
 }
 
@@ -245,101 +276,284 @@ function getChangedFields(
   });
 }
 
+function actionResult(
+  code: JobPostUpdateActionCode,
+  message: string,
+  fieldErrors?: JobPostUpdateActionResult["fieldErrors"],
+): JobPostUpdateActionResult {
+  return {
+    success: code === "SUCCESS",
+    code,
+    message,
+    ...(fieldErrors ? { fieldErrors } : {}),
+  };
+}
+
+function createValidationResult(message: string): JobPostUpdateActionResult {
+  return actionResult("VALIDATION_ERROR", message);
+}
+
+function photoActionResult(
+  code: JobPostPhotoActionResult["code"],
+  message: string,
+): JobPostPhotoActionResult {
+  return {
+    success: code === "SUCCESS",
+    code,
+    message,
+  };
+}
+
 export async function updateJobPost(
   jobPostId: string,
   payload: JobPostFormData,
-): Promise<JobPost> {
+): Promise<JobPostUpdateActionResult> {
+  logAction("job_edit_action_started", jobPostId, {});
   logUuidValidation("updateJobPost", jobPostId);
-  assertValidJobPostId(jobPostId);
+
+  if (!isUuid(jobPostId)) {
+    logAction("action_failed", jobPostId, {
+      step: "job_id_validation",
+      code: "VALIDATION_ERROR",
+    });
+    return actionResult("VALIDATION_ERROR", INVALID_JOB_POST_ID_MESSAGE);
+  }
 
   for (const fieldName of REQUIRED_TEXT_FIELDS) {
     if (typeof payload[fieldName] === "string" && !payload[fieldName].trim()) {
-      throw new Error(`${fieldName}은(는) 필수 입력값입니다.`);
+      logAction("action_failed", jobPostId, {
+        step: "required_field_validation",
+        code: "VALIDATION_ERROR",
+        field_name: fieldName,
+      });
+      return createValidationResult(`${fieldName}은(는) 필수 입력값입니다.`);
     }
   }
 
-  const owner = await getCurrentOwnerOrThrow();
-  const current = await getJobPostOrThrow(jobPostId);
+  try {
+    const authUser = await getCurrentAuthUser();
+    if (!authUser) {
+      logAction("action_failed", jobPostId, {
+        step: "auth",
+        code: "UNAUTHORIZED",
+      });
+      return actionResult("UNAUTHORIZED", "로그인이 필요합니다.");
+    }
 
-  if (current.owner_id !== owner.id) {
-    logAction("updateJobPost:owner:error", jobPostId, {
-      ownerId: owner.id,
-      jobPostOwnerId: current.owner_id,
+    const owner = await getProfileById(authUser.id);
+    if (!owner || owner.role !== "owner") {
+      logAction("action_failed", jobPostId, {
+        step: "owner_profile",
+        user_id: authUser.id,
+        code: "UNAUTHORIZED",
+      });
+      return actionResult(
+        "UNAUTHORIZED",
+        "사장님 계정만 실행할 수 있는 작업입니다.",
+      );
+    }
+
+    logAction("auth_completed", jobPostId, {
+      user_id: owner.id,
+      success: true,
     });
-    throw new Error("현재 owner가 수정할 수 있는 모집글이 아닙니다.");
-  }
 
-  const values = normalizePayload(payload, current.work_start_date);
-  const changes = getChangedFields(current, values);
+    const supabase = createSupabaseAdminClient();
+    const { data: currentData, error: loadError } = await supabase
+      .from("job_posts")
+      .select("*")
+      .eq("id", jobPostId)
+      .maybeSingle();
 
-  if (changes.length === 0) {
-    logAction("updateJobPost:no-changes", jobPostId, { values });
-    throw new Error("변경된 내용이 없습니다.");
-  }
+    if (loadError) {
+      console.error("[owner-job-edit] action_failed", {
+        step: "job_post_loaded",
+        user_id: owner.id,
+        job_post_id: jobPostId,
+        error: serializeSupabaseError(loadError),
+      });
+      return actionResult(
+        "UPDATE_FAILED",
+        "변경사항을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+      );
+    }
+    if (!currentData) {
+      logAction("action_failed", jobPostId, {
+        step: "job_post_loaded",
+        user_id: owner.id,
+        code: "NOT_FOUND",
+      });
+      return actionResult("NOT_FOUND", "모집글을 찾을 수 없습니다.");
+    }
 
-  const supabase = createSupabaseAdminClient();
-  logAction("updateJobPost:update:start", jobPostId, { values, changes });
+    const current = currentData as JobPost;
+    logAction("job_post_loaded", jobPostId, {
+      user_id: owner.id,
+      guesthouse_id: current.guesthouse_id,
+      success: true,
+    });
+    logAction("guesthouse_loaded", jobPostId, {
+      user_id: owner.id,
+      guesthouse_id: current.guesthouse_id,
+      success: true,
+    });
 
-  const { data, error } = await supabase
-    .from("job_posts")
-    .update(values)
-    .eq("id", jobPostId)
-    .eq("owner_id", owner.id)
-    .select("*")
-    .maybeSingle();
+    if (current.owner_id !== owner.id) {
+      logAction("action_failed", jobPostId, {
+        step: "owner_check",
+        user_id: owner.id,
+        guesthouse_id: current.guesthouse_id,
+        code: "UNAUTHORIZED",
+      });
+      return actionResult(
+        "UNAUTHORIZED",
+        "현재 owner가 수정할 수 있는 모집글이 아닙니다.",
+      );
+    }
 
-  if (error) {
-    logAction("updateJobPost:update:error", jobPostId, {
+    let values: EditableJobPostUpdate;
+    try {
+      values = normalizePayload(payload, current.work_start_date);
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "입력값을 확인해 주세요.";
+      logAction("action_failed", jobPostId, {
+        step: "form_data_parsed",
+        user_id: owner.id,
+        guesthouse_id: current.guesthouse_id,
+        code: "VALIDATION_ERROR",
+      });
+      return createValidationResult(message);
+    }
+
+    logAction("form_data_parsed", jobPostId, {
+      user_id: owner.id,
+      guesthouse_id: current.guesthouse_id,
+      success: true,
+    });
+
+    const changes = getChangedFields(current, values);
+    logAction("job_changes_checked", jobPostId, {
+      user_id: owner.id,
+      guesthouse_id: current.guesthouse_id,
+      success: true,
+      change_count: changes.length,
+      changed_fields: changes.map((change) => change.field_name),
+    });
+    logAction("guesthouse_changes_checked", jobPostId, {
+      user_id: owner.id,
+      guesthouse_id: current.guesthouse_id,
+      success: true,
+      change_count: 0,
+    });
+    logAction("image_changes_checked", jobPostId, {
+      user_id: owner.id,
+      guesthouse_id: current.guesthouse_id,
+      success: true,
+      change_count: 0,
+      note: "job_post_photos are persisted by dedicated photo actions",
+    });
+
+    if (changes.length === 0) {
+      return actionResult("NO_CHANGES", "변경된 내용이 없습니다.");
+    }
+
+    logAction("update_started", jobPostId, {
+      user_id: owner.id,
+      guesthouse_id: current.guesthouse_id,
+      change_count: changes.length,
+    });
+
+    const { data, error } = await supabase
+      .from("job_posts")
+      .update(values)
+      .eq("id", jobPostId)
+      .eq("owner_id", owner.id)
+      .select("*")
+      .maybeSingle();
+
+    if (error) {
+      console.error("[owner-job-edit] action_failed", {
+        step: "update_started",
+        user_id: owner.id,
+        job_post_id: jobPostId,
+        guesthouse_id: current.guesthouse_id,
+        error: serializeSupabaseError(error),
+      });
+      return actionResult(
+        "UPDATE_FAILED",
+        "변경사항을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+      );
+    }
+    if (!data) {
+      logAction("action_failed", jobPostId, {
+        step: "update_started",
+        user_id: owner.id,
+        guesthouse_id: current.guesthouse_id,
+        code: "NOT_FOUND",
+      });
+      return actionResult("NOT_FOUND", "모집글 수정 결과가 없습니다.");
+    }
+
+    const logRows = changes.map((change) => ({
+      job_post_id: jobPostId,
+      changed_by: owner.id,
+      field_name: change.field_name,
+      old_value: change.old_value,
+      new_value: change.new_value,
+    }));
+
+    const { data: logData, error: logError } = await supabase
+      .from("job_post_update_logs")
+      .insert(logRows)
+      .select("id");
+
+    if (logError || !logData || logData.length !== logRows.length) {
+      console.error("[owner-job-edit] action_failed", {
+        step: "update_log",
+        user_id: owner.id,
+        job_post_id: jobPostId,
+        guesthouse_id: current.guesthouse_id,
+        error: logError ? serializeSupabaseError(logError) : null,
+        expected_log_count: logRows.length,
+        actual_log_count: logData?.length ?? 0,
+      });
+    }
+
+    logAction("update_completed", jobPostId, {
+      user_id: owner.id,
+      guesthouse_id: current.guesthouse_id,
+      success: true,
+      change_count: changes.length,
+    });
+
+    logAction("revalidation_started", jobPostId, {
+      user_id: owner.id,
+      guesthouse_id: current.guesthouse_id,
+    });
+    revalidatePath("/owner");
+    revalidatePath("/owner/jobs");
+    revalidatePath(`/owner/jobs/${jobPostId}/edit`);
+
+    logAction("redirect_started", jobPostId, {
+      user_id: owner.id,
+      guesthouse_id: current.guesthouse_id,
+      redirect_to: "/owner/jobs",
+    });
+    return actionResult("SUCCESS", "변경사항이 저장되었습니다.");
+  } catch (error) {
+    console.error("[owner-job-edit] action_failed", {
+      step: "unexpected",
+      job_post_id: jobPostId,
       error: serializeSupabaseError(error),
     });
-    throw new Error(`모집글 수정에 실패했습니다: ${error.message}`);
+    return actionResult(
+      "UPDATE_FAILED",
+      "변경사항을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+    );
   }
-  if (!data) {
-    logAction("updateJobPost:update:no-row", jobPostId, { values });
-    throw new Error("모집글 수정 결과가 없습니다. DB row가 수정되지 않았습니다.");
-  }
-
-  const updated = data as JobPost;
-  logAction("updateJobPost:update:success", jobPostId, { result: updated });
-
-  const logRows = changes.map((change) => ({
-    job_post_id: jobPostId,
-    changed_by: owner.id,
-    field_name: change.field_name,
-    old_value: change.old_value,
-    new_value: change.new_value,
-  }));
-
-  const { data: logData, error: logError } = await supabase
-    .from("job_post_update_logs")
-    .insert(logRows)
-    .select("*");
-
-  if (logError) {
-    logAction("updateJobPost:logs:error", jobPostId, {
-      error: serializeSupabaseError(logError),
-      logRows,
-    });
-    throw new Error(`모집글 수정 로그 기록에 실패했습니다: ${logError.message}`);
-  }
-  if (!logData || logData.length !== logRows.length) {
-    logAction("updateJobPost:logs:no-row", jobPostId, {
-      expectedLogCount: logRows.length,
-      result: logData,
-    });
-    throw new Error("모집글 수정 로그 기록 결과가 올바르지 않습니다.");
-  }
-
-  revalidatePath("/owner");
-  revalidatePath("/owner/jobs");
-  revalidatePath(`/owner/jobs/${jobPostId}/edit`);
-
-  logAction("updateJobPost:done", jobPostId, {
-    before: current,
-    result: updated,
-    logCount: logRows.length,
-  });
-  return updated;
 }
 
 function getPhotoExtension(file: File): string {
@@ -373,115 +587,217 @@ async function getJobPostPhotoOrThrow(photoId: string): Promise<JobPostPhoto> {
   return data as JobPostPhoto;
 }
 
-export async function uploadJobPostPhoto(formData: FormData): Promise<void> {
+export async function uploadJobPostPhoto(
+  formData: FormData,
+): Promise<JobPostPhotoActionResult> {
   const jobPostId = String(formData.get("jobPostId") ?? "");
   const file = formData.get("photo");
 
-  assertValidJobPostId(jobPostId);
+  if (!isUuid(jobPostId)) {
+    return photoActionResult("VALIDATION_ERROR", INVALID_JOB_POST_ID_MESSAGE);
+  }
   if (!(file instanceof File) || file.size === 0) {
-    throw new Error("업로드할 사진을 선택해주세요.");
+    return photoActionResult("VALIDATION_ERROR", "업로드할 사진을 선택해주세요.");
   }
   if (!ALLOWED_PHOTO_TYPES.includes(file.type as (typeof ALLOWED_PHOTO_TYPES)[number])) {
-    throw new Error("JPG, PNG, WEBP 형식의 이미지만 업로드할 수 있습니다.");
+    return photoActionResult(
+      "VALIDATION_ERROR",
+      "JPG, PNG, WEBP 형식의 이미지만 업로드할 수 있습니다.",
+    );
   }
   if (file.size > MAX_PHOTO_SIZE_BYTES) {
-    throw new Error("사진은 1장당 최대 5MB까지만 업로드할 수 있습니다.");
+    return photoActionResult(
+      "VALIDATION_ERROR",
+      "사진은 1장당 최대 5MB까지만 업로드할 수 있습니다.",
+    );
   }
 
-  const owner = await getCurrentOwnerOrThrow();
-  const jobPost = await getJobPostOrThrow(jobPostId);
-  if (jobPost.owner_id !== owner.id) {
-    throw new Error("현재 owner가 수정할 수 있는 모집글이 아닙니다.");
-  }
+  try {
+    const owner = await getCurrentOwnerOrThrow();
+    const jobPost = await getJobPostOrThrow(jobPostId);
+    if (jobPost.owner_id !== owner.id) {
+      return photoActionResult(
+        "UNAUTHORIZED",
+        "현재 owner가 수정할 수 있는 모집글이 아닙니다.",
+      );
+    }
 
-  const supabase = createSupabaseAdminClient();
-  const { count, error: countError } = await supabase
-    .from("job_post_photos")
-    .select("id", { count: "exact", head: true })
-    .eq("job_post_id", jobPostId);
+    const supabase = createSupabaseAdminClient();
+    const { count, error: countError } = await supabase
+      .from("job_post_photos")
+      .select("id", { count: "exact", head: true })
+      .eq("job_post_id", jobPostId);
 
-  if (countError) {
-    console.error("[uploadJobPostPhoto] count failed", {
-      error: serializeSupabaseError(countError),
+    if (countError) {
+      console.error("[uploadJobPostPhoto] count failed", {
+        user_id: owner.id,
+        job_post_id: jobPostId,
+        guesthouse_id: jobPost.guesthouse_id,
+        error: serializeSupabaseError(countError),
+      });
+      return photoActionResult(
+        "UPDATE_FAILED",
+        "사진 업로드에 실패했습니다. 잠시 후 다시 시도해주세요.",
+      );
+    }
+    if ((count ?? 0) >= MAX_PHOTO_COUNT) {
+      return photoActionResult(
+        "VALIDATION_ERROR",
+        "모집글 사진은 최대 5장까지 등록할 수 있습니다.",
+      );
+    }
+
+    const ext = getPhotoExtension(file);
+    const photoPath = `job-posts/${jobPostId}/${crypto.randomUUID()}.${ext}`;
+    const { error: uploadError } = await supabase.storage
+      .from(JOB_POST_IMAGE_BUCKET)
+      .upload(photoPath, file, {
+        contentType: file.type,
+        upsert: false,
+      });
+
+    if (uploadError) {
+      console.error("[uploadJobPostPhoto] storage upload failed", {
+        user_id: owner.id,
+        job_post_id: jobPostId,
+        guesthouse_id: jobPost.guesthouse_id,
+        error: serializeSupabaseError(uploadError),
+      });
+      return photoActionResult(
+        "UPDATE_FAILED",
+        "사진 업로드에 실패했습니다. 잠시 후 다시 시도해주세요.",
+      );
+    }
+
+    const { error: insertError } = await supabase.from("job_post_photos").insert({
+      job_post_id: jobPostId,
+      owner_id: owner.id,
+      photo_path: photoPath,
+      alt_text: jobPost.title,
+      sort_order: count ?? 0,
     });
-    throw new Error("사진 업로드에 실패했습니다. 잠시 후 다시 시도해주세요.");
-  }
-  if ((count ?? 0) >= MAX_PHOTO_COUNT) {
-    throw new Error("모집글 사진은 최대 5장까지 등록할 수 있습니다.");
-  }
 
-  const ext = getPhotoExtension(file);
-  const photoPath = `job-posts/${jobPostId}/${crypto.randomUUID()}.${ext}`;
-  const { error: uploadError } = await supabase.storage
-    .from(JOB_POST_IMAGE_BUCKET)
-    .upload(photoPath, file, {
-      contentType: file.type,
-      upsert: false,
+    if (insertError) {
+      await supabase.storage.from(JOB_POST_IMAGE_BUCKET).remove([photoPath]);
+      console.error("[uploadJobPostPhoto] insert failed", {
+        user_id: owner.id,
+        job_post_id: jobPostId,
+        guesthouse_id: jobPost.guesthouse_id,
+        error: serializeSupabaseError(insertError),
+      });
+      return photoActionResult(
+        "UPDATE_FAILED",
+        "사진 업로드에 실패했습니다. 잠시 후 다시 시도해주세요.",
+      );
+    }
+
+    revalidatePath("/owner");
+    revalidatePath("/owner/jobs");
+    revalidatePath(`/owner/jobs/${jobPostId}/edit`);
+    return photoActionResult("SUCCESS", "사진을 업로드했어요.");
+  } catch (error) {
+    if (error instanceof Error) {
+      if (
+        error.message === "로그인이 필요합니다." ||
+        error.message === "사장님 계정만 실행할 수 있는 작업입니다."
+      ) {
+        return photoActionResult("UNAUTHORIZED", error.message);
+      }
+      if (error.message === "모집글을 찾을 수 없습니다.") {
+        return photoActionResult("NOT_FOUND", error.message);
+      }
+    }
+
+    console.error("[uploadJobPostPhoto] action failed", {
+      job_post_id: jobPostId,
+      error: serializeSupabaseError(error),
     });
-
-  if (uploadError) {
-    console.error("[uploadJobPostPhoto] storage upload failed", {
-      error: serializeSupabaseError(uploadError),
-    });
-    throw new Error("사진 업로드에 실패했습니다. 잠시 후 다시 시도해주세요.");
+    return photoActionResult(
+      "UPDATE_FAILED",
+      "사진 업로드에 실패했습니다. 잠시 후 다시 시도해주세요.",
+    );
   }
-
-  const { error: insertError } = await supabase.from("job_post_photos").insert({
-    job_post_id: jobPostId,
-    owner_id: owner.id,
-    photo_path: photoPath,
-    alt_text: jobPost.title,
-    sort_order: count ?? 0,
-  });
-
-  if (insertError) {
-    await supabase.storage.from(JOB_POST_IMAGE_BUCKET).remove([photoPath]);
-    console.error("[uploadJobPostPhoto] insert failed", {
-      error: serializeSupabaseError(insertError),
-    });
-    throw new Error("사진 업로드에 실패했습니다. 잠시 후 다시 시도해주세요.");
-  }
-
-  revalidatePath("/owner");
-  revalidatePath("/owner/jobs");
-  revalidatePath(`/owner/jobs/${jobPostId}/edit`);
 }
 
-export async function deleteJobPostPhoto(photoId: string): Promise<void> {
-  const owner = await getCurrentOwnerOrThrow();
-  const photo = await getJobPostPhotoOrThrow(photoId);
-  const jobPost = await getJobPostOrThrow(photo.job_post_id);
-
-  if (photo.owner_id !== owner.id || jobPost.owner_id !== owner.id) {
-    throw new Error("현재 owner가 삭제할 수 있는 사진이 아닙니다.");
+export async function deleteJobPostPhoto(
+  photoId: string,
+): Promise<JobPostPhotoActionResult> {
+  if (!isUuid(photoId)) {
+    return photoActionResult("VALIDATION_ERROR", "사진 ID가 올바르지 않습니다.");
   }
 
-  const supabase = createSupabaseAdminClient();
-  const { error: removeError } = await supabase.storage
-    .from(JOB_POST_IMAGE_BUCKET)
-    .remove([photo.photo_path]);
+  try {
+    const owner = await getCurrentOwnerOrThrow();
+    const photo = await getJobPostPhotoOrThrow(photoId);
+    const jobPost = await getJobPostOrThrow(photo.job_post_id);
 
-  if (removeError) {
-    console.error("[deleteJobPostPhoto] storage remove failed", {
-      error: serializeSupabaseError(removeError),
+    if (photo.owner_id !== owner.id || jobPost.owner_id !== owner.id) {
+      return photoActionResult(
+        "UNAUTHORIZED",
+        "현재 owner가 삭제할 수 있는 사진이 아닙니다.",
+      );
+    }
+
+    const supabase = createSupabaseAdminClient();
+    const { error: deleteError } = await supabase
+      .from("job_post_photos")
+      .delete()
+      .eq("id", photo.id)
+      .eq("owner_id", owner.id);
+
+    if (deleteError) {
+      console.error("[deleteJobPostPhoto] delete failed", {
+        user_id: owner.id,
+        job_post_id: jobPost.id,
+        guesthouse_id: jobPost.guesthouse_id,
+        error: serializeSupabaseError(deleteError),
+      });
+      return photoActionResult(
+        "UPDATE_FAILED",
+        "사진 삭제에 실패했습니다. 잠시 후 다시 시도해주세요.",
+      );
+    }
+
+    const { error: removeError } = await supabase.storage
+      .from(JOB_POST_IMAGE_BUCKET)
+      .remove([photo.photo_path]);
+
+    if (removeError) {
+      console.error("[deleteJobPostPhoto] storage remove failed", {
+        user_id: owner.id,
+        job_post_id: jobPost.id,
+        guesthouse_id: jobPost.guesthouse_id,
+        error: serializeSupabaseError(removeError),
+      });
+    }
+
+    revalidatePath("/owner");
+    revalidatePath("/owner/jobs");
+    revalidatePath(`/owner/jobs/${jobPost.id}/edit`);
+    return photoActionResult("SUCCESS", "사진을 삭제했어요.");
+  } catch (error) {
+    if (error instanceof Error) {
+      if (
+        error.message === "로그인이 필요합니다." ||
+        error.message === "사장님 계정만 실행할 수 있는 작업입니다."
+      ) {
+        return photoActionResult("UNAUTHORIZED", error.message);
+      }
+      if (
+        error.message === "사진을 찾을 수 없습니다." ||
+        error.message === "모집글을 찾을 수 없습니다."
+      ) {
+        return photoActionResult("NOT_FOUND", error.message);
+      }
+    }
+
+    console.error("[deleteJobPostPhoto] action failed", {
+      photo_id: photoId,
+      error: serializeSupabaseError(error),
     });
-    throw new Error("사진 삭제에 실패했습니다. 잠시 후 다시 시도해주세요.");
+    return photoActionResult(
+      "UPDATE_FAILED",
+      "사진 삭제에 실패했습니다. 잠시 후 다시 시도해주세요.",
+    );
   }
-
-  const { error: deleteError } = await supabase
-    .from("job_post_photos")
-    .delete()
-    .eq("id", photo.id)
-    .eq("owner_id", owner.id);
-
-  if (deleteError) {
-    console.error("[deleteJobPostPhoto] delete failed", {
-      error: serializeSupabaseError(deleteError),
-    });
-    throw new Error("사진 삭제에 실패했습니다. 잠시 후 다시 시도해주세요.");
-  }
-
-  revalidatePath("/owner");
-  revalidatePath("/owner/jobs");
-  revalidatePath(`/owner/jobs/${jobPost.id}/edit`);
 }

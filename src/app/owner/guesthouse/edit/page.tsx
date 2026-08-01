@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 import { OwnerLayout } from "@/components/layout/OwnerLayout";
 import { GuesthouseForm } from "@/components/owner";
-import { GuesthousePhotoManager } from "@/components/owner/GuesthousePhotoManager";
 import {
   getGuesthousePhotoPublicUrl,
   getGuesthousePhotos,
@@ -44,9 +43,7 @@ export default async function EditGuesthousePage() {
         mode="edit"
         guesthouseId={id}
         initialData={formData}
-        photoManager={
-          <GuesthousePhotoManager guesthouseId={id} photos={photosWithUrls} />
-        }
+        initialPhotos={photosWithUrls}
       />
     </OwnerLayout>
   );

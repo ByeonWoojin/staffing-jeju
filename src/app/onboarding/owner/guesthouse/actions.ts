@@ -18,11 +18,17 @@ type NewGuesthouseValues = Pick<
 
 const GUESTHOUSE_IMAGE_BUCKET = "guesthouse-images";
 const MAX_PHOTO_COUNT = 5;
-const MAX_PHOTO_SIZE_BYTES = 5 * 1024 * 1024;
-const ALLOWED_PHOTO_TYPES = ["image/jpeg", "image/png", "image/webp"] as const;
 
 export interface CreateOwnerGuesthouseResult {
-  redirectTo: string;
+  success: boolean;
+  code:
+    | "SUCCESS"
+    | "VALIDATION_ERROR"
+    | "UNAUTHORIZED"
+    | "ALREADY_EXISTS"
+    | "UPDATE_FAILED";
+  message: string;
+  redirectTo?: string;
   guesthouseId?: string;
   created: boolean;
 }
@@ -55,52 +61,6 @@ function normalizePayload(
   };
 }
 
-function getPhotoExtension(file: File): string {
-  if (file.type === "image/png") return "png";
-  if (file.type === "image/webp") return "webp";
-  return "jpg";
-}
-
-function getFileSignature(file: File) {
-  return `${file.name}-${file.size}-${file.lastModified}`;
-}
-
-function assertValidPhotoFile(file: File) {
-  if (
-    !ALLOWED_PHOTO_TYPES.includes(
-      file.type as (typeof ALLOWED_PHOTO_TYPES)[number],
-    )
-  ) {
-    throw new Error("JPG, PNG, WEBP 형식의 이미지만 등록할 수 있어요.");
-  }
-  if (file.size > MAX_PHOTO_SIZE_BYTES) {
-    throw new Error("사진 한 장의 용량은 5MB 이하여야 해요.");
-  }
-}
-
-function getValidPhotoFiles(photoFormData?: FormData): File[] {
-  if (!photoFormData) return [];
-
-  const photoFiles = photoFormData.getAll("photos").flatMap((file) =>
-    file instanceof File && file.size > 0 ? [file] : [],
-  );
-  if (photoFiles.length > MAX_PHOTO_COUNT) {
-    throw new Error("사진은 최대 5장까지 등록할 수 있어요.");
-  }
-
-  const signatures = new Set<string>();
-  for (const file of photoFiles) {
-    const signature = getFileSignature(file);
-    if (signatures.has(signature)) {
-      throw new Error("같은 파일이 중복 선택됐어요.");
-    }
-    signatures.add(signature);
-    assertValidPhotoFile(file);
-  }
-
-  return photoFiles;
-}
-
 async function getOwnerIdOrRedirect(): Promise<string | null> {
   const user = await getCurrentAuthUser();
   if (!user) return null;
@@ -111,14 +71,100 @@ async function getOwnerIdOrRedirect(): Promise<string | null> {
   return profile.id;
 }
 
-export async function createOwnerGuesthouse(
-  payload: GuesthouseFormData,
-  photoFormData?: FormData,
-): Promise<CreateOwnerGuesthouseResult> {
-  const ownerId = await getOwnerIdOrRedirect();
-  if (!ownerId) return { redirectTo: "/", created: false };
+function actionResult(
+  code: CreateOwnerGuesthouseResult["code"],
+  message: string,
+  options: Partial<Omit<CreateOwnerGuesthouseResult, "success" | "code" | "message">> = {},
+): CreateOwnerGuesthouseResult {
+  return {
+    success: code === "SUCCESS",
+    code,
+    message,
+    created: false,
+    ...options,
+  };
+}
+
+function serializeSupabaseError(error: unknown) {
+  if (error && typeof error === "object") {
+    const record = error as Record<string, unknown>;
+    return {
+      message: record.message,
+      code: record.code,
+      details: record.details,
+      hint: record.hint,
+    };
+  }
+
+  return { message: String(error) };
+}
+
+function isValidUploadedPhotoPath(path: string, ownerId: string) {
+  return (
+    path.startsWith(`${ownerId}/guesthouses/`) &&
+    /\.(jpe?g|png|webp)$/i.test(path)
+  );
+}
+
+function normalizeUploadedPhotoPaths(paths: string[] | undefined, ownerId: string) {
+  const normalizedPaths = (paths ?? [])
+    .map((path) => path.trim())
+    .filter(Boolean);
+  const uniquePaths = Array.from(new Set(normalizedPaths));
+
+  if (uniquePaths.length > MAX_PHOTO_COUNT) {
+    throw new Error(
+      "사진은 최대 5장까지 등록할 수 있습니다. 현재 추가할 수 있는 사진은 5장입니다.",
+    );
+  }
+  if (uniquePaths.length !== normalizedPaths.length) {
+    throw new Error("같은 사진이 중복 선택됐어요.");
+  }
+  if (uniquePaths.some((path) => !isValidUploadedPhotoPath(path, ownerId))) {
+    throw new Error("사진 업로드 정보가 올바르지 않습니다.");
+  }
+
+  return uniquePaths;
+}
+
+async function cleanupUploadedPhotoPaths(paths: string[]) {
+  if (paths.length === 0) return;
 
   const supabase = createSupabaseAdminClient();
+  const { error } = await supabase.storage
+    .from(GUESTHOUSE_IMAGE_BUCKET)
+    .remove(paths);
+
+  if (error) {
+    console.error("[createOwnerGuesthouse] storage cleanup failed", {
+      path_count: paths.length,
+      error: serializeSupabaseError(error),
+    });
+  }
+}
+
+export async function createOwnerGuesthouse(
+  payload: GuesthouseFormData,
+  uploadedPhotoPaths?: string[],
+): Promise<CreateOwnerGuesthouseResult> {
+  const ownerId = await getOwnerIdOrRedirect();
+  if (!ownerId) {
+    return actionResult("UNAUTHORIZED", "로그인이 필요합니다.", {
+      redirectTo: "/",
+    });
+  }
+
+  const supabase = createSupabaseAdminClient();
+  let photoPaths: string[];
+  try {
+    photoPaths = normalizeUploadedPhotoPaths(uploadedPhotoPaths, ownerId);
+  } catch (error) {
+    await cleanupUploadedPhotoPaths(uploadedPhotoPaths ?? []);
+    return actionResult(
+      "VALIDATION_ERROR",
+      error instanceof Error ? error.message : "사진 업로드 정보가 올바르지 않습니다.",
+    );
+  }
 
   const { data: existing, error: existingError } = await supabase
     .from("guesthouses")
@@ -127,15 +173,39 @@ export async function createOwnerGuesthouse(
     .maybeSingle();
 
   if (existingError) {
-    throw new Error(`게스트하우스 조회에 실패했습니다: ${existingError.message}`);
+    await cleanupUploadedPhotoPaths(photoPaths);
+    console.error("[createOwnerGuesthouse] existing lookup failed", {
+      user_id: ownerId,
+      error: serializeSupabaseError(existingError),
+    });
+    return actionResult(
+      "UPDATE_FAILED",
+      "게스트하우스 정보를 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+    );
   }
 
   if (existing) {
-    return { redirectTo: "/onboarding/owner/job-post", created: false };
+    await cleanupUploadedPhotoPaths(photoPaths);
+    return actionResult(
+      "ALREADY_EXISTS",
+      "이미 등록된 게스트하우스가 있습니다.",
+      {
+        redirectTo: "/onboarding/owner/job-post",
+      },
+    );
   }
 
-  const photoFiles = getValidPhotoFiles(photoFormData);
-  const values = normalizePayload(ownerId, payload);
+  let values: NewGuesthouseValues;
+  try {
+    values = normalizePayload(ownerId, payload);
+  } catch (error) {
+    await cleanupUploadedPhotoPaths(photoPaths);
+    return actionResult(
+      "VALIDATION_ERROR",
+      error instanceof Error ? error.message : "입력값을 확인해 주세요.",
+    );
+  }
+
   const { data: createdGuesthouse, error } = await supabase
     .from("guesthouses")
     .insert(values)
@@ -143,70 +213,65 @@ export async function createOwnerGuesthouse(
     .maybeSingle();
 
   if (error) {
-    throw new Error(`게스트하우스 등록에 실패했습니다: ${error.message}`);
+    await cleanupUploadedPhotoPaths(photoPaths);
+    console.error("[createOwnerGuesthouse] insert failed", {
+      user_id: ownerId,
+      error: serializeSupabaseError(error),
+    });
+    return actionResult(
+      "UPDATE_FAILED",
+      "게스트하우스 정보를 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+    );
   }
   if (!createdGuesthouse) {
-    throw new Error("게스트하우스 등록 결과가 없습니다.");
+    await cleanupUploadedPhotoPaths(photoPaths);
+    return actionResult(
+      "UPDATE_FAILED",
+      "게스트하우스 정보를 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+    );
   }
 
-  const uploadedPaths: string[] = [];
   try {
-    const rows = [];
-    for (const [index, file] of photoFiles.entries()) {
-      const ext = getPhotoExtension(file);
-      const photoPath = `guesthouses/${createdGuesthouse.id}/${crypto.randomUUID()}.${ext}`;
-      const { error: uploadError } = await supabase.storage
-        .from(GUESTHOUSE_IMAGE_BUCKET)
-        .upload(photoPath, file, {
-          contentType: file.type,
-          upsert: false,
-        });
-
-      if (uploadError) {
-        throw new Error(
-          `게스트하우스 사진 업로드에 실패했습니다: ${uploadError.message}`,
-        );
-      }
-
-      uploadedPaths.push(photoPath);
-      rows.push({
+    if (photoPaths.length > 0) {
+      const rows = photoPaths.map((photoPath, index) => ({
         guesthouse_id: createdGuesthouse.id,
         owner_id: ownerId,
         photo_path: photoPath,
         alt_text: createdGuesthouse.name,
         sort_order: index,
-      });
-    }
-
-    if (rows.length > 0) {
+      }));
       const { error: insertPhotoError } = await supabase
         .from("guesthouse_photos")
         .insert(rows);
 
       if (insertPhotoError) {
-        throw new Error(
-          `게스트하우스 사진 저장에 실패했습니다: ${insertPhotoError.message}`,
-        );
+        throw insertPhotoError;
       }
     }
   } catch (photoError) {
-    if (uploadedPaths.length > 0) {
-      await supabase.storage.from(GUESTHOUSE_IMAGE_BUCKET).remove(uploadedPaths);
-    }
+    await cleanupUploadedPhotoPaths(photoPaths);
     await supabase
       .from("guesthouses")
       .delete()
       .eq("id", createdGuesthouse.id)
       .eq("owner_id", ownerId);
-    throw photoError;
+    console.error("[createOwnerGuesthouse] photo metadata insert failed", {
+      user_id: ownerId,
+      guesthouse_id: createdGuesthouse.id,
+      error: serializeSupabaseError(photoError),
+    });
+    return actionResult(
+      "UPDATE_FAILED",
+      "게스트하우스 정보를 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+    );
   }
 
   revalidatePath("/onboarding/owner/guesthouse");
   revalidatePath("/onboarding/owner/job-post");
   revalidatePath("/owner");
-  return {
+  return actionResult("SUCCESS", "게스트하우스 정보가 저장되었습니다.", {
     redirectTo: "/onboarding/owner/job-post",
     guesthouseId: createdGuesthouse.id,
     created: true,
-  };
+  });
 }

@@ -7,6 +7,7 @@ import type { Guesthouse, JobPost } from "@/types/database";
 import { formatDate, formatDateTime } from "@/lib/owner-utils";
 import { isUuid } from "@/lib/uuid";
 import { getBumpDisabledReason } from "@/lib/owner-data";
+import { getSafeErrorMessage } from "@/lib/action-result";
 import { trackEvent } from "@/lib/analytics/client";
 import { ANALYTICS_EVENTS } from "@/lib/analytics/events";
 import {
@@ -154,7 +155,10 @@ export function RecruitmentManagePanel({
       router.refresh();
     } catch (error) {
       setModalError(
-        error instanceof Error ? error.message : "처리에 실패했습니다.",
+        getSafeErrorMessage(
+          error,
+          "처리에 실패했습니다. 잠시 후 다시 시도해 주세요.",
+        ),
       );
     } finally {
       setPendingAction(null);

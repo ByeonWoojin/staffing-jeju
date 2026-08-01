@@ -8,7 +8,6 @@ import type {
   Guesthouse,
   GuesthouseFormData,
   GuesthousePhoto,
-  Profile,
 } from "@/types/database";
 
 type EditableGuesthouseUpdate = Pick<
@@ -21,12 +20,40 @@ type EditableGuesthouseUpdate = Pick<
   | "description"
 >;
 
+export type GuesthouseUpdateActionCode =
+  | "SUCCESS"
+  | "NO_CHANGES"
+  | "VALIDATION_ERROR"
+  | "UNAUTHORIZED"
+  | "NOT_FOUND"
+  | "UPDATE_FAILED";
+
+export type GuesthouseUpdateActionResult = {
+  success: boolean;
+  code: GuesthouseUpdateActionCode;
+  message: string;
+};
+
+export type GuesthousePhotoOrderItem =
+  | {
+      type: "existing";
+      id: string;
+    }
+  | {
+      type: "new";
+      path: string;
+    };
+
+export type GuesthousePhotoUpdatePayload = {
+  orderedPhotos: GuesthousePhotoOrderItem[];
+  deletedPhotoIds: string[];
+  uploadedPhotoPaths: string[];
+};
+
 const INVALID_GUESTHOUSE_ID_MESSAGE =
   "개발용 mock 데이터에서는 저장할 수 없습니다. Supabase guesthouses.id UUID를 사용해야 합니다.";
 const GUESTHOUSE_IMAGE_BUCKET = "guesthouse-images";
 const MAX_PHOTO_COUNT = 5;
-const MAX_PHOTO_SIZE_BYTES = 5 * 1024 * 1024;
-const ALLOWED_PHOTO_TYPES = ["image/jpeg", "image/png", "image/webp"] as const;
 
 function serializeSupabaseError(error: unknown) {
   if (error && typeof error === "object") {
@@ -47,59 +74,15 @@ function logAction(
   guesthouseId: string,
   payload: Record<string, unknown>,
 ) {
-  void actionName;
-  void guesthouseId;
-  void payload;
-}
-
-function assertValidGuesthouseId(guesthouseId: string) {
-  if (!isUuid(guesthouseId)) {
-    throw new Error(INVALID_GUESTHOUSE_ID_MESSAGE);
-  }
+  console.info(`[owner-guesthouse-edit] ${actionName}`, {
+    guesthouse_id: guesthouseId,
+    ...payload,
+  });
 }
 
 function logUuidValidation(actionName: string, guesthouseId: string) {
   void actionName;
   void guesthouseId;
-}
-
-async function getCurrentOwnerOrThrow(): Promise<Profile> {
-  const authUser = await getCurrentAuthUser();
-  if (!authUser) {
-    throw new Error("로그인이 필요합니다.");
-  }
-
-  const profile = await getProfileById(authUser.id);
-  if (!profile || profile.role !== "owner") {
-    throw new Error("사장님 계정만 실행할 수 있는 작업입니다.");
-  }
-
-  return profile;
-}
-
-async function getGuesthouseOrThrow(guesthouseId: string): Promise<Guesthouse> {
-  assertValidGuesthouseId(guesthouseId);
-
-  const supabase = createSupabaseAdminClient();
-  const { data, error } = await supabase
-    .from("guesthouses")
-    .select("*")
-    .eq("id", guesthouseId)
-    .maybeSingle();
-
-  if (error) {
-    logAction("getGuesthouseOrThrow:error", guesthouseId, {
-      error: serializeSupabaseError(error),
-    });
-    throw new Error(`게스트하우스 조회에 실패했습니다: ${error.message}`);
-  }
-  if (!data) {
-    logAction("getGuesthouseOrThrow:no-row", guesthouseId, {});
-    throw new Error("게스트하우스를 찾을 수 없습니다.");
-  }
-
-  logAction("getGuesthouseOrThrow:success", guesthouseId, { result: data });
-  return data as Guesthouse;
 }
 
 function normalizeRequiredText(value: string, fieldLabel: string): string {
@@ -133,7 +116,7 @@ function stringifyValue(value: unknown): string | null {
   return String(value);
 }
 
-function hasChanges(
+function hasTextChanges(
   before: Guesthouse,
   nextValues: EditableGuesthouseUpdate,
 ): boolean {
@@ -150,412 +133,472 @@ function hasChanges(
   );
 }
 
+function actionResult(
+  code: GuesthouseUpdateActionCode,
+  message: string,
+): GuesthouseUpdateActionResult {
+  return {
+    success: code === "SUCCESS",
+    code,
+    message,
+  };
+}
+
+function uniqueStrings(values: string[]) {
+  return Array.from(new Set(values));
+}
+
+function isValidUploadedPhotoPath(path: string, ownerId: string) {
+  return (
+    path.startsWith(`${ownerId}/guesthouses/`) &&
+    /\.(jpe?g|png|webp)$/i.test(path)
+  );
+}
+
+function getOrderedExistingIds(photoChanges?: GuesthousePhotoUpdatePayload) {
+  return (
+    photoChanges?.orderedPhotos.flatMap((photo) =>
+      photo.type === "existing" ? [photo.id] : [],
+    ) ?? []
+  );
+}
+
+function getOrderedNewPaths(photoChanges?: GuesthousePhotoUpdatePayload) {
+  return (
+    photoChanges?.orderedPhotos.flatMap((photo) =>
+      photo.type === "new" ? [photo.path] : [],
+    ) ?? []
+  );
+}
+
+function getPhotoPayloadValidationMessage(
+  photoChanges: GuesthousePhotoUpdatePayload,
+  ownerId: string,
+) {
+  if (photoChanges.orderedPhotos.length > MAX_PHOTO_COUNT) {
+    return "사진은 최대 5장까지 등록할 수 있습니다. 현재 추가할 수 있는 사진은 0장입니다.";
+  }
+
+  const orderedExistingIds = getOrderedExistingIds(photoChanges);
+  const orderedNewPaths = getOrderedNewPaths(photoChanges);
+  const deletedPhotoIds = photoChanges.deletedPhotoIds;
+  const uploadedPhotoPaths = photoChanges.uploadedPhotoPaths;
+
+  if (
+    uniqueStrings(orderedExistingIds).length !== orderedExistingIds.length ||
+    uniqueStrings(orderedNewPaths).length !== orderedNewPaths.length ||
+    uniqueStrings(deletedPhotoIds).length !== deletedPhotoIds.length ||
+    uniqueStrings(uploadedPhotoPaths).length !== uploadedPhotoPaths.length
+  ) {
+    return "사진 순서 정보가 올바르지 않습니다.";
+  }
+
+  if (
+    orderedExistingIds.some((photoId) => !isUuid(photoId)) ||
+    deletedPhotoIds.some((photoId) => !isUuid(photoId))
+  ) {
+    return "사진 순서 정보가 올바르지 않습니다.";
+  }
+
+  const orderedNewPathSet = new Set(orderedNewPaths);
+  if (uploadedPhotoPaths.some((path) => !orderedNewPathSet.has(path))) {
+    return "사진 업로드 정보가 올바르지 않습니다.";
+  }
+
+  if (
+    [...orderedNewPaths, ...uploadedPhotoPaths].some(
+      (path) => !isValidUploadedPhotoPath(path, ownerId),
+    )
+  ) {
+    return "사진 업로드 정보가 올바르지 않습니다.";
+  }
+
+  return null;
+}
+
+function getPhotoHasChanges(
+  currentPhotos: GuesthousePhoto[],
+  photoChanges?: GuesthousePhotoUpdatePayload,
+) {
+  if (!photoChanges) return false;
+  if (photoChanges.uploadedPhotoPaths.length > 0) return true;
+  if (photoChanges.deletedPhotoIds.length > 0) return true;
+
+  const currentOrder = currentPhotos.map((photo) => photo.id);
+  const nextExistingOrder = getOrderedExistingIds(photoChanges);
+  if (currentOrder.length !== nextExistingOrder.length) return true;
+
+  return currentOrder.some(
+    (photoId, index) => photoId !== nextExistingOrder[index],
+  );
+}
+
+async function cleanupUploadedPhotoPaths(paths: string[]) {
+  if (paths.length === 0) return;
+
+  const supabase = createSupabaseAdminClient();
+  const { error } = await supabase.storage
+    .from(GUESTHOUSE_IMAGE_BUCKET)
+    .remove(paths);
+
+  if (error) {
+    console.error("[owner-guesthouse-edit] uploaded photo cleanup failed", {
+      path_count: paths.length,
+      error: serializeSupabaseError(error),
+    });
+  }
+}
+
+async function removeDeletedPhotoPaths(
+  paths: string[],
+  ownerId: string,
+  guesthouseId: string,
+) {
+  if (paths.length === 0) return;
+
+  const supabase = createSupabaseAdminClient();
+  const { error } = await supabase.storage
+    .from(GUESTHOUSE_IMAGE_BUCKET)
+    .remove(paths);
+
+  if (error) {
+    console.error("[owner-guesthouse-edit] deleted photo cleanup failed", {
+      user_id: ownerId,
+      guesthouse_id: guesthouseId,
+      path_count: paths.length,
+      error: serializeSupabaseError(error),
+    });
+  }
+}
+
+async function rollbackInsertedPhotoRows(
+  guesthouseId: string,
+  ownerId: string,
+  paths: string[],
+) {
+  if (paths.length === 0) return;
+
+  const supabase = createSupabaseAdminClient();
+  const { error } = await supabase
+    .from("guesthouse_photos")
+    .delete()
+    .eq("guesthouse_id", guesthouseId)
+    .eq("owner_id", ownerId)
+    .in("photo_path", paths);
+
+  if (error) {
+    console.error("[owner-guesthouse-edit] photo row rollback failed", {
+      user_id: ownerId,
+      guesthouse_id: guesthouseId,
+      path_count: paths.length,
+      error: serializeSupabaseError(error),
+    });
+  }
+}
+
 export async function updateGuesthouse(
   guesthouseId: string,
   payload: GuesthouseFormData,
-): Promise<Guesthouse> {
+  photoChanges?: GuesthousePhotoUpdatePayload,
+): Promise<GuesthouseUpdateActionResult> {
   logUuidValidation("updateGuesthouse", guesthouseId);
-  assertValidGuesthouseId(guesthouseId);
 
-  const owner = await getCurrentOwnerOrThrow();
-  const current = await getGuesthouseOrThrow(guesthouseId);
-
-  if (current.owner_id !== owner.id) {
-    logAction("updateGuesthouse:owner:error", guesthouseId, {
-      ownerId: owner.id,
-      guesthouseOwnerId: current.owner_id,
-    });
-    throw new Error("현재 owner가 수정할 수 있는 게스트하우스가 아닙니다.");
+  if (!isUuid(guesthouseId)) {
+    return actionResult("VALIDATION_ERROR", INVALID_GUESTHOUSE_ID_MESSAGE);
   }
 
-  const values = normalizePayload(payload);
-  if (!hasChanges(current, values)) {
-    logAction("updateGuesthouse:no-changes", guesthouseId, { values });
-    throw new Error("변경된 내용이 없습니다.");
-  }
+  const uploadedPhotoPaths = photoChanges?.uploadedPhotoPaths ?? [];
 
-  const supabase = createSupabaseAdminClient();
-  logAction("updateGuesthouse:update:start", guesthouseId, { values });
-
-  const { data, error } = await supabase
-    .from("guesthouses")
-    .update(values)
-    .eq("id", guesthouseId)
-    .eq("owner_id", owner.id)
-    .select("*")
-    .maybeSingle();
-
-  if (error) {
-    logAction("updateGuesthouse:update:error", guesthouseId, {
-      error: serializeSupabaseError(error),
-    });
-    throw new Error(`게스트하우스 수정에 실패했습니다: ${error.message}`);
-  }
-  if (!data) {
-    logAction("updateGuesthouse:update:no-row", guesthouseId, { values });
-    throw new Error(
-      "게스트하우스 수정 결과가 없습니다. DB row가 수정되지 않았습니다.",
-    );
-  }
-
-  const updated = data as Guesthouse;
-  logAction("updateGuesthouse:update:success", guesthouseId, {
-    before: current,
-    result: updated,
-  });
-
-  revalidatePath("/owner");
-  revalidatePath("/owner/guesthouse");
-  revalidatePath("/owner/guesthouse/edit");
-
-  logAction("updateGuesthouse:done", guesthouseId, {
-    before: current,
-    result: updated,
-  });
-  return updated;
-}
-
-function getPhotoExtension(file: File): string {
-  if (file.type === "image/png") return "png";
-  if (file.type === "image/webp") return "webp";
-  return "jpg";
-}
-
-function assertValidPhotoFile(file: File) {
-  if (!ALLOWED_PHOTO_TYPES.includes(file.type as (typeof ALLOWED_PHOTO_TYPES)[number])) {
-    throw new Error("JPG, PNG, WEBP 형식의 이미지만 등록할 수 있어요.");
-  }
-  if (file.size > MAX_PHOTO_SIZE_BYTES) {
-    throw new Error("사진 한 장의 용량은 5MB 이하여야 해요.");
-  }
-}
-
-async function getGuesthousePhotoOrThrow(
-  photoId: string,
-): Promise<GuesthousePhoto> {
-  if (!isUuid(photoId)) {
-    throw new Error("사진 ID가 올바르지 않습니다.");
-  }
-
-  const supabase = createSupabaseAdminClient();
-  const { data, error } = await supabase
-    .from("guesthouse_photos")
-    .select("*")
-    .eq("id", photoId)
-    .maybeSingle();
-
-  if (error) {
-    throw new Error(`사진 조회에 실패했습니다: ${error.message}`);
-  }
-  if (!data) {
-    throw new Error("사진을 찾을 수 없습니다.");
-  }
-
-  return data as GuesthousePhoto;
-}
-
-export async function uploadGuesthousePhoto(
-  formData: FormData,
-): Promise<void> {
-  const guesthouseId = String(formData.get("guesthouseId") ?? "");
-  const file = formData.get("photo");
-
-  assertValidGuesthouseId(guesthouseId);
-  if (!(file instanceof File) || file.size === 0) {
-    throw new Error("업로드할 사진을 선택해주세요.");
-  }
-  assertValidPhotoFile(file);
-
-  const owner = await getCurrentOwnerOrThrow();
-  const guesthouse = await getGuesthouseOrThrow(guesthouseId);
-  if (guesthouse.owner_id !== owner.id) {
-    throw new Error("현재 owner가 수정할 수 있는 게스트하우스가 아닙니다.");
-  }
-
-  const supabase = createSupabaseAdminClient();
-  const { count, error: countError } = await supabase
-    .from("guesthouse_photos")
-    .select("id", { count: "exact", head: true })
-    .eq("guesthouse_id", guesthouseId);
-
-  if (countError) {
-    console.error("[uploadGuesthousePhoto] count failed", {
-      error: serializeSupabaseError(countError),
-    });
-    throw new Error("사진 업로드에 실패했습니다. 잠시 후 다시 시도해주세요.");
-  }
-  if ((count ?? 0) >= MAX_PHOTO_COUNT) {
-    throw new Error("사진은 최대 5장까지 등록할 수 있어요.");
-  }
-
-  const ext = getPhotoExtension(file);
-  const photoPath = `guesthouses/${guesthouseId}/${crypto.randomUUID()}.${ext}`;
-  const { error: uploadError } = await supabase.storage
-    .from(GUESTHOUSE_IMAGE_BUCKET)
-    .upload(photoPath, file, {
-      contentType: file.type,
-      upsert: false,
-    });
-
-  if (uploadError) {
-    console.error("[uploadGuesthousePhoto] storage upload failed", {
-      error: serializeSupabaseError(uploadError),
-    });
-    throw new Error("사진 업로드에 실패했습니다. 잠시 후 다시 시도해주세요.");
-  }
-
-  const { error: insertError } = await supabase
-    .from("guesthouse_photos")
-    .insert({
-      guesthouse_id: guesthouseId,
-      owner_id: owner.id,
-      photo_path: photoPath,
-      alt_text: guesthouse.name,
-      sort_order: count ?? 0,
-    });
-
-  if (insertError) {
-    await supabase.storage.from(GUESTHOUSE_IMAGE_BUCKET).remove([photoPath]);
-    console.error("[uploadGuesthousePhoto] insert failed", {
-      error: serializeSupabaseError(insertError),
-    });
-    throw new Error("사진 업로드에 실패했습니다. 잠시 후 다시 시도해주세요.");
-  }
-
-  revalidatePath("/owner");
-  revalidatePath("/owner/guesthouse/edit");
-}
-
-export async function uploadGuesthousePhotos(
-  formData: FormData,
-): Promise<void> {
-  const guesthouseId = String(formData.get("guesthouseId") ?? "");
-  const files = formData.getAll("photos");
-
-  assertValidGuesthouseId(guesthouseId);
-  if (files.length === 0) {
-    throw new Error("업로드할 사진을 선택해주세요.");
-  }
-
-  const photoFiles = files.flatMap((file) =>
-    file instanceof File && file.size > 0 ? [file] : [],
-  );
-  if (photoFiles.length === 0) {
-    throw new Error("업로드할 사진을 선택해주세요.");
-  }
-  for (const file of photoFiles) {
-    assertValidPhotoFile(file);
-  }
-
-  const owner = await getCurrentOwnerOrThrow();
-  const guesthouse = await getGuesthouseOrThrow(guesthouseId);
-  if (guesthouse.owner_id !== owner.id) {
-    throw new Error("현재 owner가 수정할 수 있는 게스트하우스가 아닙니다.");
-  }
-
-  const supabase = createSupabaseAdminClient();
-  const { data: existingPhotos, error: existingError } = await supabase
-    .from("guesthouse_photos")
-    .select("id, sort_order")
-    .eq("guesthouse_id", guesthouseId)
-    .order("sort_order", { ascending: true })
-    .order("created_at", { ascending: true });
-
-  if (existingError) {
-    console.error("[uploadGuesthousePhotos] existing photo lookup failed", {
-      error: serializeSupabaseError(existingError),
-    });
-    throw new Error("사진 업로드에 실패했습니다. 잠시 후 다시 시도해주세요.");
-  }
-
-  const existingCount = existingPhotos?.length ?? 0;
-  if (existingCount + photoFiles.length > MAX_PHOTO_COUNT) {
-    throw new Error("사진은 최대 5장까지 등록할 수 있어요.");
-  }
-
-  const uploadedPaths: string[] = [];
   try {
-    const rows = [];
-    const maxSortOrder = Math.max(
-      -1,
-      ...((existingPhotos ?? []) as Pick<GuesthousePhoto, "sort_order">[]).map(
-        (photo) => photo.sort_order,
-      ),
-    );
+    const authUser = await getCurrentAuthUser();
+    if (!authUser) {
+      return actionResult("UNAUTHORIZED", "로그인이 필요합니다.");
+    }
 
-    for (const [index, file] of photoFiles.entries()) {
-      const ext = getPhotoExtension(file);
-      const photoPath = `guesthouses/${guesthouseId}/${crypto.randomUUID()}.${ext}`;
-      const { error: uploadError } = await supabase.storage
-        .from(GUESTHOUSE_IMAGE_BUCKET)
-        .upload(photoPath, file, {
-          contentType: file.type,
-          upsert: false,
-        });
+    const owner = await getProfileById(authUser.id);
+    if (!owner || owner.role !== "owner") {
+      return actionResult(
+        "UNAUTHORIZED",
+        "사장님 계정만 실행할 수 있는 작업입니다.",
+      );
+    }
 
-      if (uploadError) {
-        console.error("[uploadGuesthousePhotos] storage upload failed", {
-          error: serializeSupabaseError(uploadError),
+    const supabase = createSupabaseAdminClient();
+    let values: EditableGuesthouseUpdate;
+    try {
+      values = normalizePayload(payload);
+    } catch (error) {
+      await cleanupUploadedPhotoPaths(uploadedPhotoPaths);
+      return actionResult(
+        "VALIDATION_ERROR",
+        error instanceof Error ? error.message : "입력값을 확인해 주세요.",
+      );
+    }
+
+    if (photoChanges) {
+      const validationMessage = getPhotoPayloadValidationMessage(
+        photoChanges,
+        owner.id,
+      );
+      if (validationMessage) {
+        await cleanupUploadedPhotoPaths(uploadedPhotoPaths);
+        return actionResult("VALIDATION_ERROR", validationMessage);
+      }
+    }
+
+    const { data: currentData, error: loadError } = await supabase
+      .from("guesthouses")
+      .select("*")
+      .eq("id", guesthouseId)
+      .maybeSingle();
+
+    if (loadError) {
+      await cleanupUploadedPhotoPaths(uploadedPhotoPaths);
+      console.error("[owner-guesthouse-edit] load failed", {
+        user_id: owner.id,
+        guesthouse_id: guesthouseId,
+        error: serializeSupabaseError(loadError),
+      });
+      return actionResult(
+        "UPDATE_FAILED",
+        "변경사항을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+      );
+    }
+    if (!currentData) {
+      await cleanupUploadedPhotoPaths(uploadedPhotoPaths);
+      return actionResult("NOT_FOUND", "게스트하우스를 찾을 수 없습니다.");
+    }
+
+    const current = currentData as Guesthouse;
+    if (current.owner_id !== owner.id) {
+      await cleanupUploadedPhotoPaths(uploadedPhotoPaths);
+      return actionResult(
+        "UNAUTHORIZED",
+        "현재 owner가 수정할 수 있는 게스트하우스가 아닙니다.",
+      );
+    }
+
+    const { data: currentPhotoData, error: currentPhotoError } = await supabase
+      .from("guesthouse_photos")
+      .select("*")
+      .eq("guesthouse_id", guesthouseId)
+      .eq("owner_id", owner.id)
+      .order("sort_order", { ascending: true })
+      .order("created_at", { ascending: true });
+
+    if (currentPhotoError) {
+      await cleanupUploadedPhotoPaths(uploadedPhotoPaths);
+      console.error("[owner-guesthouse-edit] photo load failed", {
+        user_id: owner.id,
+        guesthouse_id: guesthouseId,
+        error: serializeSupabaseError(currentPhotoError),
+      });
+      return actionResult(
+        "UPDATE_FAILED",
+        "변경사항을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+      );
+    }
+
+    const currentPhotos = (currentPhotoData ?? []) as GuesthousePhoto[];
+    const textHasChanges = hasTextChanges(current, values);
+    const photoHasChanges = getPhotoHasChanges(currentPhotos, photoChanges);
+
+    if (!textHasChanges && !photoHasChanges) {
+      return actionResult("NO_CHANGES", "변경된 내용이 없습니다.");
+    }
+
+    logAction("updateGuesthouse:update:start", guesthouseId, {
+      user_id: owner.id,
+      text_has_changes: textHasChanges,
+      photo_has_changes: photoHasChanges,
+    });
+
+    if (textHasChanges) {
+      const { data, error } = await supabase
+        .from("guesthouses")
+        .update(values)
+        .eq("id", guesthouseId)
+        .eq("owner_id", owner.id)
+        .select("id")
+        .maybeSingle();
+
+      if (error) {
+        await cleanupUploadedPhotoPaths(uploadedPhotoPaths);
+        console.error("[owner-guesthouse-edit] update failed", {
+          user_id: owner.id,
+          guesthouse_id: guesthouseId,
+          error: serializeSupabaseError(error),
         });
-        throw new Error("사진 업로드에 실패했습니다. 잠시 후 다시 시도해주세요.");
+        return actionResult(
+          "UPDATE_FAILED",
+          "변경사항을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+        );
+      }
+      if (!data) {
+        await cleanupUploadedPhotoPaths(uploadedPhotoPaths);
+        return actionResult("NOT_FOUND", "게스트하우스 수정 결과가 없습니다.");
+      }
+    }
+
+    let deletedPhotoPaths: string[] = [];
+    const insertedPhotoPaths: string[] = [];
+
+    if (photoHasChanges && photoChanges) {
+      const currentPhotoById = new Map(
+        currentPhotos.map((photo) => [photo.id, photo]),
+      );
+      const orderedExistingIds = getOrderedExistingIds(photoChanges);
+      const orderedNewPaths = getOrderedNewPaths(photoChanges);
+      const deletedPhotoIds = photoChanges.deletedPhotoIds;
+
+      const missingExistingId = orderedExistingIds.find(
+        (photoId) => !currentPhotoById.has(photoId),
+      );
+      const missingDeletedId = deletedPhotoIds.find(
+        (photoId) => !currentPhotoById.has(photoId),
+      );
+      if (missingExistingId || missingDeletedId) {
+        await cleanupUploadedPhotoPaths(uploadedPhotoPaths);
+        return actionResult("VALIDATION_ERROR", "사진 순서 정보가 올바르지 않습니다.");
       }
 
-      uploadedPaths.push(photoPath);
-      rows.push({
-        guesthouse_id: guesthouseId,
-        owner_id: owner.id,
-        photo_path: photoPath,
-        alt_text: guesthouse.name,
-        sort_order: maxSortOrder + index + 1,
+      const deletedPhotoIdSet = new Set(deletedPhotoIds);
+      const expectedExistingIds = currentPhotos
+        .filter((photo) => !deletedPhotoIdSet.has(photo.id))
+        .map((photo) => photo.id);
+      if (
+        expectedExistingIds.length !== orderedExistingIds.length ||
+        expectedExistingIds.some(
+          (photoId) => !orderedExistingIds.includes(photoId),
+        )
+      ) {
+        await cleanupUploadedPhotoPaths(uploadedPhotoPaths);
+        return actionResult("VALIDATION_ERROR", "사진 순서 정보가 올바르지 않습니다.");
+      }
+
+      deletedPhotoPaths = deletedPhotoIds.flatMap((photoId) => {
+        const photo = currentPhotoById.get(photoId);
+        return photo ? [photo.photo_path] : [];
       });
+
+      const newPhotoRows = photoChanges.orderedPhotos.flatMap(
+        (photo, sortOrder) =>
+          photo.type === "new"
+            ? [
+                {
+                  guesthouse_id: guesthouseId,
+                  owner_id: owner.id,
+                  photo_path: photo.path,
+                  alt_text: values.name,
+                  sort_order: sortOrder,
+                },
+              ]
+            : [],
+      );
+
+      if (newPhotoRows.length > 0) {
+        const { error: insertError } = await supabase
+          .from("guesthouse_photos")
+          .insert(newPhotoRows);
+
+        if (insertError) {
+          await cleanupUploadedPhotoPaths(uploadedPhotoPaths);
+          console.error("[owner-guesthouse-edit] photo metadata insert failed", {
+            user_id: owner.id,
+            guesthouse_id: guesthouseId,
+            error: serializeSupabaseError(insertError),
+          });
+          return actionResult(
+            "UPDATE_FAILED",
+            "변경사항을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+          );
+        }
+        insertedPhotoPaths.push(
+          ...newPhotoRows.map((photo) => photo.photo_path),
+        );
+      }
+
+      const existingUpdates = photoChanges.orderedPhotos.flatMap(
+        (photo, sortOrder) =>
+          photo.type === "existing"
+            ? [
+                supabase
+                  .from("guesthouse_photos")
+                  .update({ sort_order: sortOrder, alt_text: values.name })
+                  .eq("id", photo.id)
+                  .eq("guesthouse_id", guesthouseId)
+                  .eq("owner_id", owner.id),
+              ]
+            : [],
+      );
+
+      const updateResults = await Promise.all(existingUpdates);
+      const updateError = updateResults.find((result) => result.error)?.error;
+      if (updateError) {
+        await rollbackInsertedPhotoRows(
+          guesthouseId,
+          owner.id,
+          insertedPhotoPaths,
+        );
+        await cleanupUploadedPhotoPaths(uploadedPhotoPaths);
+        console.error("[owner-guesthouse-edit] photo metadata reorder failed", {
+          user_id: owner.id,
+          guesthouse_id: guesthouseId,
+          error: serializeSupabaseError(updateError),
+        });
+        return actionResult(
+          "UPDATE_FAILED",
+          "변경사항을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+        );
+      }
+
+      if (deletedPhotoIds.length > 0) {
+        const { error: deleteError } = await supabase
+          .from("guesthouse_photos")
+          .delete()
+          .eq("guesthouse_id", guesthouseId)
+          .eq("owner_id", owner.id)
+          .in("id", deletedPhotoIds);
+
+        if (deleteError) {
+          await rollbackInsertedPhotoRows(
+            guesthouseId,
+            owner.id,
+            insertedPhotoPaths,
+          );
+          await cleanupUploadedPhotoPaths(uploadedPhotoPaths);
+          console.error("[owner-guesthouse-edit] photo metadata delete failed", {
+            user_id: owner.id,
+            guesthouse_id: guesthouseId,
+            error: serializeSupabaseError(deleteError),
+          });
+          return actionResult(
+            "UPDATE_FAILED",
+            "변경사항을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+          );
+        }
+      }
     }
 
-    const { error: insertError } = await supabase
-      .from("guesthouse_photos")
-      .insert(rows);
+    revalidatePath("/owner");
+    revalidatePath("/owner/guesthouse");
+    revalidatePath("/owner/guesthouse/edit");
 
-    if (insertError) {
-      console.error("[uploadGuesthousePhotos] insert failed", {
-        error: serializeSupabaseError(insertError),
-      });
-      throw new Error("사진 업로드에 실패했습니다. 잠시 후 다시 시도해주세요.");
-    }
+    await removeDeletedPhotoPaths(deletedPhotoPaths, owner.id, guesthouseId);
+    logAction("updateGuesthouse:done", guesthouseId, {
+      user_id: owner.id,
+      success: true,
+    });
+    return actionResult("SUCCESS", "변경사항이 저장되었습니다.");
   } catch (error) {
-    if (uploadedPaths.length > 0) {
-      await supabase.storage.from(GUESTHOUSE_IMAGE_BUCKET).remove(uploadedPaths);
-    }
-    throw error;
-  }
-
-  revalidatePath("/owner");
-  revalidatePath("/owner/guesthouse");
-  revalidatePath("/owner/guesthouse/edit");
-}
-
-export async function reorderGuesthousePhotos(
-  guesthouseId: string,
-  orderedPhotoIds: string[],
-): Promise<void> {
-  assertValidGuesthouseId(guesthouseId);
-
-  const owner = await getCurrentOwnerOrThrow();
-  const guesthouse = await getGuesthouseOrThrow(guesthouseId);
-  if (guesthouse.owner_id !== owner.id) {
-    throw new Error("현재 owner가 수정할 수 있는 게스트하우스가 아닙니다.");
-  }
-
-  const supabase = createSupabaseAdminClient();
-  const { data: photos, error } = await supabase
-    .from("guesthouse_photos")
-    .select("*")
-    .eq("guesthouse_id", guesthouseId)
-    .eq("owner_id", owner.id);
-
-  if (error) {
-    console.error("[reorderGuesthousePhotos] lookup failed", {
+    await cleanupUploadedPhotoPaths(uploadedPhotoPaths);
+    console.error("[owner-guesthouse-edit] action failed", {
+      guesthouse_id: guesthouseId,
       error: serializeSupabaseError(error),
     });
-    throw new Error("사진 순서 변경에 실패했습니다.");
+    return actionResult(
+      "UPDATE_FAILED",
+      "변경사항을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+    );
   }
-
-  const existingPhotos = (photos ?? []) as GuesthousePhoto[];
-  const existingIds = new Set(existingPhotos.map((photo) => photo.id));
-  if (
-    orderedPhotoIds.length !== existingPhotos.length ||
-    orderedPhotoIds.some((photoId) => !existingIds.has(photoId))
-  ) {
-    throw new Error("사진 순서 정보가 올바르지 않습니다.");
-  }
-
-  const updateResults = await Promise.all(
-    orderedPhotoIds.map((photoId, index) =>
-      supabase
-        .from("guesthouse_photos")
-        .update({ sort_order: index })
-        .eq("id", photoId)
-        .eq("guesthouse_id", guesthouseId)
-        .eq("owner_id", owner.id),
-    ),
-  );
-  const updateError = updateResults.find((result) => result.error)?.error;
-  if (updateError) {
-    console.error("[reorderGuesthousePhotos] update failed", {
-      error: serializeSupabaseError(updateError),
-    });
-    throw new Error("사진 순서 변경에 실패했습니다.");
-  }
-
-  revalidatePath("/owner");
-  revalidatePath("/owner/guesthouse");
-  revalidatePath("/owner/guesthouse/edit");
-}
-
-export async function deleteGuesthousePhoto(photoId: string): Promise<void> {
-  const owner = await getCurrentOwnerOrThrow();
-  const photo = await getGuesthousePhotoOrThrow(photoId);
-
-  if (photo.owner_id !== owner.id) {
-    throw new Error("현재 owner가 삭제할 수 있는 사진이 아닙니다.");
-  }
-
-  const supabase = createSupabaseAdminClient();
-  const { error: removeError } = await supabase.storage
-    .from(GUESTHOUSE_IMAGE_BUCKET)
-    .remove([photo.photo_path]);
-
-  if (removeError) {
-    console.error("[deleteGuesthousePhoto] storage remove failed", {
-      error: serializeSupabaseError(removeError),
-    });
-    throw new Error("사진 삭제에 실패했습니다. 잠시 후 다시 시도해주세요.");
-  }
-
-  const { error: deleteError } = await supabase
-    .from("guesthouse_photos")
-    .delete()
-    .eq("id", photo.id)
-    .eq("owner_id", owner.id);
-
-  if (deleteError) {
-    console.error("[deleteGuesthousePhoto] delete failed", {
-      error: serializeSupabaseError(deleteError),
-    });
-    throw new Error("사진 삭제에 실패했습니다. 잠시 후 다시 시도해주세요.");
-  }
-
-  const { data: remainingPhotos, error: remainingError } = await supabase
-    .from("guesthouse_photos")
-    .select("*")
-    .eq("guesthouse_id", photo.guesthouse_id)
-    .eq("owner_id", owner.id)
-    .order("sort_order", { ascending: true })
-    .order("created_at", { ascending: true });
-
-  if (remainingError) {
-    console.error("[deleteGuesthousePhoto] reorder lookup failed", {
-      error: serializeSupabaseError(remainingError),
-    });
-    throw new Error("사진 삭제 후 순서 정리에 실패했습니다.");
-  }
-
-  const updates = ((remainingPhotos ?? []) as GuesthousePhoto[]).map(
-    (remainingPhoto, index) =>
-      supabase
-        .from("guesthouse_photos")
-        .update({ sort_order: index })
-        .eq("id", remainingPhoto.id)
-        .eq("owner_id", owner.id),
-  );
-  const updateResults = await Promise.all(updates);
-  const reorderError = updateResults.find((result) => result.error)?.error;
-  if (reorderError) {
-    console.error("[deleteGuesthousePhoto] reorder failed", {
-      error: serializeSupabaseError(reorderError),
-    });
-    throw new Error("사진 삭제 후 순서 정리에 실패했습니다.");
-  }
-
-  revalidatePath("/owner");
-  revalidatePath("/owner/guesthouse");
-  revalidatePath("/owner/guesthouse/edit");
 }

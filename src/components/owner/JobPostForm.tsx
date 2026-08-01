@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  useMemo,
   useState,
   type ChangeEvent,
   type FocusEvent,
@@ -12,6 +13,10 @@ import {
 import { useRouter } from "next/navigation";
 import type { JobPost, JobPostFormData } from "@/types/database";
 import { updateJobPost } from "@/app/owner/jobs/[id]/edit/actions";
+import {
+  getActionResultMessage,
+  getSafeErrorMessage,
+} from "@/lib/action-result";
 import { GENDER_CONDITION_LABELS, STIPEND_TYPE_LABELS } from "@/lib/labels";
 import { trackEvent } from "@/lib/analytics/client";
 import { ANALYTICS_EVENTS } from "@/lib/analytics/events";
@@ -24,6 +29,7 @@ import {
 import { COACHMARK_TARGETS } from "@/lib/onboarding/coachmark-config";
 import { isUuid } from "@/lib/uuid";
 import {
+  AlertDialog,
   Button,
   ButtonLink,
   Card,
@@ -63,6 +69,11 @@ type JobPostFormState = Omit<JobPostFormData, NumericField> &
 
 type JobPostFieldErrors = {
   work_start_date?: string;
+};
+
+type FormStatus = {
+  tone: "success" | "warning" | "danger";
+  message: string;
 };
 
 const defaultFormData: JobPostFormState = {
@@ -148,6 +159,86 @@ function buildSubmitPayload(form: JobPostFormState): JobPostFormData {
   };
 }
 
+function normalizeComparableText(value: string | null | undefined) {
+  const trimmed = value?.trim() ?? "";
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+function stringifyComparableValue(value: unknown) {
+  if (value === null || value === undefined) return null;
+  return String(value);
+}
+
+function getComparableJobPostValues(payload: JobPostFormData) {
+  return {
+    title: normalizeComparableText(payload.title),
+    recruit_count: stringifyComparableValue(Number(payload.recruit_count)),
+    gender_condition: stringifyComparableValue(payload.gender_condition),
+    age_condition: normalizeComparableText(payload.age_condition),
+    work_start_date: stringifyComparableValue(payload.work_start_date),
+    min_work_period: normalizeComparableText(payload.min_work_period),
+    work_content: normalizeComparableText(payload.work_content),
+    work_time: normalizeComparableText(payload.work_time),
+    work_days_per_week: stringifyComparableValue(
+      Number(payload.work_days_per_week),
+    ),
+    off_days_per_week: stringifyComparableValue(
+      Number(payload.off_days_per_week),
+    ),
+    stipend_type: stringifyComparableValue(payload.stipend_type),
+    stipend_description: normalizeComparableText(
+      payload.stipend_type === "none" ? "" : payload.stipend_description,
+    ),
+    provides_accommodation: stringifyComparableValue(
+      Boolean(payload.provides_accommodation),
+    ),
+    provides_meal: stringifyComparableValue(Boolean(payload.provides_meal)),
+    has_party: stringifyComparableValue(Boolean(payload.has_party)),
+    party_description: normalizeComparableText(
+      payload.has_party ? payload.party_description : "",
+    ),
+    preferred_conditions: normalizeComparableText(payload.preferred_conditions),
+    caution: normalizeComparableText(payload.caution),
+    extra_info: normalizeComparableText(payload.extra_info),
+    description: normalizeComparableText(payload.description),
+  };
+}
+
+function getComparableInitialJobPostValues(jobPost: JobPost) {
+  return getComparableJobPostValues({
+    title: jobPost.title,
+    recruit_count: jobPost.recruit_count,
+    gender_condition: jobPost.gender_condition,
+    age_condition: jobPost.age_condition ?? "",
+    work_start_date: jobPost.work_start_date,
+    min_work_period: jobPost.min_work_period,
+    work_content: jobPost.work_content,
+    work_time: jobPost.work_time,
+    work_days_per_week: jobPost.work_days_per_week,
+    off_days_per_week: jobPost.off_days_per_week,
+    stipend_type: jobPost.stipend_type,
+    stipend_description: jobPost.stipend_description ?? "",
+    provides_accommodation: jobPost.provides_accommodation,
+    provides_meal: jobPost.provides_meal,
+    has_party: jobPost.has_party,
+    party_description: jobPost.party_description ?? "",
+    is_urgent: jobPost.is_urgent,
+    preferred_conditions: jobPost.preferred_conditions ?? "",
+    caution: jobPost.caution ?? "",
+    extra_info: jobPost.extra_info ?? "",
+    description: jobPost.description ?? "",
+  });
+}
+
+function hasComparableChanges(
+  before: ReturnType<typeof getComparableJobPostValues>,
+  after: ReturnType<typeof getComparableJobPostValues>,
+) {
+  return Object.entries(after).some(([key, value]) => {
+    return before[key as keyof typeof before] !== value;
+  });
+}
+
 function getNumericValidationMessage(payload: JobPostFormData) {
   if (payload.recruit_count < 1) {
     return "모집 인원은 1명 이상이어야 합니다.";
@@ -161,8 +252,14 @@ function getNumericValidationMessage(payload: JobPostFormData) {
   return null;
 }
 
-function getErrorMessage(error: unknown, fallback: string) {
-  return error instanceof Error ? error.message : fallback;
+function getStatusClassName(tone: FormStatus["tone"]) {
+  if (tone === "success") {
+    return "border-primary-100 bg-primary-50 text-primary-700";
+  }
+  if (tone === "warning") {
+    return "border-primary-100 bg-primary-50/70 text-primary-700";
+  }
+  return "border-danger-light bg-danger-light text-danger-muted";
 }
 
 function handleNumericFocus(event: FocusEvent<HTMLInputElement>) {
@@ -370,6 +467,8 @@ export function JobPostForm({
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<JobPostFieldErrors>({});
+  const [formStatus, setFormStatus] = useState<FormStatus | null>(null);
+  const [alertMessage, setAlertMessage] = useState<string | null>(null);
   const [todayInKorea] = useState(() => getTodayDateStringInKorea());
   const isMockEdit =
     mode === "edit" && (!initialData || !isUuid(initialData.id));
@@ -387,6 +486,13 @@ export function JobPostForm({
     form.off_days_per_week,
   );
   const shouldShowStipendDetail = form.stipend_type !== "none";
+  const isEditDirty = useMemo(() => {
+    if (mode !== "edit" || !initialData) return true;
+    return hasComparableChanges(
+      getComparableInitialJobPostValues(initialData),
+      getComparableJobPostValues(buildSubmitPayload(form)),
+    );
+  }, [form, initialData, mode]);
 
   const updateField = <K extends keyof JobPostFormState>(
     field: K,
@@ -395,7 +501,15 @@ export function JobPostForm({
     if (field === "work_start_date") {
       setFieldErrors((prev) => ({ ...prev, work_start_date: undefined }));
     }
+    setFormStatus(null);
     setForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const showFormStatus = (status: FormStatus, showModal = false) => {
+    setFormStatus(status);
+    if (showModal && status.tone !== "success") {
+      setAlertMessage(status.message);
+    }
   };
 
   const updateNumericField = (field: NumericField, value: string) => {
@@ -440,6 +554,7 @@ export function JobPostForm({
     e.preventDefault();
     setIsSubmitting(true);
     setFieldErrors({});
+    setFormStatus(null);
 
     const payload = buildSubmitPayload(form);
     const workStartDateError = getWorkStartDateFieldError(
@@ -457,7 +572,14 @@ export function JobPostForm({
 
     const numericValidationMessage = getNumericValidationMessage(payload);
     if (numericValidationMessage) {
-      alert(numericValidationMessage);
+      if (mode === "edit") {
+        showFormStatus(
+          { tone: "danger", message: numericValidationMessage },
+          true,
+        );
+      } else {
+        setAlertMessage(numericValidationMessage);
+      }
       setIsSubmitting(false);
       return;
     }
@@ -483,35 +605,68 @@ export function JobPostForm({
             router.push(redirectTo.redirectTo);
           }
         } catch (error) {
-          const message = getErrorMessage(error, "모집글 저장에 실패했습니다.");
+          const message = getSafeErrorMessage(
+            error,
+            "모집글 저장에 실패했습니다. 잠시 후 다시 시도해 주세요.",
+          );
           if (isWorkStartDateErrorMessage(message)) {
             setFieldErrors({ work_start_date: message });
           } else {
-            alert(message);
+            setAlertMessage(message);
           }
         }
         setIsSubmitting(false);
         return;
       }
 
-      alert("모집글 저장 경로를 확인할 수 없습니다.");
+      setAlertMessage("모집글 저장 경로를 확인할 수 없습니다.");
     } else {
       if (!initialData || isMockEdit) {
-        alert("개발용 mock 데이터에서는 저장할 수 없습니다.");
+          showFormStatus(
+            {
+              tone: "danger",
+              message: "개발용 mock 데이터에서는 저장할 수 없습니다.",
+            },
+            true,
+          );
         setIsSubmitting(false);
         return;
       }
 
       try {
-        await updateJobPost(initialData.id, payload);
-        alert("모집글이 수정되었습니다.");
+        const result = await updateJobPost(initialData.id, payload);
+        if (!result.success) {
+          if (
+            result.code === "VALIDATION_ERROR" &&
+            isWorkStartDateErrorMessage(result.message)
+          ) {
+            setFieldErrors({ work_start_date: result.message });
+          }
+          showFormStatus(
+            {
+              tone: result.code === "NO_CHANGES" ? "warning" : "danger",
+              message: getActionResultMessage(
+                result,
+                "변경사항을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+              ),
+            },
+            true,
+          );
+          setIsSubmitting(false);
+          return;
+        }
+
+        setFormStatus({ tone: "success", message: result.message });
         router.push("/owner/jobs");
       } catch (error) {
-        const message = getErrorMessage(error, "모집글 수정에 실패했습니다.");
+        const message = getSafeErrorMessage(
+          error,
+          "모집글 수정에 실패했습니다. 잠시 후 다시 시도해 주세요.",
+        );
         if (isWorkStartDateErrorMessage(message)) {
           setFieldErrors({ work_start_date: message });
         } else {
-          alert(message);
+          showFormStatus({ tone: "danger", message }, true);
         }
       }
     }
@@ -520,7 +675,8 @@ export function JobPostForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-10 pb-4">
+    <>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-10 pb-4">
       <FormSection
         title="모집 기본 정보"
         description="스탭이 모집글 목록과 상세 화면에서 가장 먼저 확인하는 정보예요."
@@ -805,20 +961,45 @@ export function JobPostForm({
         </div>
       </FormSection>
 
-      <div className="flex flex-col-reverse gap-3 border-t border-neutral-100 pt-6 sm:flex-row sm:justify-end">
-        {isMockEdit && (
-          <p className="text-caption text-neutral-500 sm:mr-auto">
-            개발용 mock 데이터에서는 저장할 수 없습니다.
+      <div className="flex flex-col gap-3 border-t border-neutral-100 pt-6">
+        {formStatus && (
+          <p
+            role="status"
+            className={`rounded-lg border px-4 py-3 text-body-sm font-semibold ${getStatusClassName(
+              formStatus.tone,
+            )}`}
+          >
+            {formStatus.message}
           </p>
         )}
-        <ButtonLink href={cancelHref} variant="outline">
-          취소
-        </ButtonLink>
-        <Button type="submit" disabled={isSubmitting || isMockEdit}>
-          {submitLabel ??
-            (mode === "create" ? "스탭 모집글 작성하기" : "변경사항 저장")}
-        </Button>
+        <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+          {isMockEdit && (
+            <p className="text-caption text-neutral-500 sm:mr-auto">
+              개발용 mock 데이터에서는 저장할 수 없습니다.
+            </p>
+          )}
+          <ButtonLink href={cancelHref} variant="outline">
+            취소
+          </ButtonLink>
+          <Button
+            type="submit"
+            disabled={
+              isSubmitting ||
+              isMockEdit ||
+              (mode === "edit" && !isEditDirty)
+            }
+          >
+            {submitLabel ??
+              (mode === "create" ? "스탭 모집글 작성하기" : "변경사항 저장")}
+          </Button>
+        </div>
       </div>
-    </form>
+      </form>
+      <AlertDialog
+        open={alertMessage !== null}
+        message={alertMessage ?? ""}
+        onClose={() => setAlertMessage(null)}
+      />
+    </>
   );
 }

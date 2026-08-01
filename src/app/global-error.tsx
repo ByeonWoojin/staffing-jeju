@@ -1,18 +1,19 @@
 "use client";
 
-import { Button, Card } from "@/components/ui";
+import { Button } from "@/components/ui";
+import "./globals.css";
 
-export default function Error({
+export default function GlobalError({
   reset,
 }: {
   error: Error & { digest?: string };
   reset: () => void;
 }) {
   return (
-    <main className="min-h-screen bg-surface">
-      <div className="page-container py-10">
-        <div className="mx-auto w-full max-w-md">
-          <Card className="text-center">
+    <html lang="ko">
+      <body className="min-h-screen bg-surface antialiased">
+        <main className="flex min-h-screen items-center justify-center px-5 py-10">
+          <section className="w-full max-w-md rounded-md border border-neutral-100 bg-neutral-0 p-6 text-center shadow-sm">
             <h1 className="text-title text-neutral-900">
               일시적인 오류가 발생했습니다.
             </h1>
@@ -22,9 +23,9 @@ export default function Error({
             <Button type="button" className="mt-6" onClick={reset}>
               다시 시도
             </Button>
-          </Card>
-        </div>
-      </div>
-    </main>
+          </section>
+        </main>
+      </body>
+    </html>
   );
 }
