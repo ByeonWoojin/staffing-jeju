@@ -583,6 +583,27 @@ export async function updateGuesthouse(
     revalidatePath("/owner");
     revalidatePath("/owner/guesthouse");
     revalidatePath("/owner/guesthouse/edit");
+    revalidatePath("/jobs");
+
+    const { data: relatedJobPosts, error: relatedJobPostError } = await supabase
+      .from("job_posts")
+      .select("slug")
+      .eq("guesthouse_id", guesthouseId)
+      .eq("owner_id", owner.id);
+
+    if (relatedJobPostError) {
+      console.error("[owner-guesthouse-edit] related job lookup failed", {
+        user_id: owner.id,
+        guesthouse_id: guesthouseId,
+        error: serializeSupabaseError(relatedJobPostError),
+      });
+    } else {
+      relatedJobPosts?.forEach((jobPost) => {
+        if (typeof jobPost.slug === "string" && jobPost.slug.trim()) {
+          revalidatePath(`/jobs/${jobPost.slug}`);
+        }
+      });
+    }
 
     await removeDeletedPhotoPaths(deletedPhotoPaths, owner.id, guesthouseId);
     logAction("updateGuesthouse:done", guesthouseId, {

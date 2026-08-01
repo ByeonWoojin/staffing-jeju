@@ -694,6 +694,8 @@ export async function uploadJobPostPhoto(
     revalidatePath("/owner");
     revalidatePath("/owner/jobs");
     revalidatePath(`/owner/jobs/${jobPostId}/edit`);
+    revalidatePath("/jobs");
+    revalidatePath(`/jobs/${jobPost.slug}`);
     return photoActionResult("SUCCESS", "사진을 업로드했어요.");
   } catch (error) {
     if (error instanceof Error) {
@@ -774,6 +776,8 @@ export async function deleteJobPostPhoto(
     revalidatePath("/owner");
     revalidatePath("/owner/jobs");
     revalidatePath(`/owner/jobs/${jobPost.id}/edit`);
+    revalidatePath("/jobs");
+    revalidatePath(`/jobs/${jobPost.slug}`);
     return photoActionResult("SUCCESS", "사진을 삭제했어요.");
   } catch (error) {
     if (error instanceof Error) {
@@ -798,6 +802,142 @@ export async function deleteJobPostPhoto(
     return photoActionResult(
       "UPDATE_FAILED",
       "사진 삭제에 실패했습니다. 잠시 후 다시 시도해주세요.",
+    );
+  }
+}
+
+export async function reorderJobPostPhotos(
+  jobPostId: string,
+  photoIds: string[],
+): Promise<JobPostPhotoActionResult> {
+  if (!isUuid(jobPostId)) {
+    return photoActionResult("VALIDATION_ERROR", INVALID_JOB_POST_ID_MESSAGE);
+  }
+  if (
+    photoIds.some((photoId) => !isUuid(photoId)) ||
+    new Set(photoIds).size !== photoIds.length
+  ) {
+    return photoActionResult(
+      "VALIDATION_ERROR",
+      "사진 정보를 확인하지 못했습니다. 화면을 새로고침한 후 다시 시도해 주세요.",
+    );
+  }
+
+  try {
+    const authUser = await getCurrentAuthUser();
+    if (!authUser) {
+      return photoActionResult(
+        "UNAUTHORIZED",
+        "로그인 정보가 만료되었습니다. 다시 로그인해 주세요.",
+      );
+    }
+
+    const owner = await getProfileById(authUser.id);
+    if (!owner || owner.role !== "owner") {
+      return photoActionResult("UNAUTHORIZED", "수정 권한이 없습니다.");
+    }
+
+    const supabase = createSupabaseAdminClient();
+    const { data: jobPostData, error: jobPostError } = await supabase
+      .from("job_posts")
+      .select("*")
+      .eq("id", jobPostId)
+      .maybeSingle();
+
+    if (jobPostError) {
+      console.error("[reorderJobPostPhotos] job lookup failed", {
+        user_id: owner.id,
+        job_post_id: jobPostId,
+        error: serializeSupabaseError(jobPostError),
+      });
+      return photoActionResult(
+        "UPDATE_FAILED",
+        "사진 순서를 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+      );
+    }
+    if (!jobPostData) {
+      return photoActionResult("NOT_FOUND", "요청한 정보를 찾을 수 없습니다.");
+    }
+
+    const jobPost = jobPostData as JobPost;
+    if (jobPost.owner_id !== owner.id) {
+      return photoActionResult("UNAUTHORIZED", "수정 권한이 없습니다.");
+    }
+
+    const { data: currentPhotosData, error: currentPhotosError } =
+      await supabase
+        .from("job_post_photos")
+        .select("*")
+        .eq("job_post_id", jobPostId)
+        .eq("owner_id", owner.id)
+        .order("sort_order", { ascending: true })
+        .order("created_at", { ascending: true });
+
+    if (currentPhotosError) {
+      console.error("[reorderJobPostPhotos] photo lookup failed", {
+        user_id: owner.id,
+        job_post_id: jobPostId,
+        guesthouse_id: jobPost.guesthouse_id,
+        error: serializeSupabaseError(currentPhotosError),
+      });
+      return photoActionResult(
+        "UPDATE_FAILED",
+        "사진 순서를 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+      );
+    }
+
+    const currentPhotos = (currentPhotosData ?? []) as JobPostPhoto[];
+    const currentPhotoIds = new Set(currentPhotos.map((photo) => photo.id));
+    const hasMismatchedPhotoIds =
+      currentPhotos.length !== photoIds.length ||
+      photoIds.some((photoId) => !currentPhotoIds.has(photoId));
+
+    if (hasMismatchedPhotoIds) {
+      return photoActionResult(
+        "VALIDATION_ERROR",
+        "사진 정보를 확인하지 못했습니다. 화면을 새로고침한 후 다시 시도해 주세요.",
+      );
+    }
+
+    const updateResults = await Promise.all(
+      photoIds.map((photoId, sortOrder) =>
+        supabase
+          .from("job_post_photos")
+          .update({ sort_order: sortOrder, alt_text: jobPost.title })
+          .eq("id", photoId)
+          .eq("job_post_id", jobPostId)
+          .eq("owner_id", owner.id),
+      ),
+    );
+    const updateError = updateResults.find((result) => result.error)?.error;
+    if (updateError) {
+      console.error("[reorderJobPostPhotos] reorder failed", {
+        user_id: owner.id,
+        job_post_id: jobPostId,
+        guesthouse_id: jobPost.guesthouse_id,
+        error: serializeSupabaseError(updateError),
+      });
+      return photoActionResult(
+        "UPDATE_FAILED",
+        "사진 순서를 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+      );
+    }
+
+    revalidatePath("/owner");
+    revalidatePath("/owner/jobs");
+    revalidatePath(`/owner/jobs/${jobPostId}/edit`);
+    revalidatePath("/jobs");
+    revalidatePath(`/jobs/${jobPost.slug}`);
+
+    return photoActionResult("SUCCESS", "사진 순서를 저장했어요.");
+  } catch (error) {
+    console.error("[reorderJobPostPhotos] action failed", {
+      job_post_id: jobPostId,
+      error: serializeSupabaseError(error),
+    });
+    return photoActionResult(
+      "UPDATE_FAILED",
+      "사진 순서를 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.",
     );
   }
 }

@@ -84,6 +84,13 @@ export function getActionResultMessage(
       return result.message;
     }
 
+    if (
+      (result.code === "UNAUTHORIZED" || result.code === "NOT_FOUND") &&
+      isSafeKoreanUserMessage(result.message)
+    ) {
+      return result.message;
+    }
+
     return getDefaultActionMessage(result.code);
   }
 

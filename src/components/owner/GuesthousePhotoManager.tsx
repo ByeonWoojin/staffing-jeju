@@ -68,39 +68,41 @@ function getImageKey(image: EditableGuesthouseImage) {
   return image.type === "existing" ? image.id : image.clientId;
 }
 
-function getInitialExistingOrder(images: EditableGuesthouseImage[]) {
+function getExistingPhotoIds(images: EditableGuesthouseImage[]) {
   return images.flatMap((image) => (image.type === "existing" ? [image.id] : []));
+}
+
+function getPhotoSnapshot(images: EditableGuesthouseImage[]) {
+  return images
+    .map((image) =>
+      image.type === "existing"
+        ? `existing:${image.id}`
+        : `new:${image.signature}`,
+    )
+    .join("|");
 }
 
 function getHasChanges(
   images: EditableGuesthouseImage[],
-  initialExistingOrder: string[],
-  deletedExistingPhotoIds: string[],
+  initialPhotoSnapshot: string,
 ) {
-  if (deletedExistingPhotoIds.length > 0) return true;
-  if (images.some((image) => image.type === "new")) return true;
-
-  const currentExistingOrder = getInitialExistingOrder(images);
-  if (currentExistingOrder.length !== initialExistingOrder.length) return true;
-
-  return currentExistingOrder.some(
-    (photoId, index) => photoId !== initialExistingOrder[index],
-  );
+  return getPhotoSnapshot(images) !== initialPhotoSnapshot;
 }
 
 function createDraft(
   images: EditableGuesthouseImage[],
   initialExistingOrder: string[],
-  deletedExistingPhotoIds: string[],
+  initialPhotoSnapshot: string,
 ): GuesthousePhotoDraft {
+  const currentExistingIds = new Set(getExistingPhotoIds(images));
+  const deletedExistingPhotoIds = initialExistingOrder.filter(
+    (photoId) => !currentExistingIds.has(photoId),
+  );
+
   return {
     images,
     deletedExistingPhotoIds,
-    hasChanges: getHasChanges(
-      images,
-      initialExistingOrder,
-      deletedExistingPhotoIds,
-    ),
+    hasChanges: getHasChanges(images, initialPhotoSnapshot),
   };
 }
 
@@ -113,19 +115,18 @@ export function GuesthousePhotoManager({
   disabled = false,
   onDraftChange,
 }: GuesthousePhotoManagerProps) {
+  const [initialImages] = useState(() => createInitialImages(photos));
   const [initialExistingOrder] = useState(() =>
-    getInitialExistingOrder(createInitialImages(photos)),
+    getExistingPhotoIds(initialImages),
   );
+  const [initialPhotoSnapshot] = useState(() => getPhotoSnapshot(initialImages));
   const objectUrlsRef = useRef<Set<string>>(new Set());
   const fileInputRef = useRef<HTMLInputElement>(null);
   const inputId = useId();
   const errorId = useId();
   const [images, setImages] = useState<EditableGuesthouseImage[]>(
-    () => createInitialImages(photos),
+    () => initialImages,
   );
-  const [deletedExistingPhotoIds, setDeletedExistingPhotoIds] = useState<
-    string[]
-  >([]);
   const [errorMessages, setErrorMessages] = useState<string[]>([]);
   const [alertMessage, setAlertMessage] = useState<string | null>(null);
 
@@ -142,10 +143,10 @@ export function GuesthousePhotoManager({
       createDraft(
         images,
         initialExistingOrder,
-        deletedExistingPhotoIds,
+        initialPhotoSnapshot,
       ),
     );
-  }, [deletedExistingPhotoIds, images, initialExistingOrder, onDraftChange]);
+  }, [images, initialExistingOrder, initialPhotoSnapshot, onDraftChange]);
 
   const revokeIfNewImage = (image: EditableGuesthouseImage) => {
     if (image.type !== "new") return;
@@ -226,11 +227,7 @@ export function GuesthousePhotoManager({
       const target = previousImages[index];
       if (!target) return previousImages;
 
-      if (target.type === "existing") {
-        setDeletedExistingPhotoIds((prev) =>
-          prev.includes(target.id) ? prev : [...prev, target.id],
-        );
-      } else {
+      if (target.type === "new") {
         revokeIfNewImage(target);
       }
 

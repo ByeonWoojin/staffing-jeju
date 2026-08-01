@@ -31,6 +31,9 @@ export default async function EditJobPage({ params }: EditJobPageProps) {
     ...photo,
     publicUrl: getJobPostPhotoPublicUrl(photo.photo_path),
   }));
+  const photoManagerKey = photos
+    .map((photo) => `${photo.id}:${photo.sort_order}`)
+    .join("|");
 
   return (
     <OwnerLayout>
@@ -42,7 +45,11 @@ export default async function EditJobPage({ params }: EditJobPageProps) {
         mode="edit"
         initialData={jobPost}
         photoManager={
-          <JobPostPhotoManager jobPostId={jobPost.id} photos={photosWithUrls} />
+          <JobPostPhotoManager
+            key={photoManagerKey}
+            jobPostId={jobPost.id}
+            photos={photosWithUrls}
+          />
         }
       />
     </OwnerLayout>

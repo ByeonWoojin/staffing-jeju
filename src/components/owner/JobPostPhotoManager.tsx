@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import type { JobPostPhoto } from "@/types/database";
 import {
   deleteJobPostPhoto,
+  reorderJobPostPhotos,
   uploadJobPostPhoto,
 } from "@/app/owner/jobs/[id]/edit/actions";
 import {
@@ -34,6 +35,8 @@ const PHOTO_UPLOAD_FAILED_MESSAGE =
   "사진 업로드 중 문제가 발생했습니다. 잠시 후 다시 시도해 주세요.";
 const PHOTO_DELETE_FAILED_MESSAGE =
   "사진 삭제 중 문제가 발생했습니다. 잠시 후 다시 시도해 주세요.";
+const PHOTO_REORDER_FAILED_MESSAGE =
+  "사진 순서를 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.";
 
 export function JobPostPhotoManager({
   jobPostId,
@@ -43,10 +46,17 @@ export function JobPostPhotoManager({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [deletingPhotoId, setDeletingPhotoId] = useState<string | null>(null);
+  const [reorderingPhotoId, setReorderingPhotoId] = useState<string | null>(
+    null,
+  );
+  const [orderedPhotos, setOrderedPhotos] =
+    useState<JobPostPhotoWithUrl[]>(photos);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [alertMessage, setAlertMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const canUpload = photos.length < MAX_PHOTO_COUNT;
+  const canUpload = orderedPhotos.length < MAX_PHOTO_COUNT;
+  const isPhotoActionPending =
+    isUploading || deletingPhotoId !== null || reorderingPhotoId !== null;
 
   const showErrorMessage = (message: string) => {
     setErrorMessage(message);
@@ -121,6 +131,7 @@ export function JobPostPhotoManager({
         return;
       }
 
+      setOrderedPhotos((prev) => prev.filter((photo) => photo.id !== photoId));
       setSuccessMessage(result.message);
       router.refresh();
     } catch (error) {
@@ -129,6 +140,70 @@ export function JobPostPhotoManager({
     } finally {
       setDeletingPhotoId(null);
     }
+  };
+
+  const persistPhotoOrder = async (
+    nextPhotos: JobPostPhotoWithUrl[],
+    movedPhotoId: string,
+  ) => {
+    const previousPhotos = orderedPhotos;
+    setOrderedPhotos(nextPhotos);
+    setReorderingPhotoId(movedPhotoId);
+    setErrorMessage(null);
+    setSuccessMessage(null);
+
+    try {
+      const result = await reorderJobPostPhotos(
+        jobPostId,
+        nextPhotos.map((photo) => photo.id),
+      );
+      if (!result.success) {
+        setOrderedPhotos(previousPhotos);
+        showErrorMessage(
+          result.code === "UPDATE_FAILED"
+            ? PHOTO_REORDER_FAILED_MESSAGE
+            : getActionResultMessage(result, PHOTO_REORDER_FAILED_MESSAGE),
+        );
+        return;
+      }
+
+      setSuccessMessage(result.message);
+      router.refresh();
+    } catch (error) {
+      setOrderedPhotos(previousPhotos);
+      console.error("[JobPostPhotoManager] reorder failed", error);
+      showErrorMessage(getSafeErrorMessage(error, PHOTO_REORDER_FAILED_MESSAGE));
+    } finally {
+      setReorderingPhotoId(null);
+    }
+  };
+
+  const movePhoto = (index: number, direction: -1 | 1) => {
+    if (isPhotoActionPending) return;
+
+    const nextIndex = index + direction;
+    if (nextIndex < 0 || nextIndex >= orderedPhotos.length) return;
+
+    const nextPhotos = [...orderedPhotos];
+    [nextPhotos[index], nextPhotos[nextIndex]] = [
+      nextPhotos[nextIndex],
+      nextPhotos[index],
+    ];
+
+    void persistPhotoOrder(nextPhotos, orderedPhotos[index].id);
+  };
+
+  const moveToFirst = (index: number) => {
+    if (isPhotoActionPending || index <= 0 || index >= orderedPhotos.length) {
+      return;
+    }
+
+    const nextPhotos = [...orderedPhotos];
+    const [target] = nextPhotos.splice(index, 1);
+    if (!target) return;
+    nextPhotos.unshift(target);
+
+    void persistPhotoOrder(nextPhotos, target.id);
   };
 
   return (
@@ -154,14 +229,14 @@ export function JobPostPhotoManager({
           ref={fileInputRef}
           type="file"
           accept="image/jpeg,image/png,image/webp"
-          disabled={!canUpload || isUploading}
+          disabled={!canUpload || isPhotoActionPending}
           className="block w-full rounded-md border border-neutral-200 bg-neutral-0 px-4 py-2 text-body-sm text-neutral-700 file:mr-4 file:rounded-md file:border-0 file:bg-primary-50 file:px-3 file:py-1.5 file:text-body-sm file:font-semibold file:text-primary-700"
         />
         <Button
           type="button"
           variant="soft-primary"
           onClick={handleUpload}
-          disabled={!canUpload || isUploading}
+          disabled={!canUpload || isPhotoActionPending}
           className="shrink-0"
         >
           {isUploading ? "업로드 중..." : "사진 업로드"}
@@ -187,7 +262,7 @@ export function JobPostPhotoManager({
         </p>
       )}
 
-      {photos.length === 0 ? (
+      {orderedPhotos.length === 0 ? (
         <div className="overflow-hidden rounded-md border border-dashed border-neutral-200 bg-neutral-0">
           <div className="relative aspect-[16/9] max-h-[320px] bg-beige">
             <Image
@@ -204,7 +279,7 @@ export function JobPostPhotoManager({
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {photos.map((photo, index) => (
+          {orderedPhotos.map((photo, index) => (
             <div
               key={photo.id}
               className="overflow-hidden rounded-lg border border-neutral-200 bg-neutral-0"
@@ -217,18 +292,69 @@ export function JobPostPhotoManager({
                   sizes="(min-width: 1024px) 240px, (min-width: 640px) 50vw, 100vw"
                   className="object-cover"
                 />
+                {index === 0 && (
+                  <span className="absolute left-2 top-2 rounded-full bg-primary-500 px-2 py-0.5 text-[11px] font-bold text-white">
+                    대표
+                  </span>
+                )}
               </div>
-              <div className="flex items-center justify-between gap-3 p-3">
-                <p className="text-caption text-neutral-500">사진 {index + 1}</p>
-                <Button
-                  type="button"
-                  variant="outline-danger"
-                  size="sm"
-                  disabled={deletingPhotoId !== null}
-                  onClick={() => handleDelete(photo.id)}
-                >
-                  {deletingPhotoId === photo.id ? "삭제 중..." : "삭제"}
-                </Button>
+              <div className="grid gap-2 p-3">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-caption text-neutral-500">
+                    사진 {index + 1}
+                  </p>
+                  <Button
+                    type="button"
+                    variant="outline-danger"
+                    size="sm"
+                    disabled={isPhotoActionPending}
+                    onClick={() => handleDelete(photo.id)}
+                  >
+                    {deletingPhotoId === photo.id ? "삭제 중..." : "삭제"}
+                  </Button>
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={index === 0 || isPhotoActionPending}
+                    className="min-h-9 px-2 text-caption"
+                    aria-label={`모집글 사진 ${index + 1} 대표로 설정`}
+                    onClick={() => moveToFirst(index)}
+                  >
+                    대표로
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={index === 0 || isPhotoActionPending}
+                    className="min-h-9 px-2 text-caption"
+                    aria-label={`모집글 사진 ${index + 1} 앞으로 이동`}
+                    onClick={() => movePhoto(index, -1)}
+                  >
+                    앞으로
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={
+                      index === orderedPhotos.length - 1 || isPhotoActionPending
+                    }
+                    className="min-h-9 px-2 text-caption"
+                    aria-label={`모집글 사진 ${index + 1} 뒤로 이동`}
+                    onClick={() => movePhoto(index, 1)}
+                  >
+                    뒤로
+                  </Button>
+                </div>
+                {reorderingPhotoId === photo.id && (
+                  <p className="text-caption font-semibold text-primary-700">
+                    순서를 저장하고 있습니다.
+                  </p>
+                )}
               </div>
             </div>
           ))}
