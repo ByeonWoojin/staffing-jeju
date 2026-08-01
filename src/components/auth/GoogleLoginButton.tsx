@@ -1,20 +1,30 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { trackEvent } from "@/lib/analytics/client";
 import { ANALYTICS_EVENTS } from "@/lib/analytics/events";
+import {
+  AUTH_REDIRECT_PARAM,
+  getSafeInternalRedirectPath,
+} from "@/lib/auth/redirect";
 import { Button } from "@/components/ui";
 import type { UserRole } from "@/types/database";
 
 interface GoogleLoginButtonProps {
+  children?: ReactNode;
   ctaLocation?: string;
   entryRole?: Exclude<UserRole, "admin">;
+  loadingText?: string;
+  redirectPath?: string;
 }
 
 export function GoogleLoginButton({
+  children,
   ctaLocation,
   entryRole,
+  loadingText = "Google로 이동 중...",
+  redirectPath,
 }: GoogleLoginButtonProps = {}) {
   const loginStartedRef = useRef(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -31,10 +41,16 @@ export function GoogleLoginButton({
     });
 
     const supabase = createSupabaseBrowserClient();
+    const callbackUrl = new URL("/auth/callback", window.location.origin);
+    const safeRedirectPath = getSafeInternalRedirectPath(redirectPath);
+    if (safeRedirectPath) {
+      callbackUrl.searchParams.set(AUTH_REDIRECT_PARAM, safeRedirectPath);
+    }
+
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
+        redirectTo: callbackUrl.toString(),
       },
     });
 
@@ -74,7 +90,7 @@ export function GoogleLoginButton({
           />
         </svg>
       </span>
-      {isLoading ? "Google로 이동 중..." : "Google로 계속하기"}
+      {isLoading ? loadingText : (children ?? "Google로 계속하기")}
     </Button>
   );
 }

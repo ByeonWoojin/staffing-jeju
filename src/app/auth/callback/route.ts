@@ -1,6 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createSupabaseRouteHandlerClient } from "@/lib/supabase/server";
 import { getPostLoginDestination, getProfileById } from "@/lib/auth/onboarding";
+import {
+  AUTH_REDIRECT_PARAM,
+  getSafeInternalRedirectPath,
+} from "@/lib/auth/redirect";
 
 function createAuthErrorRedirect(origin: string) {
   const redirectUrl = new URL("/", origin);
@@ -12,6 +16,9 @@ export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get("code");
   const origin = requestUrl.origin;
+  const requestedRedirect = getSafeInternalRedirectPath(
+    requestUrl.searchParams.get(AUTH_REDIRECT_PARAM),
+  );
 
   if (!code) {
     return NextResponse.redirect(createAuthErrorRedirect(origin));
@@ -62,7 +69,15 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const redirectUrl = new URL(destination, origin);
+  const resolvedDestination =
+    profile?.role === "staff" || profile?.role === "owner"
+      ? requestedRedirect ?? destination
+      : destination;
+  const redirectUrl = new URL(resolvedDestination, origin);
+
+  if (!profile && requestedRedirect && destination === "/onboarding/role") {
+    redirectUrl.searchParams.set(AUTH_REDIRECT_PARAM, requestedRedirect);
+  }
 
   if (profile?.role === "staff" || profile?.role === "owner") {
     redirectUrl.searchParams.set("auth_event", "login");

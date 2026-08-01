@@ -2,6 +2,10 @@ import { redirect } from "next/navigation";
 import { chooseOwnerRole, chooseStaffRole } from "@/app/onboarding/role/actions";
 import { BrandLogo } from "@/components/brand/BrandLogo";
 import {
+  AUTH_REDIRECT_PARAM,
+  getSafeInternalRedirectPath,
+} from "@/lib/auth/redirect";
+import {
   getCurrentAuthUser,
   getPostLoginDestination,
 } from "@/lib/auth/onboarding";
@@ -16,7 +20,21 @@ import {
 
 export const dynamic = "force-dynamic";
 
-export default async function RoleOnboardingPage() {
+type RoleOnboardingPageProps = {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+};
+
+function getSearchParamValue(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+export default async function RoleOnboardingPage({
+  searchParams,
+}: RoleOnboardingPageProps) {
+  const resolvedSearchParams = await searchParams;
+  const redirectPath = getSafeInternalRedirectPath(
+    getSearchParamValue(resolvedSearchParams[AUTH_REDIRECT_PARAM]),
+  );
   const user = await getCurrentAuthUser();
   if (!user) {
     redirect("/");
@@ -24,7 +42,7 @@ export default async function RoleOnboardingPage() {
 
   const destination = await getPostLoginDestination(user.id);
   if (destination !== "/onboarding/role") {
-    redirect(destination);
+    redirect(redirectPath ?? destination);
   }
 
   return (
@@ -50,6 +68,13 @@ export default async function RoleOnboardingPage() {
             </CardHeader>
             <CardContent>
               <form action={chooseOwnerRole}>
+                {redirectPath && (
+                  <input
+                    type="hidden"
+                    name={AUTH_REDIRECT_PARAM}
+                    value={redirectPath}
+                  />
+                )}
                 <Button type="submit" fullWidth>
                   사장님으로 시작하기
                 </Button>
@@ -66,6 +91,13 @@ export default async function RoleOnboardingPage() {
             </CardHeader>
             <CardContent>
               <form action={chooseStaffRole}>
+                {redirectPath && (
+                  <input
+                    type="hidden"
+                    name={AUTH_REDIRECT_PARAM}
+                    value={redirectPath}
+                  />
+                )}
                 <Button type="submit" variant="outline" fullWidth>
                   스탭으로 시작하기
                 </Button>

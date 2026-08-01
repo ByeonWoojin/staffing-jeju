@@ -13,6 +13,7 @@ interface AppHeaderProps {
   isAuthenticated?: boolean;
   staffId?: string | null;
   applicationStatusSummaries?: ApplicationStatusSummary[];
+  loginRedirectPath?: string;
 }
 
 const navLinkClassName =
@@ -26,6 +27,7 @@ export async function AppHeader({
   isAuthenticated = false,
   staffId,
   applicationStatusSummaries,
+  loginRedirectPath,
 }: AppHeaderProps) {
   const logoHref = isAuthenticated ? "/jobs" : "/";
   const fetchedStatusSummary =
@@ -79,6 +81,7 @@ export async function AppHeader({
             <HeaderLoginButton
               className={accountLinkClassName}
               ctaLocation="public_header"
+              redirectPath={loginRedirectPath}
             />
           )}
         </nav>

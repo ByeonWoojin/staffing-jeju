@@ -4,6 +4,10 @@ import { useRef, useState, type ReactNode } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { trackEvent } from "@/lib/analytics/client";
 import { ANALYTICS_EVENTS } from "@/lib/analytics/events";
+import {
+  AUTH_REDIRECT_PARAM,
+  getSafeInternalRedirectPath,
+} from "@/lib/auth/redirect";
 import { cn } from "@/lib/cn";
 import type { UserRole } from "@/types/database";
 
@@ -13,6 +17,7 @@ interface HeaderLoginButtonProps {
   loadingText?: string;
   ctaLocation?: string;
   entryRole?: Exclude<UserRole, "admin">;
+  redirectPath?: string;
 }
 
 export function HeaderLoginButton({
@@ -21,6 +26,7 @@ export function HeaderLoginButton({
   loadingText = "이동 중",
   ctaLocation,
   entryRole,
+  redirectPath,
 }: HeaderLoginButtonProps) {
   const loginStartedRef = useRef(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -37,10 +43,16 @@ export function HeaderLoginButton({
     });
 
     const supabase = createSupabaseBrowserClient();
+    const callbackUrl = new URL("/auth/callback", window.location.origin);
+    const safeRedirectPath = getSafeInternalRedirectPath(redirectPath);
+    if (safeRedirectPath) {
+      callbackUrl.searchParams.set(AUTH_REDIRECT_PARAM, safeRedirectPath);
+    }
+
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
+        redirectTo: callbackUrl.toString(),
       },
     });
 

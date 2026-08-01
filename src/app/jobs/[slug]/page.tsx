@@ -12,6 +12,7 @@ import { formatDate } from "@/lib/owner-utils";
 import { ApplyButton } from "@/components/jobs/ApplyButton";
 import { FavoriteGuesthouseButton } from "@/components/jobs/FavoriteGuesthouseButton";
 import { JobImageSlider } from "@/components/jobs/JobImageSlider";
+import { JobDetailLoginGate } from "@/components/jobs/JobDetailLoginGate";
 import { JobDetailSectionNav } from "@/components/jobs/JobDetailSectionNav";
 import { AppHeader } from "@/components/layout/AppHeader";
 import { RoleCoachmarkController } from "@/components/onboarding/RoleCoachmarkController";
@@ -550,6 +551,66 @@ export default async function PublicJobDetailPage({
   }
 
   const { jobPost, guesthouse } = detail;
+  const detailPath = `/jobs/${jobPost.slug}`;
+  const guesthousePhotos = detail.guesthousePhotos;
+  const jobPostPhotos = detail.jobPostPhotos;
+  const heroPhotos =
+    guesthousePhotos.length > 0 ? guesthousePhotos : jobPostPhotos;
+
+  if (!isAuthenticated) {
+    return (
+      <main className="min-h-screen bg-neutral-50">
+        <AnalyticsEventTracker
+          eventName={ANALYTICS_EVENTS.JOB_DETAIL_VIEW}
+          properties={{
+            job_post_id: jobPost.id,
+            guesthouse_id: guesthouse.id,
+            region: guesthouse.region,
+            job_status: jobPost.status,
+          }}
+        />
+        <AppHeader
+          isAuthenticated={false}
+          loginRedirectPath={detailPath}
+        />
+
+        <div className="page-container flex flex-col gap-6 py-6 md:py-8">
+          <Link
+            href="/jobs"
+            className="w-fit text-body-sm font-semibold text-primary-700 hover:text-primary-600 focus-ring rounded-md"
+          >
+            모집글 목록으로
+          </Link>
+
+          <div className="flex min-w-0 flex-col gap-6">
+            <section className="flex flex-col gap-4">
+              <div className="min-w-0">
+                <p className="break-words text-body-sm font-semibold text-neutral-500">
+                  {guesthouse.name} · {guesthouse.region}
+                </p>
+                <h1 className="mt-2 break-words text-h2 text-neutral-900 md:text-h1">
+                  {jobPost.title}
+                </h1>
+                <div className="mt-3 flex min-w-0 flex-wrap items-center gap-2">
+                  <JobStatusBadge status={jobPost.status} />
+                  {jobPost.is_urgent && <UrgentBadge />}
+                </div>
+              </div>
+            </section>
+
+            <JobImageSlider
+              images={heroPhotos}
+              fallbackAlt={`${guesthouse.name} 대표 이미지`}
+            />
+            <div className="min-h-[80vh]" aria-hidden="true" />
+          </div>
+        </div>
+
+        <JobDetailLoginGate redirectPath={detailPath} />
+      </main>
+    );
+  }
+
   const isClosed = jobPost.status === "closed";
   const activeApplication =
     detail.viewerApplication && detail.viewerApplication.status !== "canceled"
@@ -561,10 +622,6 @@ export default async function PublicJobDetailPage({
     ? COACHMARK_TARGETS.staffApply
     : undefined;
   const positiveBadges = getPositiveBadges(jobPost);
-  const guesthousePhotos = detail.guesthousePhotos;
-  const jobPostPhotos = detail.jobPostPhotos;
-  const heroPhotos =
-    guesthousePhotos.length > 0 ? guesthousePhotos : jobPostPhotos;
   const summaryItems = createSummaryItems(jobPost);
   const stickyItems = createStickyItems(jobPost);
   const recruitmentItems = createRecruitmentItems(jobPost);
