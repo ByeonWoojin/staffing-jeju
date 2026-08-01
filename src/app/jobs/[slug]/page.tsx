@@ -12,7 +12,10 @@ import { formatDate } from "@/lib/owner-utils";
 import { ApplyButton } from "@/components/jobs/ApplyButton";
 import { FavoriteGuesthouseButton } from "@/components/jobs/FavoriteGuesthouseButton";
 import { JobImageSlider } from "@/components/jobs/JobImageSlider";
-import { JobDetailLoginGate } from "@/components/jobs/JobDetailLoginGate";
+import {
+  JobDetailLoginGate,
+  LoginRequiredApplyButton,
+} from "@/components/jobs/JobDetailLoginGate";
 import { JobDetailSectionNav } from "@/components/jobs/JobDetailSectionNav";
 import { AppHeader } from "@/components/layout/AppHeader";
 import { RoleCoachmarkController } from "@/components/onboarding/RoleCoachmarkController";
@@ -168,6 +171,27 @@ function createStickyItems(jobPost: JobPost): DetailItem[] {
     { label: "모집 인원", value: `${jobPost.recruit_count}명` },
     { label: "숙식", value: getStayMealSummary(jobPost) },
   ];
+}
+
+function LockedValue() {
+  return <span className="text-neutral-400">로그인 후 확인</span>;
+}
+
+function createLockedItems(labels: string[]): DetailItem[] {
+  return labels.map((label) => ({
+    label,
+    value: <LockedValue />,
+  }));
+}
+
+function LockedDetailNotice() {
+  return (
+    <div className="rounded-md border border-primary-100 bg-primary-50/70 p-4">
+      <p className="text-body-sm font-semibold text-primary-700">
+        로그인하면 상세 정보를 모두 확인할 수 있어요.
+      </p>
+    </div>
+  );
 }
 
 function createRecruitmentItems(jobPost: JobPost): DetailItem[] {
@@ -369,10 +393,12 @@ function DetailSection({
 function SupportAction({
   detail,
   isClosed,
+  isAuthenticated,
   coachmarkTarget,
 }: {
   detail: JobDetail;
   isClosed: boolean;
+  isAuthenticated: boolean;
   coachmarkTarget?: string;
 }) {
   const activeApplication =
@@ -407,6 +433,10 @@ function SupportAction({
         </p>
       </div>
     );
+  }
+
+  if (!isAuthenticated) {
+    return <LoginRequiredApplyButton coachmarkTarget={coachmarkTarget} />;
   }
 
   return (
@@ -486,6 +516,7 @@ function SupportCard({
         <SupportAction
           detail={detail}
           isClosed={isClosed}
+          isAuthenticated={isAuthenticated}
           coachmarkTarget={coachmarkTarget}
         />
       </div>
@@ -496,10 +527,12 @@ function SupportCard({
 function MobileApplyBar({
   detail,
   isClosed,
+  isAuthenticated,
   coachmarkTarget,
 }: {
   detail: JobDetail;
   isClosed: boolean;
+  isAuthenticated: boolean;
   coachmarkTarget?: string;
 }) {
   const activeApplication =
@@ -526,6 +559,8 @@ function MobileApplyBar({
           <Button size="lg" fullWidth disabled>
             지원 마감
           </Button>
+        ) : !isAuthenticated ? (
+          <LoginRequiredApplyButton coachmarkTarget={coachmarkTarget} />
         ) : (
           <ApplyButton
             slug={detail.jobPost.slug}
@@ -557,60 +592,6 @@ export default async function PublicJobDetailPage({
   const heroPhotos =
     guesthousePhotos.length > 0 ? guesthousePhotos : jobPostPhotos;
 
-  if (!isAuthenticated) {
-    return (
-      <main className="min-h-screen bg-neutral-50">
-        <AnalyticsEventTracker
-          eventName={ANALYTICS_EVENTS.JOB_DETAIL_VIEW}
-          properties={{
-            job_post_id: jobPost.id,
-            guesthouse_id: guesthouse.id,
-            region: guesthouse.region,
-            job_status: jobPost.status,
-          }}
-        />
-        <AppHeader
-          isAuthenticated={false}
-          loginRedirectPath={detailPath}
-        />
-
-        <div className="page-container flex flex-col gap-6 py-6 md:py-8">
-          <Link
-            href="/jobs"
-            className="w-fit text-body-sm font-semibold text-primary-700 hover:text-primary-600 focus-ring rounded-md"
-          >
-            모집글 목록으로
-          </Link>
-
-          <div className="flex min-w-0 flex-col gap-6">
-            <section className="flex flex-col gap-4">
-              <div className="min-w-0">
-                <p className="break-words text-body-sm font-semibold text-neutral-500">
-                  {guesthouse.name} · {guesthouse.region}
-                </p>
-                <h1 className="mt-2 break-words text-h2 text-neutral-900 md:text-h1">
-                  {jobPost.title}
-                </h1>
-                <div className="mt-3 flex min-w-0 flex-wrap items-center gap-2">
-                  <JobStatusBadge status={jobPost.status} />
-                  {jobPost.is_urgent && <UrgentBadge />}
-                </div>
-              </div>
-            </section>
-
-            <JobImageSlider
-              images={heroPhotos}
-              fallbackAlt={`${guesthouse.name} 대표 이미지`}
-            />
-            <div className="min-h-[80vh]" aria-hidden="true" />
-          </div>
-        </div>
-
-        <JobDetailLoginGate redirectPath={detailPath} />
-      </main>
-    );
-  }
-
   const isClosed = jobPost.status === "closed";
   const activeApplication =
     detail.viewerApplication && detail.viewerApplication.status !== "canceled"
@@ -621,23 +602,56 @@ export default async function PublicJobDetailPage({
   const staffApplyCoachmarkTarget = canShowStaffApplyCoachmark
     ? COACHMARK_TARGETS.staffApply
     : undefined;
-  const positiveBadges = getPositiveBadges(jobPost);
-  const summaryItems = createSummaryItems(jobPost);
-  const stickyItems = createStickyItems(jobPost);
-  const recruitmentItems = createRecruitmentItems(jobPost);
-  const recruitmentTextBlocks = createRecruitmentTextBlocks(jobPost);
-  const guesthouseDescription = normalizeText(guesthouse.description);
-  const guesthouseItems = createGuesthouseItems(guesthouse);
-  const guideItems = createGuideItems(guesthouse);
-  const guideTextBlocks = createGuideTextBlocks(jobPost);
+  const loginGateTriggerId = "job-detail-login-gate-trigger";
+  const positiveBadges = isAuthenticated ? getPositiveBadges(jobPost) : [];
+  const summaryItems = isAuthenticated
+    ? createSummaryItems(jobPost)
+    : createLockedItems([
+        "입도일",
+        "근무 기간",
+        "근무/휴무",
+        "모집 인원",
+        "숙식",
+        "급여/보상",
+      ]);
+  const stickyItems = isAuthenticated
+    ? createStickyItems(jobPost)
+    : createLockedItems([
+        "입도일",
+        "근무 기간",
+        "근무/휴무",
+        "모집 인원",
+        "숙식",
+      ]);
+  const recruitmentItems = isAuthenticated
+    ? createRecruitmentItems(jobPost)
+    : createLockedItems(["성별 조건", "연령 조건", "근무 시간", "파티 운영"]);
+  const recruitmentTextBlocks = isAuthenticated
+    ? createRecruitmentTextBlocks(jobPost)
+    : [];
+  const guesthouseDescription = isAuthenticated
+    ? normalizeText(guesthouse.description)
+    : null;
+  const guesthouseItems = isAuthenticated
+    ? createGuesthouseItems(guesthouse)
+    : createLockedItems(["연락 수단"]);
+  const guideItems = isAuthenticated
+    ? createGuideItems(guesthouse)
+    : createLockedItems(["주소"]);
+  const guideTextBlocks = isAuthenticated ? createGuideTextBlocks(jobPost) : [];
 
-  const hasRecruitmentSection =
-    recruitmentItems.length > 0 ||
-    recruitmentTextBlocks.length > 0 ||
-    jobPostPhotos.length > 0;
+  const hasRecruitmentSection = isAuthenticated
+    ? recruitmentItems.length > 0 ||
+      recruitmentTextBlocks.length > 0 ||
+      jobPostPhotos.length > 0
+    : true;
   const hasGuesthouseSection =
-    Boolean(guesthouseDescription) || guesthouseItems.length > 0;
-  const hasGuideSection = guideItems.length > 0 || guideTextBlocks.length > 0;
+    isAuthenticated
+      ? Boolean(guesthouseDescription) || guesthouseItems.length > 0
+      : true;
+  const hasGuideSection = isAuthenticated
+    ? guideItems.length > 0 || guideTextBlocks.length > 0
+    : true;
 
   return (
     <main className="min-h-screen bg-neutral-50">
@@ -653,7 +667,10 @@ export default async function PublicJobDetailPage({
           job_status: jobPost.status,
         }}
       />
-      <AppHeader isAuthenticated={isAuthenticated} />
+      <AppHeader
+        isAuthenticated={isAuthenticated}
+        loginRedirectPath={isAuthenticated ? undefined : detailPath}
+      />
 
       <div className="page-container flex flex-col gap-6 py-6 pb-32 md:py-8 lg:pb-10">
         <Link
@@ -722,6 +739,14 @@ export default async function PublicJobDetailPage({
               ]}
             />
 
+            {!isAuthenticated && (
+              <div
+                id={loginGateTriggerId}
+                className="h-px scroll-mt-24"
+                aria-hidden="true"
+              />
+            )}
+
             <div className="flex flex-col gap-6">
               {hasRecruitmentSection && (
                 <DetailSection
@@ -730,11 +755,17 @@ export default async function PublicJobDetailPage({
                   description="근무 방식과 상세 안내를 확인하세요."
                 >
                   <DefinitionGrid items={recruitmentItems} />
-                  <TextBlockList
-                    blocks={recruitmentTextBlocks}
-                    withDivider={recruitmentItems.length > 0}
-                  />
-                  <DetailPhotoGallery photos={jobPostPhotos} />
+                  {isAuthenticated ? (
+                    <>
+                      <TextBlockList
+                        blocks={recruitmentTextBlocks}
+                        withDivider={recruitmentItems.length > 0}
+                      />
+                      <DetailPhotoGallery photos={jobPostPhotos} />
+                    </>
+                  ) : (
+                    <LockedDetailNotice />
+                  )}
                 </DetailSection>
               )}
 
@@ -750,6 +781,7 @@ export default async function PublicJobDetailPage({
                     </p>
                   )}
                   <DefinitionGrid items={guesthouseItems} />
+                  {!isAuthenticated && <LockedDetailNotice />}
                 </DetailSection>
               )}
 
@@ -760,10 +792,14 @@ export default async function PublicJobDetailPage({
                   description="방문 전 확인할 위치와 추가 안내입니다."
                 >
                   <DefinitionGrid items={guideItems} />
-                  <TextBlockList
-                    blocks={guideTextBlocks}
-                    withDivider={guideItems.length > 0}
-                  />
+                  {isAuthenticated ? (
+                    <TextBlockList
+                      blocks={guideTextBlocks}
+                      withDivider={guideItems.length > 0}
+                    />
+                  ) : (
+                    <LockedDetailNotice />
+                  )}
                 </DetailSection>
               )}
             </div>
@@ -786,8 +822,15 @@ export default async function PublicJobDetailPage({
       <MobileApplyBar
         detail={detail}
         isClosed={isClosed}
+        isAuthenticated={isAuthenticated}
         coachmarkTarget={staffApplyCoachmarkTarget}
       />
+      {!isAuthenticated && (
+        <JobDetailLoginGate
+          redirectPath={detailPath}
+          triggerId={loginGateTriggerId}
+        />
+      )}
     </main>
   );
 }

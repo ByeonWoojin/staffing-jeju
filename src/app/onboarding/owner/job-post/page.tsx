@@ -5,6 +5,11 @@ import {
 } from "@/lib/auth/onboarding";
 import { createOwnerJobPost } from "@/app/onboarding/owner/job-post/actions";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import {
+  appendRedirectParam,
+  AUTH_REDIRECT_PARAM,
+  getSafeInternalRedirectPath,
+} from "@/lib/auth/redirect";
 import { AnalyticsEventTracker } from "@/components/analytics/AnalyticsEventTracker";
 import { RoleCoachmarkController } from "@/components/onboarding/RoleCoachmarkController";
 import { JobPostForm } from "@/components/owner";
@@ -12,6 +17,14 @@ import { PageHeader } from "@/components/ui";
 import { ANALYTICS_EVENTS } from "@/lib/analytics/events";
 
 export const dynamic = "force-dynamic";
+
+type OwnerJobPostOnboardingPageProps = {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+};
+
+function getSearchParamValue(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value;
+}
 
 async function getOwnerGuesthouseId(ownerId: string) {
   const supabase = createSupabaseAdminClient();
@@ -26,7 +39,13 @@ async function getOwnerGuesthouseId(ownerId: string) {
   return data?.id as string | undefined;
 }
 
-export default async function OwnerJobPostOnboardingPage() {
+export default async function OwnerJobPostOnboardingPage({
+  searchParams,
+}: OwnerJobPostOnboardingPageProps) {
+  const resolvedSearchParams = await searchParams;
+  const redirectPath = getSafeInternalRedirectPath(
+    getSearchParamValue(resolvedSearchParams[AUTH_REDIRECT_PARAM]),
+  );
   const user = await getCurrentAuthUser();
   if (!user) {
     redirect("/");
@@ -34,10 +53,22 @@ export default async function OwnerJobPostOnboardingPage() {
 
   const destination = await getPostLoginDestination(user.id);
   if (destination !== "/onboarding/owner/job-post") {
-    redirect(destination);
+    redirect(
+      destination === "/owner" && redirectPath
+        ? redirectPath
+        : appendRedirectParam(destination, redirectPath),
+    );
   }
 
   const guesthouseId = await getOwnerGuesthouseId(user.id);
+
+  async function createOwnerJobPostWithRedirect(
+    payload: Parameters<typeof createOwnerJobPost>[0],
+  ) {
+    "use server";
+
+    return createOwnerJobPost(payload, redirectPath);
+  }
 
   return (
     <main className="min-h-screen bg-surface">
@@ -58,7 +89,7 @@ export default async function OwnerJobPostOnboardingPage() {
         />
         <JobPostForm
           mode="create"
-          createAction={createOwnerJobPost}
+          createAction={createOwnerJobPostWithRedirect}
           cancelHref="/onboarding/owner/guesthouse"
           submitLabel="모집글 저장 후 시작하기"
         />

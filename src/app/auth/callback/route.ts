@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createSupabaseRouteHandlerClient } from "@/lib/supabase/server";
 import { getPostLoginDestination, getProfileById } from "@/lib/auth/onboarding";
 import {
+  appendRedirectParam,
   AUTH_REDIRECT_PARAM,
   getSafeInternalRedirectPath,
 } from "@/lib/auth/redirect";
@@ -70,9 +71,13 @@ export async function GET(request: NextRequest) {
   }
 
   const resolvedDestination =
-    profile?.role === "staff" || profile?.role === "owner"
+    profile?.role === "staff"
       ? requestedRedirect ?? destination
-      : destination;
+      : profile?.role === "owner"
+        ? destination === "/owner"
+          ? requestedRedirect ?? destination
+          : appendRedirectParam(destination, requestedRedirect)
+        : destination;
   const redirectUrl = new URL(resolvedDestination, origin);
 
   if (!profile && requestedRedirect && destination === "/onboarding/role") {

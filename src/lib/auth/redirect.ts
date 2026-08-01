@@ -31,3 +31,13 @@ export function appendAuthEventParams(
 
   return `${url.pathname}${url.search}${url.hash}`;
 }
+
+export function appendRedirectParam(path: string, redirectPath: string | null) {
+  const safeRedirectPath = getSafeInternalRedirectPath(redirectPath);
+  if (!safeRedirectPath) return path;
+
+  const url = new URL(path, INTERNAL_URL_BASE);
+  url.searchParams.set(AUTH_REDIRECT_PARAM, safeRedirectPath);
+
+  return `${url.pathname}${url.search}${url.hash}`;
+}

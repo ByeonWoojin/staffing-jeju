@@ -8,14 +8,16 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
 } from "react";
 import { useRouter } from "next/navigation";
-import { GoogleLoginButton } from "@/components/auth/GoogleLoginButton";
+import { GoogleLoginCtaButton } from "@/components/auth/GoogleLoginCtaButton";
 import { Button } from "@/components/ui";
 
 interface JobDetailLoginGateProps {
   redirectPath: string;
+  triggerId: string;
 }
 
 const scrollKeys = new Set(["ArrowDown", "End", "PageDown", " "]);
+export const JOB_DETAIL_LOGIN_GATE_EVENT = "staffing:job-detail-login-gate";
 
 function getFocusableElements(container: HTMLElement) {
   return Array.from(
@@ -23,6 +25,27 @@ function getFocusableElements(container: HTMLElement) {
       'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
     ),
   ).filter((element) => !element.hasAttribute("aria-hidden"));
+}
+
+function getTriggerTop(triggerId: string) {
+  const trigger = document.getElementById(triggerId);
+  if (!trigger) return null;
+
+  return trigger.getBoundingClientRect().top + window.scrollY;
+}
+
+function getGateScrollThreshold(triggerId: string) {
+  const triggerTop = getTriggerTop(triggerId);
+  if (triggerTop === null) return null;
+
+  return Math.max(0, triggerTop - 120);
+}
+
+function shouldOpenForScrollPosition(triggerId: string, nextScrollY = window.scrollY) {
+  const threshold = getGateScrollThreshold(triggerId);
+  if (threshold === null) return false;
+
+  return nextScrollY >= threshold;
 }
 
 function isInteractiveTarget(target: EventTarget | null) {
@@ -35,7 +58,31 @@ function isInteractiveTarget(target: EventTarget | null) {
     : false;
 }
 
-export function JobDetailLoginGate({ redirectPath }: JobDetailLoginGateProps) {
+export function openJobDetailLoginGate() {
+  window.dispatchEvent(new Event(JOB_DETAIL_LOGIN_GATE_EVENT));
+}
+
+export function LoginRequiredApplyButton({
+  coachmarkTarget,
+}: {
+  coachmarkTarget?: string;
+}) {
+  return (
+    <Button
+      size="lg"
+      fullWidth
+      onClick={openJobDetailLoginGate}
+      data-coachmark={coachmarkTarget}
+    >
+      지원하기
+    </Button>
+  );
+}
+
+export function JobDetailLoginGate({
+  redirectPath,
+  triggerId,
+}: JobDetailLoginGateProps) {
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -43,23 +90,32 @@ export function JobDetailLoginGate({ redirectPath }: JobDetailLoginGateProps) {
   const lockedScrollYRef = useRef(0);
   const touchStartYRef = useRef<number | null>(null);
 
-  const openGate = useCallback(() => {
+  const openGate = useCallback((options?: { clampToTrigger?: boolean }) => {
     if (hasOpenedRef.current) return;
+
+    if (options?.clampToTrigger) {
+      const threshold = getGateScrollThreshold(triggerId);
+      if (threshold !== null && window.scrollY > threshold) {
+        window.scrollTo({ top: threshold, left: 0 });
+      }
+    }
 
     hasOpenedRef.current = true;
     lockedScrollYRef.current = window.scrollY;
     window.scrollTo({ top: lockedScrollYRef.current, left: 0 });
     setIsOpen(true);
-  }, []);
+  }, [triggerId]);
 
   useEffect(() => {
     if (isOpen) return;
 
     const handleWheel = (event: WheelEvent) => {
       if (event.deltaY <= 0) return;
+      const nextScrollY = window.scrollY + event.deltaY;
+      if (!shouldOpenForScrollPosition(triggerId, nextScrollY)) return;
 
       event.preventDefault();
-      openGate();
+      openGate({ clampToTrigger: true });
     };
     const handleTouchStart = (event: TouchEvent) => {
       touchStartYRef.current = event.touches[0]?.clientY ?? null;
@@ -70,15 +126,28 @@ export function JobDetailLoginGate({ redirectPath }: JobDetailLoginGateProps) {
       if (touchStartY === null || currentY === undefined) return;
 
       if (touchStartY - currentY <= 8) return;
+      const nextScrollY = window.scrollY + touchStartY - currentY;
+      if (!shouldOpenForScrollPosition(triggerId, nextScrollY)) return;
 
       event.preventDefault();
-      openGate();
+      openGate({ clampToTrigger: true });
     };
     const handleKeyDown = (event: KeyboardEvent) => {
       if (!scrollKeys.has(event.key)) return;
       if (isInteractiveTarget(event.target)) return;
+      if (!shouldOpenForScrollPosition(triggerId, window.scrollY + 180)) {
+        return;
+      }
 
       event.preventDefault();
+      openGate({ clampToTrigger: true });
+    };
+    const handleScroll = () => {
+      if (shouldOpenForScrollPosition(triggerId)) {
+        openGate({ clampToTrigger: true });
+      }
+    };
+    const handleManualOpen = () => {
       openGate();
     };
     const listenerOptions = { passive: false, capture: true };
@@ -87,14 +156,18 @@ export function JobDetailLoginGate({ redirectPath }: JobDetailLoginGateProps) {
     window.addEventListener("touchstart", handleTouchStart, listenerOptions);
     window.addEventListener("touchmove", handleTouchMove, listenerOptions);
     window.addEventListener("keydown", handleKeyDown, true);
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    window.addEventListener(JOB_DETAIL_LOGIN_GATE_EVENT, handleManualOpen);
 
     return () => {
       window.removeEventListener("wheel", handleWheel, listenerOptions);
       window.removeEventListener("touchstart", handleTouchStart, listenerOptions);
       window.removeEventListener("touchmove", handleTouchMove, listenerOptions);
       window.removeEventListener("keydown", handleKeyDown, true);
+      window.removeEventListener("scroll", handleScroll);
+      window.removeEventListener(JOB_DETAIL_LOGIN_GATE_EVENT, handleManualOpen);
     };
-  }, [isOpen, openGate]);
+  }, [isOpen, openGate, triggerId]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -185,16 +258,17 @@ export function JobDetailLoginGate({ redirectPath }: JobDetailLoginGateProps) {
           id="job-detail-login-gate-description"
           className="mt-2 text-body-sm leading-relaxed text-neutral-600"
         >
-          근무 조건과 게스트하우스 상세 정보는 로그인 후 확인할 수 있어요.
+          로그인하면 근무 조건과 게스트하우스 상세 정보를 모두 확인할 수 있어요.
         </p>
         <div className="mt-5 grid gap-2">
-          <GoogleLoginButton
+          <GoogleLoginCtaButton
+            className="w-full"
             ctaLocation="job_detail_scroll_gate"
             loadingText="로그인으로 이동 중..."
             redirectPath={redirectPath}
           >
-            로그인하고 계속 보기
-          </GoogleLoginButton>
+            Google로 시작하기
+          </GoogleLoginCtaButton>
           <Button
             type="button"
             variant="outline"

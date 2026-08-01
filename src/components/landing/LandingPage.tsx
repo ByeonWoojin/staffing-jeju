@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { AnalyticsEventTracker } from "@/components/analytics/AnalyticsEventTracker";
+import { GoogleLoginCtaButton } from "@/components/auth/GoogleLoginCtaButton";
 import { HeaderLoginButton } from "@/components/auth/HeaderLoginButton";
 import { BrandLogo } from "@/components/brand/BrandLogo";
 import { ANALYTICS_EVENTS } from "@/lib/analytics/events";
@@ -121,39 +122,8 @@ const cardClassName =
 
 const landingContainerClassName = "mx-auto w-full max-w-[1200px] px-5 md:px-8";
 
-const googleCtaClassName =
-  "inline-flex h-12 items-center justify-center gap-3 rounded-sm border border-[#747775] bg-neutral-0 px-4 text-[15px] font-medium text-[#1F1F1F] shadow-none transition-colors hover:bg-[#F7F8F8] active:bg-[#EEF0F1] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1A73E8] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 disabled:text-[#1F1F1F]!";
-
 const brandCtaClassName =
   "inline-flex h-12 items-center justify-center rounded-sm border border-primary-500 bg-primary-500 px-4 text-[15px] font-bold text-white shadow-sm transition-colors hover:bg-primary-600 focus-ring";
-
-function GoogleIcon() {
-  return (
-    <span
-      aria-hidden="true"
-      className="flex size-5 shrink-0 items-center justify-center"
-    >
-      <svg viewBox="0 0 24 24" className="size-5" focusable="false">
-        <path
-          fill="#4285F4"
-          d="M21.6 12.23c0-.78-.07-1.53-.2-2.23H12v4.22h5.38a4.6 4.6 0 0 1-2 3.02v2.51h3.24c1.9-1.75 2.98-4.32 2.98-7.52z"
-        />
-        <path
-          fill="#34A853"
-          d="M12 22c2.7 0 4.97-.9 6.62-2.43l-3.24-2.51c-.9.6-2.04.95-3.38.95-2.6 0-4.8-1.76-5.59-4.12H3.07v2.6A10 10 0 0 0 12 22z"
-        />
-        <path
-          fill="#FBBC05"
-          d="M6.41 13.89A6.01 6.01 0 0 1 6.1 12c0-.66.11-1.3.31-1.89v-2.6H3.07A10 10 0 0 0 2 12c0 1.61.39 3.13 1.07 4.49l3.34-2.6z"
-        />
-        <path
-          fill="#EA4335"
-          d="M12 5.99c1.47 0 2.78.5 3.82 1.5l2.87-2.87C16.96 3.01 14.7 2 12 2a10 10 0 0 0-8.93 5.51l3.34 2.6C7.2 7.75 9.4 5.99 12 5.99z"
-        />
-      </svg>
-    </span>
-  );
-}
 
 function LandingHeader() {
   return (
@@ -220,13 +190,12 @@ function LandingHero() {
 머무름이 특별해지는 만남을 지금 준비해 보세요.`}
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-              <HeaderLoginButton
-                className={`${googleCtaClassName} w-full sm:w-auto sm:min-w-[190px]`}
+              <GoogleLoginCtaButton
+                className="w-full sm:w-auto sm:min-w-[190px]"
                 ctaLocation="landing_hero"
               >
-                <GoogleIcon />
-                <span>Google로 시작하기</span>
-              </HeaderLoginButton>
+                Google로 시작하기
+              </GoogleLoginCtaButton>
               <Link href="/jobs" className={`${brandCtaClassName} w-full sm:w-auto sm:min-w-[168px]`}>
                 모집글 둘러보기
               </Link>
@@ -345,13 +314,12 @@ function LandingCTA() {
             >
               모집글 둘러보기
             </Link>
-            <HeaderLoginButton
-              className={`${googleCtaClassName} w-full sm:w-auto sm:min-w-[190px]`}
+            <GoogleLoginCtaButton
+              className="w-full sm:w-auto sm:min-w-[190px]"
               ctaLocation="landing_bottom_cta"
             >
-              <GoogleIcon />
-              <span>Google로 시작하기</span>
-            </HeaderLoginButton>
+              Google로 시작하기
+            </GoogleLoginCtaButton>
           </div>
         </div>
       </div>

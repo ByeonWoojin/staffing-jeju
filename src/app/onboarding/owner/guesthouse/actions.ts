@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getCurrentAuthUser, getProfileById } from "@/lib/auth/onboarding";
+import { appendRedirectParam } from "@/lib/auth/redirect";
 import type { Guesthouse, GuesthouseFormData } from "@/types/database";
 
 type NewGuesthouseValues = Pick<
@@ -146,6 +147,7 @@ async function cleanupUploadedPhotoPaths(paths: string[]) {
 export async function createOwnerGuesthouse(
   payload: GuesthouseFormData,
   uploadedPhotoPaths?: string[],
+  postOnboardingRedirectPath?: string | null,
 ): Promise<CreateOwnerGuesthouseResult> {
   const ownerId = await getOwnerIdOrRedirect();
   if (!ownerId) {
@@ -190,7 +192,10 @@ export async function createOwnerGuesthouse(
       "ALREADY_EXISTS",
       "이미 등록된 게스트하우스가 있습니다.",
       {
-        redirectTo: "/onboarding/owner/job-post",
+        redirectTo: appendRedirectParam(
+          "/onboarding/owner/job-post",
+          postOnboardingRedirectPath ?? null,
+        ),
       },
     );
   }
@@ -270,7 +275,10 @@ export async function createOwnerGuesthouse(
   revalidatePath("/onboarding/owner/job-post");
   revalidatePath("/owner");
   return actionResult("SUCCESS", "게스트하우스 정보가 저장되었습니다.", {
-    redirectTo: "/onboarding/owner/job-post",
+    redirectTo: appendRedirectParam(
+      "/onboarding/owner/job-post",
+      postOnboardingRedirectPath ?? null,
+    ),
     guesthouseId: createdGuesthouse.id,
     created: true,
   });

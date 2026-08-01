@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getCurrentAuthUser, getProfileById } from "@/lib/auth/onboarding";
+import { appendRedirectParam } from "@/lib/auth/redirect";
 import { normalizeNewWorkStartDate } from "@/lib/job-post-date-validation";
 import type {
   GenderCondition,
@@ -241,6 +242,7 @@ async function deleteExistingJobPostPhotos(
 
 export async function createOwnerJobPost(
   payload: JobPostFormData,
+  postOnboardingRedirectPath?: string | null,
 ): Promise<CreateOwnerJobPostResult> {
   const ownerId = await getOwnerIdOrRedirect();
   if (!ownerId) return { redirectTo: "/", created: false };
@@ -257,7 +259,13 @@ export async function createOwnerJobPost(
     throw new Error(`게스트하우스 조회에 실패했습니다: ${guesthouseError.message}`);
   }
   if (!guesthouse) {
-    return { redirectTo: "/onboarding/owner/guesthouse", created: false };
+    return {
+      redirectTo: appendRedirectParam(
+        "/onboarding/owner/guesthouse",
+        postOnboardingRedirectPath ?? null,
+      ),
+      created: false,
+    };
   }
 
   const { data: existing, error: existingError } = await supabase
@@ -271,7 +279,10 @@ export async function createOwnerJobPost(
     throw new Error(`모집글 조회에 실패했습니다: ${existingError.message}`);
   }
   if (existing && existing.status !== "hidden") {
-    return { redirectTo: "/owner", created: false };
+    return {
+      redirectTo: postOnboardingRedirectPath ?? "/owner",
+      created: false,
+    };
   }
 
   const values = normalizePayload(ownerId, guesthouse.id, payload);
@@ -305,7 +316,8 @@ export async function createOwnerJobPost(
     revalidatePath("/owner");
     revalidatePath("/owner/jobs");
     return {
-      redirectTo: `/owner/jobs/${updated.id}/edit`,
+      redirectTo:
+        postOnboardingRedirectPath ?? `/owner/jobs/${updated.id}/edit`,
       jobPostId: updated.id,
       guesthouseId: updated.guesthouse_id,
       created: false,
@@ -329,7 +341,7 @@ export async function createOwnerJobPost(
   revalidatePath("/owner");
   revalidatePath("/owner/jobs");
   return {
-    redirectTo: `/owner/jobs/${created.id}/edit`,
+    redirectTo: postOnboardingRedirectPath ?? `/owner/jobs/${created.id}/edit`,
     jobPostId: created.id,
     guesthouseId: guesthouse.id,
     created: true,

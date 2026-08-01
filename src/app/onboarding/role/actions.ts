@@ -8,6 +8,7 @@ import {
 } from "@/lib/auth/onboarding";
 import {
   appendAuthEventParams,
+  appendRedirectParam,
   AUTH_REDIRECT_PARAM,
   getSafeInternalRedirectPath,
 } from "@/lib/auth/redirect";
@@ -28,19 +29,25 @@ async function chooseRole(
   const { profile, isNewUser } = await createProfileForUserWithStatus(user, role);
   const authEvent = isNewUser ? "sign_up" : "login";
 
-  if (
-    redirectPath &&
-    (profile.role === "staff" || profile.role === "owner")
-  ) {
-    redirect(appendAuthEventParams(redirectPath, authEvent, profile.role));
-  }
-
   if (profile.role === "staff") {
+    if (redirectPath) {
+      redirect(appendAuthEventParams(redirectPath, authEvent, "staff"));
+    }
+
     redirect(`/jobs?auth_event=${authEvent}&user_role=staff`);
   }
 
   const destination = await getOwnerOnboardingDestination(profile.id);
-  redirect(`${destination}?auth_event=${authEvent}&user_role=owner`);
+  if (redirectPath) {
+    const nextDestination =
+      destination === "/owner"
+        ? redirectPath
+        : appendRedirectParam(destination, redirectPath);
+
+    redirect(appendAuthEventParams(nextDestination, authEvent, "owner"));
+  }
+
+  redirect(appendAuthEventParams(destination, authEvent, "owner"));
 }
 
 export async function chooseOwnerRole(formData: FormData) {
