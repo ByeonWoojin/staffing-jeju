@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { GoogleAnalytics } from "@next/third-parties/google";
+import { Analytics } from "@vercel/analytics/next";
 import { AnalyticsProvider } from "@/components/analytics/AnalyticsProvider";
 import { AuthAnalyticsBridge } from "@/components/analytics/AuthAnalyticsBridge";
 import { Footer } from "@/components/layout/Footer";
@@ -56,6 +57,7 @@ export default function RootLayout({
             </FooterFrame>
           </div>
         </AnalyticsProvider>
+        <Analytics />
       </body>
       {analyticsEnabled && gaMeasurementId ? (
         <GoogleAnalytics gaId={gaMeasurementId} />
