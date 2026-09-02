@@ -21,10 +21,13 @@ import { GENDER_CONDITION_LABELS, STIPEND_TYPE_LABELS } from "@/lib/labels";
 import { trackEvent } from "@/lib/analytics/client";
 import { ANALYTICS_EVENTS } from "@/lib/analytics/events";
 import {
+  ASAP_WORK_START_DATE,
   getTodayDateStringInKorea,
   getWorkStartDateFieldError,
+  isAsapWorkStartDate,
   isPastDateInKorea,
   isWorkStartDateErrorMessage,
+  resolveWorkStartDateInputValue,
 } from "@/lib/job-post-date-validation";
 import { COACHMARK_TARGETS } from "@/lib/onboarding/coachmark-config";
 import { isUuid } from "@/lib/uuid";
@@ -126,7 +129,7 @@ function jobPostToFormData(jobPost: JobPost): JobPostFormState {
     recruit_count: toNumberInputValue(jobPost.recruit_count),
     gender_condition: jobPost.gender_condition,
     age_condition: jobPost.age_condition ?? "",
-    work_start_date: jobPost.work_start_date,
+    work_start_date: resolveWorkStartDateInputValue(jobPost.work_start_date),
     min_work_period: jobPost.min_work_period,
     work_content: jobPost.work_content,
     work_time: jobPost.work_time,
@@ -147,12 +150,18 @@ function jobPostToFormData(jobPost: JobPost): JobPostFormState {
   };
 }
 
-function buildSubmitPayload(form: JobPostFormState): JobPostFormData {
+function buildSubmitPayload(
+  form: JobPostFormState,
+  isWorkStartAsap = false,
+): JobPostFormData {
   return {
     ...form,
     recruit_count: parseNumericField(form, "recruit_count"),
     work_days_per_week: parseNumericField(form, "work_days_per_week"),
     off_days_per_week: parseNumericField(form, "off_days_per_week"),
+    work_start_date: isWorkStartAsap
+      ? ASAP_WORK_START_DATE
+      : form.work_start_date,
     stipend_description:
       form.stipend_type === "none" ? "" : form.stipend_description,
     party_description: form.has_party ? form.party_description : "",
@@ -459,6 +468,9 @@ export function JobPostForm({
   const [form, setForm] = useState<JobPostFormState>(
     initialData ? jobPostToFormData(initialData) : defaultFormData,
   );
+  const [isWorkStartAsap, setIsWorkStartAsap] = useState(() =>
+    initialData ? isAsapWorkStartDate(initialData.work_start_date) : false,
+  );
   const [hasPreferredConditions, setHasPreferredConditions] = useState(
     () => Boolean(initialData?.preferred_conditions?.trim()),
   );
@@ -476,6 +488,7 @@ export function JobPostForm({
     mode === "edit" ? (initialData?.work_start_date ?? null) : null;
   const hasPastInitialWorkStartDate =
     Boolean(initialWorkStartDate) &&
+    !isAsapWorkStartDate(initialWorkStartDate ?? "") &&
     isPastDateInKorea(initialWorkStartDate ?? "", todayInKorea);
   const workStartDateMin =
     mode === "edit" && hasPastInitialWorkStartDate && initialWorkStartDate
@@ -490,9 +503,9 @@ export function JobPostForm({
     if (mode !== "edit" || !initialData) return true;
     return hasComparableChanges(
       getComparableInitialJobPostValues(initialData),
-      getComparableJobPostValues(buildSubmitPayload(form)),
+      getComparableJobPostValues(buildSubmitPayload(form, isWorkStartAsap)),
     );
-  }, [form, initialData, mode]);
+  }, [form, initialData, isWorkStartAsap, mode]);
 
   const updateField = <K extends keyof JobPostFormState>(
     field: K,
@@ -514,6 +527,18 @@ export function JobPostForm({
 
   const updateNumericField = (field: NumericField, value: string) => {
     updateField(field, value);
+  };
+
+  const handleWorkStartAsapChange = (checked: boolean) => {
+    setIsWorkStartAsap(checked);
+    setFieldErrors((prev) => ({ ...prev, work_start_date: undefined }));
+    setFormStatus(null);
+    setForm((prev) => ({
+      ...prev,
+      work_start_date: checked
+        ? todayInKorea
+        : prev.work_start_date || todayInKorea,
+    }));
   };
 
   const handleStipendTypeChange = (
@@ -556,11 +581,12 @@ export function JobPostForm({
     setFieldErrors({});
     setFormStatus(null);
 
-    const payload = buildSubmitPayload(form);
+    const payload = buildSubmitPayload(form, isWorkStartAsap);
     const workStartDateError = getWorkStartDateFieldError(
       payload.work_start_date,
       {
         currentWorkStartDate: initialWorkStartDate,
+        isAsap: isWorkStartAsap,
         todayInKorea: getTodayDateStringInKorea(),
       },
     );
@@ -738,23 +764,33 @@ export function JobPostForm({
         description="실제 근무 일정과 맡게 될 업무를 입력해 주세요."
       >
         <div className="grid gap-5 md:grid-cols-2">
-          <Input
-            label="근무 시작일"
-            name="work_start_date"
-            type="date"
-            min={workStartDateMin}
-            value={form.work_start_date}
-            onChange={(event) =>
-              updateField("work_start_date", event.target.value)
-            }
-            helperText={
-              hasPastInitialWorkStartDate
-                ? "현재 등록된 근무 시작일입니다. 날짜를 변경하려면 오늘 이후로 선택해 주세요."
-                : undefined
-            }
-            error={fieldErrors.work_start_date}
-            required
-          />
+          <div className="grid gap-3">
+            <ToggleCardCheckbox
+              label="ASAP으로 모집"
+              checked={isWorkStartAsap}
+              onChange={handleWorkStartAsapChange}
+            />
+            <Input
+              label="근무 시작일"
+              name="work_start_date"
+              type="date"
+              min={workStartDateMin}
+              value={form.work_start_date}
+              disabled={isWorkStartAsap}
+              onChange={(event) =>
+                updateField("work_start_date", event.target.value)
+              }
+              helperText={
+                isWorkStartAsap
+                  ? "ASAP 선택 시 모집글에는 입도일이 ASAP으로 표시됩니다."
+                  : hasPastInitialWorkStartDate
+                    ? "현재 등록된 근무 시작일입니다. 날짜를 변경하려면 오늘 이후로 선택해 주세요."
+                    : undefined
+              }
+              error={fieldErrors.work_start_date}
+              required={!isWorkStartAsap}
+            />
+          </div>
           <Input
             label="최소 근무 기간"
             name="min_work_period"

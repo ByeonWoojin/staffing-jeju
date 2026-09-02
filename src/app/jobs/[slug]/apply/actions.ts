@@ -16,6 +16,7 @@ import {
   validateApplicationPhoto,
 } from "@/lib/application-photo";
 import { getCurrentAuthUser, getProfileById } from "@/lib/auth/onboarding";
+import { convertExpiredOpenJobPostsToAsap } from "@/lib/job-post-asap-expiration";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 export type SubmitApplicationResult =
@@ -136,6 +137,8 @@ async function getOpenJobPostBySlug(slug: string): Promise<
   | { ok: true; jobPost: JobPost }
   | { ok: false; result: SubmitApplicationResult }
 > {
+  await convertExpiredOpenJobPostsToAsap({ slug });
+
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
     .from("job_posts")

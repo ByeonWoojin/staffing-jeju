@@ -1,6 +1,7 @@
 import "server-only";
 
 import { getCurrentAuthUser, getProfileById } from "@/lib/auth/onboarding";
+import { convertExpiredOpenJobPostsToAsap } from "@/lib/job-post-asap-expiration";
 import { getGenderConditionLabel, getStipendTypeLabel } from "@/lib/labels";
 import { normalizeImageSource } from "@/lib/guesthouse-image";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
@@ -508,6 +509,8 @@ async function getPagedPublicJobCards({
 export async function getPublicJobs(
   searchParams: SearchParams,
 ): Promise<PublicJobsResult> {
+  await convertExpiredOpenJobPostsToAsap();
+
   const filters = normalizeFilters(searchParams);
   const requestedPage = normalizePage(searchParams);
   const viewerProfile = await getViewerProfile();
@@ -541,6 +544,8 @@ export async function getPublicJobs(
 export async function getPublicJobBySlug(
   slug: string,
 ): Promise<{ detail: PublicJobDetail | null; viewerProfile: Profile | null }> {
+  await convertExpiredOpenJobPostsToAsap({ slug });
+
   const viewerProfile = await getViewerProfile();
   const supabase = createSupabaseAdminClient();
 

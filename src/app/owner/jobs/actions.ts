@@ -5,9 +5,11 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getCurrentAuthUser, getProfileById } from "@/lib/auth/onboarding";
 import {
   isPastDateInKorea,
+  isAsapWorkStartDate,
   normalizeRequiredDateString,
   WORK_START_DATE_REOPEN_PAST_ERROR_MESSAGE,
 } from "@/lib/job-post-date-validation";
+import { convertExpiredOpenJobPostsToAsap } from "@/lib/job-post-asap-expiration";
 import { isUuid } from "@/lib/uuid";
 import type { JobPost, Profile } from "@/types/database";
 
@@ -79,6 +81,7 @@ async function getCurrentOwnerProfileOrThrow(): Promise<Profile> {
 
 async function getJobPostOrThrow(jobPostId: string): Promise<JobPost> {
   assertValidJobPostId(jobPostId);
+  await convertExpiredOpenJobPostsToAsap({ jobPostId });
 
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
@@ -230,7 +233,7 @@ export async function reopenRecruitment(jobPostId: string): Promise<JobPost> {
     current.work_start_date,
     "근무 시작일",
   );
-  if (isPastDateInKorea(workStartDate)) {
+  if (!isAsapWorkStartDate(workStartDate) && isPastDateInKorea(workStartDate)) {
     throw new Error(WORK_START_DATE_REOPEN_PAST_ERROR_MESSAGE);
   }
 

@@ -5,6 +5,7 @@ import {
 } from "@/lib/application-status";
 import { getCurrentAuthUser } from "@/lib/auth/onboarding";
 import { attachApplicationPhotoUrls } from "@/lib/application-photo";
+import { convertExpiredOpenJobPostsToAsap } from "@/lib/job-post-asap-expiration";
 import type {
   Application,
   Guesthouse,
@@ -99,6 +100,10 @@ export async function getCurrentJobPost(
 ): Promise<JobPost | null> {
   const guesthouse = await getOwnerGuesthouse(ownerId);
   if (!guesthouse) return null;
+  await convertExpiredOpenJobPostsToAsap({
+    ownerId,
+    guesthouseId: guesthouse.id,
+  });
 
   try {
     const supabase = createSupabaseAdminClient();
@@ -126,6 +131,8 @@ export async function getOwnerJobPostById(
   ownerId: string,
   jobPostId: string,
 ): Promise<JobPost | null> {
+  await convertExpiredOpenJobPostsToAsap({ ownerId, jobPostId });
+
   try {
     const supabase = createSupabaseAdminClient();
     const { data, error } = await supabase
@@ -148,6 +155,8 @@ export async function getOwnerJobPostById(
 export async function getApplicationsByJobPostId(
   jobPostId: string,
 ): Promise<Application[]> {
+  await convertExpiredOpenJobPostsToAsap({ jobPostId });
+
   try {
     const supabase = createSupabaseAdminClient();
     const { data: jobPost, error: jobPostError } = await supabase
@@ -178,6 +187,8 @@ export async function getApplicationsByJobPostId(
 export async function getApplicationCountByJobPostId(
   jobPostId: string,
 ): Promise<number> {
+  await convertExpiredOpenJobPostsToAsap({ jobPostId });
+
   try {
     const supabase = createSupabaseAdminClient();
     const { data: jobPost, error: jobPostError } = await supabase

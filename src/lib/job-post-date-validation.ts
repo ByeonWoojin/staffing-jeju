@@ -1,5 +1,7 @@
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
+export const ASAP_WORK_START_DATE = "9999-12-31";
+
 export const WORK_START_DATE_PAST_ERROR_MESSAGE =
   "근무 시작일은 오늘 이후 날짜로 선택해 주세요.";
 
@@ -58,8 +60,19 @@ export function isPastDateInKorea(
   dateString: string,
   todayInKorea = getTodayDateStringInKorea(),
 ): boolean {
+  if (isAsapWorkStartDate(dateString)) return false;
   if (!isValidDateString(dateString)) return false;
   return dateString < todayInKorea;
+}
+
+export function isAsapWorkStartDate(dateString: string): boolean {
+  return dateString.trim() === ASAP_WORK_START_DATE;
+}
+
+export function resolveWorkStartDateInputValue(dateString: string): string {
+  return isAsapWorkStartDate(dateString)
+    ? getTodayDateStringInKorea()
+    : dateString;
 }
 
 export function normalizeRequiredDateString(
@@ -104,9 +117,12 @@ export function getWorkStartDateFieldError(
   value: string,
   options: {
     currentWorkStartDate?: string | null;
+    isAsap?: boolean;
     todayInKorea?: string;
   } = {},
 ): string | null {
+  if (options.isAsap) return null;
+
   const normalized = value.trim();
   if (!normalized) {
     return "근무 시작일은(는) 필수 입력값입니다.";

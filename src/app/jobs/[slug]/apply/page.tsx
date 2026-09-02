@@ -5,6 +5,8 @@ import { GoogleLoginButton } from "@/components/auth/GoogleLoginButton";
 import { ApplicationForm } from "./ApplicationForm";
 import { AnalyticsEventTracker } from "@/components/analytics/AnalyticsEventTracker";
 import { getCurrentAuthUser, getProfileById } from "@/lib/auth/onboarding";
+import { convertExpiredOpenJobPostsToAsap } from "@/lib/job-post-asap-expiration";
+import { isAsapWorkStartDate } from "@/lib/job-post-date-validation";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { formatDate } from "@/lib/owner-utils";
 import type { Application, Guesthouse, JobPost } from "@/types/database";
@@ -23,6 +25,8 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = privatePageMetadata;
 
 async function getApplicationTarget(slug: string) {
+  await convertExpiredOpenJobPostsToAsap({ slug });
+
   const supabase = createSupabaseAdminClient();
   const { data: jobPost, error: jobPostError } = await supabase
     .from("job_posts")
@@ -251,7 +255,11 @@ export default async function ApplyPage({
             guesthouseId={guesthouse.id}
             defaultName={profile.name}
             defaultPhone={profile.phone ?? ""}
-            defaultAvailableStartDate={jobPost.work_start_date}
+            defaultAvailableStartDate={
+              isAsapWorkStartDate(jobPost.work_start_date)
+                ? ""
+                : jobPost.work_start_date
+            }
           />
         </div>
       </div>
