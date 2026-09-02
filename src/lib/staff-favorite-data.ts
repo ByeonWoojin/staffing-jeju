@@ -72,7 +72,7 @@ export async function getStaffFavoritesData(): Promise<StaffFavoritesData> {
       .in("guesthouse_id", guesthouseIds)
       .eq("status", "open")
       .order("is_urgent", { ascending: false })
-      .order("bumped_at", { ascending: false })
+      .order("bumped_at", { ascending: false, nullsFirst: false })
       .order("created_at", { ascending: false }),
     supabase
       .from("guesthouse_photos")

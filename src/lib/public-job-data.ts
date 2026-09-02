@@ -269,7 +269,11 @@ type SupabaseQueryBuilder = {
   lte: (column: string, value: unknown) => SupabaseQueryBuilder;
   order: (
     column: string,
-    options?: { ascending?: boolean; foreignTable?: string },
+    options?: {
+      ascending?: boolean;
+      foreignTable?: string;
+      nullsFirst?: boolean;
+    },
   ) => SupabaseQueryBuilder;
   or: (filters: string) => SupabaseQueryBuilder;
   range: (from: number, to: number) => SupabaseQueryBuilder;
@@ -427,7 +431,7 @@ async function getPagedPublicJobCards({
   const query = filteredQuery
     .order("status", { ascending: true })
     .order("is_urgent", { ascending: false })
-    .order("bumped_at", { ascending: false })
+    .order("bumped_at", { ascending: false, nullsFirst: false })
     .order("created_at", { ascending: false })
     .range(from, to);
 
