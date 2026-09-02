@@ -3,7 +3,6 @@ import "server-only";
 import { redirect } from "next/navigation";
 import { attachApplicationPhotoUrls } from "@/lib/application-photo";
 import { getCurrentAuthUser, getProfileById } from "@/lib/auth/onboarding";
-import { closeExpiredOpenJobPosts } from "@/lib/job-post-expiration";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import {
   STAFF_APPLICATION_STATUS_NOTICE_STATUSES,
@@ -126,8 +125,6 @@ export async function getStaffApplicationsData(): Promise<StaffApplicationsData>
       applicationsWithPhotoUrl.map((application) => application.job_post_id),
     ),
   ];
-  await closeExpiredOpenJobPosts({ jobPostIds });
-
   const [
     { data: jobPosts, error: jobPostError },
     latestStatusChangeByApplicationId,
@@ -236,8 +233,6 @@ export async function getStaffApplicationStatusSummary(): Promise<{
   const jobPostIds = [
     ...new Set(applicationRows.map((application) => application.job_post_id)),
   ];
-  await closeExpiredOpenJobPosts({ jobPostIds });
-
   const [
     { data: jobPosts, error: jobPostError },
     latestStatusChangeByApplicationId,

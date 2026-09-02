@@ -16,10 +16,6 @@ import {
   validateApplicationPhoto,
 } from "@/lib/application-photo";
 import { getCurrentAuthUser, getProfileById } from "@/lib/auth/onboarding";
-import {
-  closeExpiredOpenJobPosts,
-  isJobPostExpiredByWorkStartDate,
-} from "@/lib/job-post-expiration";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 export type SubmitApplicationResult =
@@ -140,8 +136,6 @@ async function getOpenJobPostBySlug(slug: string): Promise<
   | { ok: true; jobPost: JobPost }
   | { ok: false; result: SubmitApplicationResult }
 > {
-  await closeExpiredOpenJobPosts({ slug });
-
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
     .from("job_posts")
@@ -174,13 +168,6 @@ async function getOpenJobPostBySlug(slug: string): Promise<
 
   const jobPost = data as JobPost;
   if (jobPost.status !== "open") {
-    return {
-      ok: false,
-      result: { ok: false, message: "모집이 종료된 공고입니다." },
-    };
-  }
-  if (isJobPostExpiredByWorkStartDate(jobPost)) {
-    await closeExpiredOpenJobPosts({ jobPostId: jobPost.id });
     return {
       ok: false,
       result: { ok: false, message: "모집이 종료된 공고입니다." },

@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { Guesthouse, JobPost } from "@/types/database";
 import { formatDate, formatDateTime } from "@/lib/owner-utils";
-import { isPastDateInKorea } from "@/lib/job-post-date-validation";
 import { isUuid } from "@/lib/uuid";
 import { getBumpDisabledReason } from "@/lib/owner-data";
 import { getSafeErrorMessage } from "@/lib/action-result";
@@ -94,8 +93,6 @@ export function RecruitmentManagePanel({
   const urgentDisabledReason = getUrgentDisabledReason(jobPost);
   const isActionPending = pendingAction !== null;
   const isDatabaseJobPost = isUuid(jobPost.id);
-  const hasClosedPastWorkStartDate =
-    jobPost.status === "closed" && isPastDateInKorea(jobPost.work_start_date);
   const actionDisabledReason = isDatabaseJobPost
     ? null
     : "개발용 mock 데이터에서는 액션을 실행할 수 없습니다.";
@@ -233,11 +230,6 @@ export function RecruitmentManagePanel({
                   <Badge variant="primary">파티 있음</Badge>
                 )}
               </div>
-              {hasClosedPastWorkStartDate && (
-                <p className="mt-2 text-caption font-semibold text-neutral-500">
-                  설정한 입도일이 지나 모집이 마감되었어요.
-                </p>
-              )}
             </div>
             <div className="flex w-full items-stretch gap-2 sm:w-32 sm:shrink-0 sm:flex-col">
               <Link

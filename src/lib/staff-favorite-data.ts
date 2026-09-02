@@ -3,7 +3,6 @@ import "server-only";
 import { redirect } from "next/navigation";
 import { getCurrentAuthUser, getProfileById } from "@/lib/auth/onboarding";
 import { normalizeImageSource } from "@/lib/guesthouse-image";
-import { closeExpiredOpenJobPosts } from "@/lib/job-post-expiration";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import type { Guesthouse, GuesthousePhoto, JobPost, Profile } from "@/types/database";
 
@@ -57,8 +56,6 @@ export async function getStaffFavoritesData(): Promise<StaffFavoritesData> {
   if (guesthouseIds.length === 0) {
     return { profile, items: [], authorized: true };
   }
-
-  await closeExpiredOpenJobPosts({ guesthouseIds });
 
   const [
     { data: guesthouses, error: guesthouseError },

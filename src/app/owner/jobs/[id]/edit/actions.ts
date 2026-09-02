@@ -3,7 +3,6 @@
 import { revalidatePath } from "next/cache";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getCurrentAuthUser, getProfileById } from "@/lib/auth/onboarding";
-import { closeExpiredOpenJobPosts } from "@/lib/job-post-expiration";
 import { normalizeUpdatedWorkStartDate } from "@/lib/job-post-date-validation";
 import { isUuid } from "@/lib/uuid";
 import type {
@@ -360,8 +359,6 @@ export async function updateJobPost(
     });
 
     const supabase = createSupabaseAdminClient();
-    await closeExpiredOpenJobPosts({ ownerId: owner.id, jobPostId });
-
     const { data: currentData, error: loadError } = await supabase
       .from("job_posts")
       .select("*")

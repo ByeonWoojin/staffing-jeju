@@ -3,7 +3,6 @@ import "server-only";
 import { getCurrentAuthUser, getProfileById } from "@/lib/auth/onboarding";
 import { getGenderConditionLabel, getStipendTypeLabel } from "@/lib/labels";
 import { normalizeImageSource } from "@/lib/guesthouse-image";
-import { closeExpiredOpenJobPosts } from "@/lib/job-post-expiration";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import type {
   Application,
@@ -509,8 +508,6 @@ async function getPagedPublicJobCards({
 export async function getPublicJobs(
   searchParams: SearchParams,
 ): Promise<PublicJobsResult> {
-  await closeExpiredOpenJobPosts();
-
   const filters = normalizeFilters(searchParams);
   const requestedPage = normalizePage(searchParams);
   const viewerProfile = await getViewerProfile();
@@ -544,8 +541,6 @@ export async function getPublicJobs(
 export async function getPublicJobBySlug(
   slug: string,
 ): Promise<{ detail: PublicJobDetail | null; viewerProfile: Profile | null }> {
-  await closeExpiredOpenJobPosts({ slug });
-
   const viewerProfile = await getViewerProfile();
   const supabase = createSupabaseAdminClient();
 
