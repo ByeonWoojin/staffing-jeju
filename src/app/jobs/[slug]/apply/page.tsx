@@ -5,6 +5,7 @@ import { GoogleLoginButton } from "@/components/auth/GoogleLoginButton";
 import { ApplicationForm } from "./ApplicationForm";
 import { AnalyticsEventTracker } from "@/components/analytics/AnalyticsEventTracker";
 import { getCurrentAuthUser, getProfileById } from "@/lib/auth/onboarding";
+import { closeExpiredOpenJobPosts } from "@/lib/job-post-expiration";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { formatDate } from "@/lib/owner-utils";
 import type { Application, Guesthouse, JobPost } from "@/types/database";
@@ -23,6 +24,8 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = privatePageMetadata;
 
 async function getApplicationTarget(slug: string) {
+  await closeExpiredOpenJobPosts({ slug });
+
   const supabase = createSupabaseAdminClient();
   const { data: jobPost, error: jobPostError } = await supabase
     .from("job_posts")

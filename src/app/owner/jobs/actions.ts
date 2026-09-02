@@ -8,6 +8,7 @@ import {
   normalizeRequiredDateString,
   WORK_START_DATE_REOPEN_PAST_ERROR_MESSAGE,
 } from "@/lib/job-post-date-validation";
+import { closeExpiredOpenJobPosts } from "@/lib/job-post-expiration";
 import { isUuid } from "@/lib/uuid";
 import type { JobPost, Profile } from "@/types/database";
 
@@ -79,6 +80,7 @@ async function getCurrentOwnerProfileOrThrow(): Promise<Profile> {
 
 async function getJobPostOrThrow(jobPostId: string): Promise<JobPost> {
   assertValidJobPostId(jobPostId);
+  await closeExpiredOpenJobPosts({ jobPostId });
 
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
