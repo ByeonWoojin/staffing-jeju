@@ -44,7 +44,6 @@ export default async function EditJobPage({ params }: EditJobPageProps) {
       <JobPostForm
         mode="edit"
         initialData={jobPost}
-        ownerPhone={owner.phone ?? ""}
         photoManager={
           <JobPostPhotoManager
             key={photoManagerKey}

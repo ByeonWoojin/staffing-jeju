@@ -11,11 +11,7 @@ import {
   type WheelEvent,
 } from "react";
 import { useRouter } from "next/navigation";
-import type {
-  JobPost,
-  JobPostFormData,
-  OwnerJobPostFormData,
-} from "@/types/database";
+import type { JobPost, JobPostFormData } from "@/types/database";
 import { updateJobPost } from "@/app/owner/jobs/[id]/edit/actions";
 import {
   getActionResultMessage,
@@ -49,9 +45,8 @@ import {
 interface JobPostFormProps {
   mode: "create" | "edit";
   initialData?: JobPost;
-  ownerPhone?: string;
   createAction?: (
-    payload: OwnerJobPostFormData,
+    payload: JobPostFormData,
   ) => Promise<
     | string
     | void
@@ -73,9 +68,7 @@ type NumericField =
   | "off_days_per_week";
 
 type JobPostFormState = Omit<JobPostFormData, NumericField> &
-  Record<NumericField, string> & {
-    owner_phone: string;
-  };
+  Record<NumericField, string>;
 
 type JobPostFieldErrors = {
   work_start_date?: string;
@@ -108,7 +101,6 @@ const defaultFormData: JobPostFormState = {
   caution: "",
   extra_info: "",
   description: "",
-  owner_phone: "",
 };
 
 const invalidNumberFallbacks: Record<NumericField, number> = {
@@ -131,10 +123,7 @@ function parseNumericField(form: JobPostFormState, field: NumericField) {
   return Number(value);
 }
 
-function jobPostToFormData(
-  jobPost: JobPost,
-  ownerPhone: string,
-): JobPostFormState {
+function jobPostToFormData(jobPost: JobPost): JobPostFormState {
   return {
     title: jobPost.title,
     recruit_count: toNumberInputValue(jobPost.recruit_count),
@@ -158,14 +147,13 @@ function jobPostToFormData(
     caution: jobPost.caution ?? "",
     extra_info: jobPost.extra_info ?? "",
     description: jobPost.description ?? "",
-    owner_phone: ownerPhone,
   };
 }
 
 function buildSubmitPayload(
   form: JobPostFormState,
   isWorkStartAsap = false,
-): OwnerJobPostFormData {
+): JobPostFormData {
   return {
     ...form,
     recruit_count: parseNumericField(form, "recruit_count"),
@@ -190,7 +178,7 @@ function stringifyComparableValue(value: unknown) {
   return String(value);
 }
 
-function getComparableJobPostValues(payload: OwnerJobPostFormData) {
+function getComparableJobPostValues(payload: JobPostFormData) {
   return {
     title: normalizeComparableText(payload.title),
     recruit_count: stringifyComparableValue(Number(payload.recruit_count)),
@@ -222,14 +210,10 @@ function getComparableJobPostValues(payload: OwnerJobPostFormData) {
     caution: normalizeComparableText(payload.caution),
     extra_info: normalizeComparableText(payload.extra_info),
     description: normalizeComparableText(payload.description),
-    owner_phone: normalizeComparableText(payload.owner_phone),
   };
 }
 
-function getComparableInitialJobPostValues(
-  jobPost: JobPost,
-  ownerPhone: string,
-) {
+function getComparableInitialJobPostValues(jobPost: JobPost) {
   return getComparableJobPostValues({
     title: jobPost.title,
     recruit_count: jobPost.recruit_count,
@@ -252,7 +236,6 @@ function getComparableInitialJobPostValues(
     caution: jobPost.caution ?? "",
     extra_info: jobPost.extra_info ?? "",
     description: jobPost.description ?? "",
-    owner_phone: ownerPhone,
   });
 }
 
@@ -476,18 +459,14 @@ function getWorkPatternSummary(workDays: string, offDays: string) {
 export function JobPostForm({
   mode,
   initialData,
-  ownerPhone = "",
   createAction,
   cancelHref = "/owner/jobs",
   submitLabel,
   photoManager,
 }: JobPostFormProps) {
   const router = useRouter();
-  const initialOwnerPhone = ownerPhone;
   const [form, setForm] = useState<JobPostFormState>(
-    initialData
-      ? jobPostToFormData(initialData, initialOwnerPhone)
-      : { ...defaultFormData, owner_phone: initialOwnerPhone },
+    initialData ? jobPostToFormData(initialData) : defaultFormData,
   );
   const [isWorkStartAsap, setIsWorkStartAsap] = useState(() =>
     initialData ? isAsapWorkStartDate(initialData.work_start_date) : false,
@@ -523,10 +502,10 @@ export function JobPostForm({
   const isEditDirty = useMemo(() => {
     if (mode !== "edit" || !initialData) return true;
     return hasComparableChanges(
-      getComparableInitialJobPostValues(initialData, initialOwnerPhone),
+      getComparableInitialJobPostValues(initialData),
       getComparableJobPostValues(buildSubmitPayload(form, isWorkStartAsap)),
     );
-  }, [form, initialData, initialOwnerPhone, isWorkStartAsap, mode]);
+  }, [form, initialData, isWorkStartAsap, mode]);
 
   const updateField = <K extends keyof JobPostFormState>(
     field: K,
@@ -776,19 +755,6 @@ export function JobPostForm({
             value={form.age_condition ?? ""}
             onChange={(event) => updateField("age_condition", event.target.value)}
             placeholder="예: 20대~30대"
-          />
-          <Input
-            label="알림톡 받을 휴대폰 번호"
-            labelHelpText="스탭이 지원서를 제출하면 이 번호로 카카오 알림톡이 발송됩니다."
-            labelHelpAriaLabel="알림톡 받을 휴대폰 번호 안내"
-            name="owner_phone"
-            type="tel"
-            inputMode="tel"
-            value={form.owner_phone}
-            onChange={(event) => updateField("owner_phone", event.target.value)}
-            placeholder="010-0000-0000"
-            autoComplete="tel"
-            required
           />
         </div>
       </FormSection>

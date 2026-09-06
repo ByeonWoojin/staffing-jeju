@@ -3,12 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getCurrentAuthUser, getProfileById } from "@/lib/auth/onboarding";
-import { normalizeKoreanMobilePhone } from "@/lib/phone";
 import { isUuid } from "@/lib/uuid";
 import type {
   Guesthouse,
+  GuesthouseFormData,
   GuesthousePhoto,
-  OwnerGuesthouseFormData,
 } from "@/types/database";
 
 type EditableGuesthouseUpdate = Pick<
@@ -99,17 +98,8 @@ function normalizeOptionalText(value: string | null): string | null {
   return trimmed.length > 0 ? trimmed : null;
 }
 
-function normalizeOwnerPhone(value: string): string {
-  const phone = normalizeKoreanMobilePhone(value);
-  if (!phone) {
-    throw new Error("알림톡 받을 휴대폰 번호를 올바르게 입력해 주세요.");
-  }
-
-  return phone;
-}
-
 function normalizePayload(
-  payload: OwnerGuesthouseFormData,
+  payload: GuesthouseFormData,
 ): EditableGuesthouseUpdate {
   return {
     name: normalizeRequiredText(payload.name, "게스트하우스명"),
@@ -308,7 +298,7 @@ async function rollbackInsertedPhotoRows(
 
 export async function updateGuesthouse(
   guesthouseId: string,
-  payload: OwnerGuesthouseFormData,
+  payload: GuesthouseFormData,
   photoChanges?: GuesthousePhotoUpdatePayload,
 ): Promise<GuesthouseUpdateActionResult> {
   logUuidValidation("updateGuesthouse", guesthouseId);
@@ -335,10 +325,8 @@ export async function updateGuesthouse(
 
     const supabase = createSupabaseAdminClient();
     let values: EditableGuesthouseUpdate;
-    let ownerPhone: string;
     try {
       values = normalizePayload(payload);
-      ownerPhone = normalizeOwnerPhone(payload.owner_phone);
     } catch (error) {
       await cleanupUploadedPhotoPaths(uploadedPhotoPaths);
       return actionResult(
@@ -413,51 +401,17 @@ export async function updateGuesthouse(
 
     const currentPhotos = (currentPhotoData ?? []) as GuesthousePhoto[];
     const textHasChanges = hasTextChanges(current, values);
-    const ownerPhoneHasChanges =
-      stringifyValue(owner.phone) !== stringifyValue(ownerPhone);
     const photoHasChanges = getPhotoHasChanges(currentPhotos, photoChanges);
 
-    if (!textHasChanges && !ownerPhoneHasChanges && !photoHasChanges) {
+    if (!textHasChanges && !photoHasChanges) {
       return actionResult("NO_CHANGES", "변경된 내용이 없습니다.");
     }
 
     logAction("updateGuesthouse:update:start", guesthouseId, {
       user_id: owner.id,
       text_has_changes: textHasChanges,
-      owner_phone_has_changes: ownerPhoneHasChanges,
       photo_has_changes: photoHasChanges,
     });
-
-    if (ownerPhoneHasChanges) {
-      const { data, error } = await supabase
-        .from("profiles")
-        .update({ phone: ownerPhone })
-        .eq("id", owner.id)
-        .eq("role", "owner")
-        .select("id")
-        .maybeSingle();
-
-      if (error) {
-        await cleanupUploadedPhotoPaths(uploadedPhotoPaths);
-        console.error("[owner-guesthouse-edit] owner phone update failed", {
-          user_id: owner.id,
-          guesthouse_id: guesthouseId,
-          error: serializeSupabaseError(error),
-        });
-        return actionResult(
-          "UPDATE_FAILED",
-          "알림톡 받을 휴대폰 번호를 저장하지 못했습니다.",
-        );
-      }
-
-      if (!data) {
-        await cleanupUploadedPhotoPaths(uploadedPhotoPaths);
-        return actionResult(
-          "UPDATE_FAILED",
-          "알림톡 받을 휴대폰 번호 저장 결과가 없습니다.",
-        );
-      }
-    }
 
     if (textHasChanges) {
       const { data, error } = await supabase

@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 import {
   getCurrentAuthUser,
-  getProfileById,
   getPostLoginDestination,
 } from "@/lib/auth/onboarding";
 import { createOwnerJobPost } from "@/app/onboarding/owner/job-post/actions";
@@ -62,7 +61,6 @@ export default async function OwnerJobPostOnboardingPage({
   }
 
   const guesthouseId = await getOwnerGuesthouseId(user.id);
-  const ownerProfile = await getProfileById(user.id);
 
   async function createOwnerJobPostWithRedirect(
     payload: Parameters<typeof createOwnerJobPost>[0],
@@ -91,7 +89,6 @@ export default async function OwnerJobPostOnboardingPage({
         />
         <JobPostForm
           mode="create"
-          ownerPhone={ownerProfile?.phone ?? ""}
           createAction={createOwnerJobPostWithRedirect}
           cancelHref="/onboarding/owner/guesthouse"
           submitLabel="모집글 저장 후 시작하기"
