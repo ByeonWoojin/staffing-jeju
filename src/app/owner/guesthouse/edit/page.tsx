@@ -42,7 +42,7 @@ export default async function EditGuesthousePage() {
       <GuesthouseForm
         mode="edit"
         guesthouseId={id}
-        initialData={formData}
+        initialData={{ ...formData, owner_phone: owner.phone ?? "" }}
         initialPhotos={photosWithUrls}
       />
     </OwnerLayout>

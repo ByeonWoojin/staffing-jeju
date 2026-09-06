@@ -6,6 +6,7 @@ import type {
   ApplicationStatus,
   ExperienceStatus,
   GenderCondition,
+  Guesthouse,
   JobPost,
   Profile,
 } from "@/types/database";
@@ -17,6 +18,7 @@ import {
 } from "@/lib/application-photo";
 import { getCurrentAuthUser, getProfileById } from "@/lib/auth/onboarding";
 import { convertExpiredOpenJobPostsToAsap } from "@/lib/job-post-asap-expiration";
+import { sendOwnerNewApplicationAlimtalk } from "@/lib/notifications/kakao-alimtalk";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 export type SubmitApplicationResult =
@@ -216,6 +218,72 @@ async function insertApplicationStatusLog({
   }
 }
 
+async function getOwnerNotificationTarget(
+  jobPost: JobPost,
+): Promise<{ owner: Profile; guesthouse: Guesthouse } | null> {
+  const supabase = createSupabaseAdminClient();
+  const [ownerResult, guesthouseResult] = await Promise.all([
+    supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", jobPost.owner_id)
+      .eq("role", "owner")
+      .maybeSingle(),
+    supabase
+      .from("guesthouses")
+      .select("*")
+      .eq("id", jobPost.guesthouse_id)
+      .maybeSingle(),
+  ]);
+
+  if (ownerResult.error || guesthouseResult.error) {
+    console.error("[apply/actions] owner notification target lookup failed", {
+      jobPostId: jobPost.id,
+      ownerError: ownerResult.error
+        ? {
+            message: ownerResult.error.message,
+            code: ownerResult.error.code,
+            details: ownerResult.error.details,
+          }
+        : null,
+      guesthouseError: guesthouseResult.error
+        ? {
+            message: guesthouseResult.error.message,
+            code: guesthouseResult.error.code,
+            details: guesthouseResult.error.details,
+          }
+        : null,
+    });
+    return null;
+  }
+
+  if (!ownerResult.data || !guesthouseResult.data) {
+    console.info("[apply/actions] owner notification target not found", {
+      jobPostId: jobPost.id,
+      ownerId: jobPost.owner_id,
+      guesthouseId: jobPost.guesthouse_id,
+    });
+    return null;
+  }
+
+  return {
+    owner: ownerResult.data as Profile,
+    guesthouse: guesthouseResult.data as Guesthouse,
+  };
+}
+
+async function notifyOwnerNewApplication(jobPost: JobPost, application: Application) {
+  const target = await getOwnerNotificationTarget(jobPost);
+  if (!target) return;
+
+  await sendOwnerNewApplicationAlimtalk({
+    owner: target.owner,
+    guesthouse: target.guesthouse,
+    jobPost,
+    application,
+  });
+}
+
 function revalidateApplicationViews(slug: string, applicationId?: string) {
   revalidatePath(`/jobs/${slug}`);
   revalidatePath(`/jobs/${slug}/apply`);
@@ -391,6 +459,7 @@ export async function submitJobApplication(
     }
 
     revalidateApplicationViews(slug, application.id);
+    await notifyOwnerNewApplication(jobPost, application);
 
     return {
       ok: true,

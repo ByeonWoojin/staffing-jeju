@@ -2,7 +2,7 @@
 
 import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { GuesthouseFormData } from "@/types/database";
+import type { OwnerGuesthouseFormData } from "@/types/database";
 import {
   updateGuesthouse,
   type GuesthousePhotoUpdatePayload,
@@ -44,9 +44,9 @@ import {
 interface GuesthouseFormProps {
   mode: "create" | "edit";
   guesthouseId?: string;
-  initialData?: GuesthouseFormData;
+  initialData?: OwnerGuesthouseFormData;
   createAction?: (
-    payload: GuesthouseFormData,
+    payload: OwnerGuesthouseFormData,
     uploadedPhotoPaths?: string[],
   ) => Promise<{
     success: boolean;
@@ -68,18 +68,19 @@ type FormStatus = {
 
 type SubmitStage = "idle" | "uploading" | "saving";
 
-const emptyForm: GuesthouseFormData = {
+const emptyForm: OwnerGuesthouseFormData = {
   name: "",
   region: "제주시",
   address_text: "",
   map_url: "",
   contact_method: "",
   description: "",
+  owner_phone: "",
 };
 
 function normalizeInitialData(
-  initialData: GuesthouseFormData | undefined,
-): GuesthouseFormData {
+  initialData: OwnerGuesthouseFormData | undefined,
+): OwnerGuesthouseFormData {
   const data = initialData ?? emptyForm;
   return {
     ...data,
@@ -96,7 +97,7 @@ function normalizeComparableText(value: string | null | undefined) {
   return trimmed.length > 0 ? trimmed : null;
 }
 
-function getComparableGuesthouseValues(form: GuesthouseFormData) {
+function getComparableGuesthouseValues(form: OwnerGuesthouseFormData) {
   return {
     name: normalizeComparableText(form.name),
     region: normalizeComparableText(form.region),
@@ -104,6 +105,7 @@ function getComparableGuesthouseValues(form: GuesthouseFormData) {
     map_url: normalizeComparableText(form.map_url),
     contact_method: normalizeComparableText(form.contact_method),
     description: normalizeComparableText(form.description),
+    owner_phone: normalizeComparableText(form.owner_phone),
   };
 }
 
@@ -177,7 +179,7 @@ export function GuesthouseForm({
   initialPhotos = [],
 }: GuesthouseFormProps) {
   const router = useRouter();
-  const [form, setForm] = useState<GuesthouseFormData>(
+  const [form, setForm] = useState<OwnerGuesthouseFormData>(
     normalizeInitialData(initialData),
   );
   const [photoDraft, setPhotoDraft] =
@@ -202,9 +204,9 @@ export function GuesthouseForm({
     setFormStatus(null);
   }, []);
 
-  const updateField = <K extends keyof GuesthouseFormData>(
+  const updateField = <K extends keyof OwnerGuesthouseFormData>(
     field: K,
-    value: GuesthouseFormData[K],
+    value: OwnerGuesthouseFormData[K],
   ) => {
     setFormStatus(null);
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -460,6 +462,19 @@ export function GuesthouseForm({
               onChange={(e) => updateField("contact_method", e.target.value)}
               placeholder="카카오톡 ID, 전화번호 등"
               helperText="지원자에게 안내될 연락 방법"
+              required
+            />
+            <Input
+              label="알림톡 받을 휴대폰 번호"
+              labelHelpText="스탭이 지원서를 제출하면 이 번호로 카카오 알림톡이 발송됩니다."
+              labelHelpAriaLabel="알림톡 받을 휴대폰 번호 안내"
+              name="owner_phone"
+              type="tel"
+              inputMode="tel"
+              value={form.owner_phone}
+              onChange={(e) => updateField("owner_phone", e.target.value)}
+              placeholder="010-0000-0000"
+              autoComplete="tel"
               required
             />
             <div className="md:col-span-2">

@@ -138,7 +138,15 @@ export type JobPostFormData = Omit<
   | "updated_at"
 >;
 
+export type OwnerJobPostFormData = JobPostFormData & {
+  owner_phone: string;
+};
+
 export type GuesthouseFormData = Omit<
   Guesthouse,
   "id" | "owner_id" | "created_at" | "updated_at"
 >;
+
+export type OwnerGuesthouseFormData = GuesthouseFormData & {
+  owner_phone: string;
+};

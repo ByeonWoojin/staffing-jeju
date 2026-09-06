@@ -279,7 +279,7 @@ Supabase Auth 사용자와 연결되는 프로필 테이블이다.
 | `id` | uuid | O | Supabase `auth.users.id`와 동일한 사용자 ID |
 | `role` | user_role | O | 사용자 역할 |
 | `name` | text | O | 사용자 이름 |
-| `phone` | text | X | 연락처 |
+| `phone` | text | X | 연락처. 사장님 계정에서는 신규 지원 알림톡 수신 번호로 사용 |
 | `email` | text | X | 이메일 |
 | `created_at` | timestamptz | O | 생성일 |
 | `updated_at` | timestamptz | O | 수정일 |

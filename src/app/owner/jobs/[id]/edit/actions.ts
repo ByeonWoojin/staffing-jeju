@@ -5,11 +5,12 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getCurrentAuthUser, getProfileById } from "@/lib/auth/onboarding";
 import { convertExpiredOpenJobPostsToAsap } from "@/lib/job-post-asap-expiration";
 import { normalizeUpdatedWorkStartDate } from "@/lib/job-post-date-validation";
+import { normalizeKoreanMobilePhone } from "@/lib/phone";
 import { isUuid } from "@/lib/uuid";
 import type {
   JobPost,
-  JobPostFormData,
   JobPostPhoto,
+  OwnerJobPostFormData,
   Profile,
 } from "@/types/database";
 
@@ -192,8 +193,17 @@ function normalizeRequiredText(value: string, fieldName: string): string {
   return trimmed;
 }
 
+function normalizeOwnerPhone(value: string): string {
+  const phone = normalizeKoreanMobilePhone(value);
+  if (!phone) {
+    throw new Error("알림톡 받을 휴대폰 번호를 올바르게 입력해 주세요.");
+  }
+
+  return phone;
+}
+
 function normalizePayload(
-  payload: JobPostFormData,
+  payload: OwnerJobPostFormData,
   currentWorkStartDate: string,
 ): EditableJobPostUpdate {
   const normalized: EditableJobPostUpdate = {
@@ -307,7 +317,7 @@ function photoActionResult(
 
 export async function updateJobPost(
   jobPostId: string,
-  payload: JobPostFormData,
+  payload: OwnerJobPostFormData,
 ): Promise<JobPostUpdateActionResult> {
   logAction("job_edit_action_started", jobPostId, {});
   logUuidValidation("updateJobPost", jobPostId);
@@ -415,7 +425,9 @@ export async function updateJobPost(
     }
 
     let values: EditableJobPostUpdate;
+    let ownerPhone: string;
     try {
+      ownerPhone = normalizeOwnerPhone(payload.owner_phone);
       values = normalizePayload(payload, current.work_start_date);
     } catch (error) {
       const message =
@@ -438,6 +450,8 @@ export async function updateJobPost(
     });
 
     const changes = getChangedFields(current, values);
+    const ownerPhoneHasChanges =
+      normalizeKoreanMobilePhone(owner.phone) !== ownerPhone;
     logAction("job_changes_checked", jobPostId, {
       user_id: owner.id,
       guesthouse_id: current.guesthouse_id,
@@ -449,7 +463,8 @@ export async function updateJobPost(
       user_id: owner.id,
       guesthouse_id: current.guesthouse_id,
       success: true,
-      change_count: 0,
+      change_count: ownerPhoneHasChanges ? 1 : 0,
+      changed_fields: ownerPhoneHasChanges ? ["owner_phone"] : [],
     });
     logAction("image_changes_checked", jobPostId, {
       user_id: owner.id,
@@ -459,7 +474,7 @@ export async function updateJobPost(
       note: "job_post_photos are persisted by dedicated photo actions",
     });
 
-    if (changes.length === 0) {
+    if (changes.length === 0 && !ownerPhoneHasChanges) {
       return actionResult("NO_CHANGES", "변경된 내용이 없습니다.");
     }
 
@@ -467,37 +482,77 @@ export async function updateJobPost(
       user_id: owner.id,
       guesthouse_id: current.guesthouse_id,
       change_count: changes.length,
+      owner_phone_has_changes: ownerPhoneHasChanges,
     });
 
-    const { data, error } = await supabase
-      .from("job_posts")
-      .update(values)
-      .eq("id", jobPostId)
-      .eq("owner_id", owner.id)
-      .select("*")
-      .maybeSingle();
+    if (ownerPhoneHasChanges) {
+      const { data, error } = await supabase
+        .from("profiles")
+        .update({ phone: ownerPhone })
+        .eq("id", owner.id)
+        .eq("role", "owner")
+        .select("id")
+        .maybeSingle();
 
-    if (error) {
-      console.error("[owner-job-edit] action_failed", {
-        step: "update_started",
-        user_id: owner.id,
-        job_post_id: jobPostId,
-        guesthouse_id: current.guesthouse_id,
-        error: serializeSupabaseError(error),
-      });
-      return actionResult(
-        "UPDATE_FAILED",
-        "변경사항을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.",
-      );
+      if (error) {
+        console.error("[owner-job-edit] action_failed", {
+          step: "owner_phone_update",
+          user_id: owner.id,
+          job_post_id: jobPostId,
+          guesthouse_id: current.guesthouse_id,
+          error: serializeSupabaseError(error),
+        });
+        return actionResult(
+          "UPDATE_FAILED",
+          "알림톡 받을 휴대폰 번호를 저장하지 못했습니다.",
+        );
+      }
+
+      if (!data) {
+        logAction("action_failed", jobPostId, {
+          step: "owner_phone_update",
+          user_id: owner.id,
+          guesthouse_id: current.guesthouse_id,
+          code: "NOT_FOUND",
+        });
+        return actionResult(
+          "UPDATE_FAILED",
+          "알림톡 받을 휴대폰 번호 저장 결과가 없습니다.",
+        );
+      }
     }
-    if (!data) {
-      logAction("action_failed", jobPostId, {
-        step: "update_started",
-        user_id: owner.id,
-        guesthouse_id: current.guesthouse_id,
-        code: "NOT_FOUND",
-      });
-      return actionResult("NOT_FOUND", "모집글 수정 결과가 없습니다.");
+
+    if (changes.length > 0) {
+      const { data, error } = await supabase
+        .from("job_posts")
+        .update(values)
+        .eq("id", jobPostId)
+        .eq("owner_id", owner.id)
+        .select("*")
+        .maybeSingle();
+
+      if (error) {
+        console.error("[owner-job-edit] action_failed", {
+          step: "update_started",
+          user_id: owner.id,
+          job_post_id: jobPostId,
+          guesthouse_id: current.guesthouse_id,
+          error: serializeSupabaseError(error),
+        });
+        return actionResult(
+          "UPDATE_FAILED",
+          "변경사항을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+        );
+      }
+      if (!data) {
+        logAction("action_failed", jobPostId, {
+          step: "update_started",
+          user_id: owner.id,
+          guesthouse_id: current.guesthouse_id,
+          code: "NOT_FOUND",
+        });
+        return actionResult("NOT_FOUND", "모집글 수정 결과가 없습니다.");
+      }
     }
 
     const logRows = changes.map((change) => ({
@@ -508,21 +563,23 @@ export async function updateJobPost(
       new_value: change.new_value,
     }));
 
-    const { data: logData, error: logError } = await supabase
-      .from("job_post_update_logs")
-      .insert(logRows)
-      .select("id");
+    if (logRows.length > 0) {
+      const { data: logData, error: logError } = await supabase
+        .from("job_post_update_logs")
+        .insert(logRows)
+        .select("id");
 
-    if (logError || !logData || logData.length !== logRows.length) {
-      console.error("[owner-job-edit] action_failed", {
-        step: "update_log",
-        user_id: owner.id,
-        job_post_id: jobPostId,
-        guesthouse_id: current.guesthouse_id,
-        error: logError ? serializeSupabaseError(logError) : null,
-        expected_log_count: logRows.length,
-        actual_log_count: logData?.length ?? 0,
-      });
+      if (logError || !logData || logData.length !== logRows.length) {
+        console.error("[owner-job-edit] action_failed", {
+          step: "update_log",
+          user_id: owner.id,
+          job_post_id: jobPostId,
+          guesthouse_id: current.guesthouse_id,
+          error: logError ? serializeSupabaseError(logError) : null,
+          expected_log_count: logRows.length,
+          actual_log_count: logData?.length ?? 0,
+        });
+      }
     }
 
     logAction("update_completed", jobPostId, {

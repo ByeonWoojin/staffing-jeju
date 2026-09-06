@@ -4,7 +4,8 @@ import { revalidatePath } from "next/cache";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getCurrentAuthUser, getProfileById } from "@/lib/auth/onboarding";
 import { appendRedirectParam } from "@/lib/auth/redirect";
-import type { Guesthouse, GuesthouseFormData } from "@/types/database";
+import { normalizeKoreanMobilePhone } from "@/lib/phone";
+import type { Guesthouse, OwnerGuesthouseFormData } from "@/types/database";
 
 type NewGuesthouseValues = Pick<
   Guesthouse,
@@ -47,9 +48,18 @@ function normalizeOptionalText(value: string | null): string | null {
   return trimmed.length > 0 ? trimmed : null;
 }
 
+function normalizeOwnerPhone(value: string): string {
+  const phone = normalizeKoreanMobilePhone(value);
+  if (!phone) {
+    throw new Error("알림톡 받을 휴대폰 번호를 올바르게 입력해 주세요.");
+  }
+
+  return phone;
+}
+
 function normalizePayload(
   ownerId: string,
-  payload: GuesthouseFormData,
+  payload: OwnerGuesthouseFormData,
 ): NewGuesthouseValues {
   return {
     owner_id: ownerId,
@@ -60,6 +70,29 @@ function normalizePayload(
     contact_method: normalizeRequiredText(payload.contact_method, "연락 수단"),
     description: normalizeOptionalText(payload.description),
   };
+}
+
+async function updateOwnerPhone(ownerId: string, phone: string) {
+  const supabase = createSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from("profiles")
+    .update({ phone })
+    .eq("id", ownerId)
+    .eq("role", "owner")
+    .select("id")
+    .maybeSingle();
+
+  if (error) {
+    console.error("[createOwnerGuesthouse] owner phone update failed", {
+      user_id: ownerId,
+      error: serializeSupabaseError(error),
+    });
+    throw new Error("알림톡 받을 휴대폰 번호를 저장하지 못했습니다.");
+  }
+
+  if (!data) {
+    throw new Error("알림톡 받을 휴대폰 번호 저장 결과가 없습니다.");
+  }
 }
 
 async function getOwnerIdOrRedirect(): Promise<string | null> {
@@ -145,7 +178,7 @@ async function cleanupUploadedPhotoPaths(paths: string[]) {
 }
 
 export async function createOwnerGuesthouse(
-  payload: GuesthouseFormData,
+  payload: OwnerGuesthouseFormData,
   uploadedPhotoPaths?: string[],
   postOnboardingRedirectPath?: string | null,
 ): Promise<CreateOwnerGuesthouseResult> {
@@ -201,13 +234,27 @@ export async function createOwnerGuesthouse(
   }
 
   let values: NewGuesthouseValues;
+  let ownerPhone: string;
   try {
     values = normalizePayload(ownerId, payload);
+    ownerPhone = normalizeOwnerPhone(payload.owner_phone);
   } catch (error) {
     await cleanupUploadedPhotoPaths(photoPaths);
     return actionResult(
       "VALIDATION_ERROR",
       error instanceof Error ? error.message : "입력값을 확인해 주세요.",
+    );
+  }
+
+  try {
+    await updateOwnerPhone(ownerId, ownerPhone);
+  } catch (error) {
+    await cleanupUploadedPhotoPaths(photoPaths);
+    return actionResult(
+      "UPDATE_FAILED",
+      error instanceof Error
+        ? error.message
+        : "알림톡 받을 휴대폰 번호를 저장하지 못했습니다.",
     );
   }
 

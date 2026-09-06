@@ -5,11 +5,12 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getCurrentAuthUser, getProfileById } from "@/lib/auth/onboarding";
 import { appendRedirectParam } from "@/lib/auth/redirect";
 import { normalizeNewWorkStartDate } from "@/lib/job-post-date-validation";
+import { normalizeKoreanMobilePhone } from "@/lib/phone";
 import type {
   GenderCondition,
   JobPost,
   JobPostPhoto,
-  JobPostFormData,
+  OwnerJobPostFormData,
   StipendType,
 } from "@/types/database";
 
@@ -81,6 +82,15 @@ function normalizeOptionalText(value: string | null): string | null {
   return trimmed.length > 0 ? trimmed : null;
 }
 
+function normalizeOwnerPhone(value: string): string {
+  const phone = normalizeKoreanMobilePhone(value);
+  if (!phone) {
+    throw new Error("알림톡 받을 휴대폰 번호를 올바르게 입력해 주세요.");
+  }
+
+  return phone;
+}
+
 function normalizeInteger(
   value: number,
   fieldLabel: string,
@@ -119,7 +129,7 @@ function createJobPostSlug(): string {
 function normalizePayload(
   ownerId: string,
   guesthouseId: string,
-  payload: JobPostFormData,
+  payload: OwnerJobPostFormData,
 ): NewJobPostValues {
   return {
     guesthouse_id: guesthouseId,
@@ -166,6 +176,32 @@ function normalizePayload(
     last_bumped_at: null,
     bump_count: 0,
   };
+}
+
+async function updateOwnerPhone(
+  supabase: ReturnType<typeof createSupabaseAdminClient>,
+  ownerId: string,
+  phone: string,
+) {
+  const { data, error } = await supabase
+    .from("profiles")
+    .update({ phone })
+    .eq("id", ownerId)
+    .eq("role", "owner")
+    .select("id")
+    .maybeSingle();
+
+  if (error) {
+    console.error("[createOwnerJobPost] owner phone update failed", {
+      user_id: ownerId,
+      error: serializeSupabaseError(error),
+    });
+    throw new Error("알림톡 받을 휴대폰 번호를 저장하지 못했습니다.");
+  }
+
+  if (!data) {
+    throw new Error("알림톡 받을 휴대폰 번호 저장 결과가 없습니다.");
+  }
 }
 
 async function getOwnerIdOrRedirect(): Promise<string | null> {
@@ -241,7 +277,7 @@ async function deleteExistingJobPostPhotos(
 }
 
 export async function createOwnerJobPost(
-  payload: JobPostFormData,
+  payload: OwnerJobPostFormData,
   postOnboardingRedirectPath?: string | null,
 ): Promise<CreateOwnerJobPostResult> {
   const ownerId = await getOwnerIdOrRedirect();
@@ -285,7 +321,10 @@ export async function createOwnerJobPost(
     };
   }
 
+  const ownerPhone = normalizeOwnerPhone(payload.owner_phone);
   const values = normalizePayload(ownerId, guesthouse.id, payload);
+  await updateOwnerPhone(supabase, ownerId, ownerPhone);
+
   if (existing) {
     const existingJobPost = existing as JobPost;
     const nextRecruitmentCycle = existingJobPost.recruitment_cycle
