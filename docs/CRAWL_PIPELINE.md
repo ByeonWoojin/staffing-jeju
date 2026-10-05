@@ -7,6 +7,8 @@
 ```bash
 node scripts/crawl-naver-cafe.mjs --pages=1 --size=30   # 새 글 수집 + 파싱 + 검수 대기 목록
 node scripts/read-image.mjs <글번호> <시트번호...>      # 안내문 이미지를 읽기 좋게 분할 (Claude가 읽는다)
+node scripts/import-crawled-jobs.mjs --dry-run          # DB 업로드 미리보기 (신규/갱신/썸네일 수)
+node scripts/import-crawled-jobs.mjs                    # 오늘 처음 올라온 글을 Supabase 에 업로드 → 배포 사이트에 노출
 node scripts/lib/parse-cafe-post.check.mjs              # 파서 회귀 체크
 ```
 
@@ -15,7 +17,7 @@ node scripts/lib/parse-cafe-post.check.mjs              # 파서 회귀 체크
    - 시트를 보고 **썸네일 번호**를 정해 `.crawl/thumb/<글번호>.txt`에 기록 (`none`이면 기본 이미지).
    - 시트에 **안내문/공고문 이미지**가 있으면 `read-image.mjs`로 잘라 읽고 `.crawl/ocr/<글번호>.txt`에 전사. 없으면 빈 파일. 전사 텍스트는 같은 파서로 재해석된다.
 3. 스크립트를 다시 돌리면(캐시라 몇 초) 보강된 결과로 갱신된다. **그래도 비는 필드는 Claude가 목록으로 정리해 사장님께 알리고, 사장님이 직접 판정해서 넘긴다.**
-4. 아직 DB에는 아무것도 쓰지 않는다.
+4. **업로드**: `import-crawled-jobs.mjs`가 대표 글을 `crawled_job_posts`에 올리고 썸네일을 4:3으로 잘라 `crawled-job-images` 버킷에 저장한다. 같은 글(끌올)은 `source_group_id`로 찾아 갱신하고, 숨김 처리한 글의 `status`는 덮어쓰지 않는다.
 
 - 목록 API는 로그인 없이 가능, **본문은 로그인 쿠키 필요** (`.env.local`의 `NAVER_NID_AUT`, `NAVER_NID_SES`). 만료되면 재발급.
 - 글 사이 0.8초 간격 유지(차단 방지). 이미 받은 글은 건너뜀. `.crawl/`은 gitignore.
@@ -131,23 +133,27 @@ node scripts/lib/parse-cafe-post.check.mjs              # 파서 회귀 체크
 - 검수 대기 목록과 리포트도 대표 글만 대상으로 한다.
 - 50건 중 중복 5건이 걸렸고 모두 같은 작성자가 하루 간격으로 다시 올린 같은 글이었다.
 
-## 6. 수집 공고 전용 섹션
+## 6. 수집 공고 전용 섹션 (DB 기반, 배포 사이트에 노출)
 
-**로컬 프로토타입 (구현됨)**: `/jobs` 필터 바 아래, 기존 공고 목록 위에 **"오늘 올라온 스탭 모집"** 섹션이 뜬다. 오늘(KST)에 **처음** 올라온 글만 보여주고 "오늘(10월 5일) 카페에 새로 올라온 모집글 N건"으로 건수를 표시한다. 어제 글을 오늘 다시 올린 끌올은 새 글이 아니라서 제외한다. `.crawl/feed.json`을 읽는 방식이라 DB는 건드리지 않고, **프로덕션에서는 항상 렌더하지 않는다**(`NODE_ENV === "production"`이면 빈 목록, 상세는 404).
+`/jobs` 필터 바 아래, 기존 공고 목록 위에 **"오늘 올라온 스탭 모집"** 섹션이 뜬다. 오늘(KST)에 **처음** 올라온 글만 보여주고 "오늘(10월 5일) 카페에 새로 올라온 모집글 N건"으로 건수를 표시한다. 어제 글을 오늘 다시 올린 끌올은 새 글이 아니라서 제외한다. 오늘 새 글이 없거나 테이블이 없으면 섹션 자체를 렌더하지 않는다(`/jobs`는 깨지지 않는다).
 
-- 데이터: `src/lib/crawled-jobs.ts`. 기존 `/jobs` 필터(지역·성별·파티·급여·숙소·식사·급구·입도일·키워드)를 같은 의미로 적용한다.
-- 섹션/카드: `src/components/jobs/CrawledJobsSection.tsx`(최대 24개), 상세: `src/app/jobs/crawled/[id]/page.tsx`(지원 안내 카드 포함).
-- 카드·상세 하단에 "확인 필요: …" 줄이 보이는 건 로컬 검수용이다(사장님이 판정할 누락 필드).
+**저장 구조**: 기존 `guesthouses`/`job_posts`와 분리된 **추가 전용 테이블** `public.crawled_job_posts`(마이그레이션 `019`).
+- 사장님 계정 1개당 게하 1개·게하 1개당 모집글 1개 제약과 충돌하지 않고, 소유자(`owner_id`) 개념이 필요 없다.
+- 017과 같은 정책: `anon`/`authenticated` 접근을 막고(RLS) 서버 코드의 `service_role`만 읽고 쓴다.
+- 같은 글 반복 게시는 `unique(source, source_group_id)`로 한 행에 모은다. 썸네일은 공개 버킷 `crawled-job-images`.
 
-**DB로 옮길 때 (미구현)**
-- 소유자는 **스탭핑 전용 대리 계정**으로 처리한다. `guesthouses.owner_id unique`와 `job_posts.guesthouse_id unique`는 `source='owner'`인 행에만 거는 부분 unique 인덱스로 바꾼다.
-- `source`('owner'|'crawled'), `source_url`, `source_group_id`(= `firstId`), `apply_channel/url/phone/email/hint` 컬럼이 필요하다.
-- 수집 공고에서는 지원하기 버튼 대신 지원 안내를 보여주고, 게하 연락처 영역은 삭제한다. 끌어올리기·마감 같은 사장님 기능은 적용하지 않는다.
-- 네이버 CDN 이미지는 우리 버킷에 재업로드한다(지금은 핫링크).
+**로그인 전/후** (기존 모집글 상세 `/jobs/[slug]`와 같은 방식)
+- 목록 카드는 기존 목록과 똑같이 공개(제목, 게하명·지역, 입도일·기간·근무일, 칩).
+- 상세: 로그인 전에는 제목·게하명·지역·대표 이미지·급구 여부만 보이고 나머지는 "로그인 후 확인"이다. 스크롤하면 기존과 같은 **로그인 모달**이 떠서 조금만 봐도 로그인으로 이어진다.
+- **연락처·지원 안내·상세 조건은 로그인 전에는 DB에서 아예 조회하지 않는다**(`getCrawledJobDetail`이 컬럼을 나눠 select). 서버 렌더 HTML에도 실리지 않는다.
+- 로그인 후에는 지원 안내(번호, 메일, 카톡, 인스타, 오픈채팅, 지원폼)와 상세 조건 전체가 보인다.
+
+**코드**: `src/lib/crawled-jobs.ts`(조회·필터), `src/components/jobs/CrawledJobsSection.tsx`(섹션), `src/app/jobs/crawled/[id]/page.tsx`(상세), `scripts/import-crawled-jobs.mjs`(업로드).
+
+**남은 일**: 수집 글 만료/마감 처리(§7), 수집 공고에 사장님 기능(끌올·마감)은 적용하지 않는다.
 
 ## 7. 정해야 할 것
 
-1. 수집 공고의 만료/마감 기준(예: 마지막 게시 후 N일).
+1. 수집 공고의 만료/마감 기준(예: 마지막 게시 후 N일). 지금은 "오늘 처음 올라온 글"만 노출한다.
 2. 노출 위치: 지금은 기존 목록 위. 탭으로 나눌지, 목록 아래로 둘지.
-3. DB 이관 시점과 대리 계정 구조(위 §6).
-4. 본문·사진을 그대로 복제하지 않고 요약 + 원문 링크로 가는 범위 (현재 상세는 파싱한 필드만 보여주고 원문 본문은 싣지 않는다).
+3. 본문·사진을 그대로 복제하지 않고 요약 + 원문 링크로 가는 범위 (현재 상세는 파싱한 필드만 보여주고 원문 본문은 싣지 않는다).
