@@ -81,6 +81,15 @@ assert.ok(r.apply.hint.includes("카카오톡"));
 r = p("스탭 모집", "접수처:\na@naver.com\n본문\n접수처: b@gmail.com");
 assert.deepEqual(r.apply.emails.sort(), ["a@naver.com", "b@gmail.com"]);
 
+// 하이픈 앞뒤 공백이 있는 번호, 카톡 ID 에 @ 포함, 지원폼 + 문의 번호 동시 존재
+r = p("스탭 모집", "지원 방식\n010 - 1111 - 2222 문자메세지 혹은\n@test_house 로 DM 보내주세요");
+assert.equal(r.apply.phone, "010-1111-2222");
+assert.ok(!JSON.stringify(p("스탭 모집", "연락처 : 010 - 3333 - 4444\n좋은 곳").fields).includes("3333"), "공백 포함 번호가 본문에 남음");
+r = p("스탭 모집", "카톡아이디:kk_test@naver.com");
+assert.equal(r.apply.kakaoId, "kk_test@naver.com");
+r = p("스탭 모집", "지원 양식 https://forms.gle/abc123\n추가문의는 010-5555-6666 로");
+assert.deepEqual([r.apply.channel, r.apply.phone], ["form", "010-5555-6666"]);
+
 // 근무시간: 체크인 시간대 같은 짧은 구간은 무시, 한글 시각 지원
 assert.equal(p("스탭 모집", "체크인 가능 시간 02:00 ~ 03:00").fields.work_time, null);
 assert.equal(p("스탭 모집", "근무: 16시 ~ 23시").fields.work_time, "16:00 ~ 23:00");

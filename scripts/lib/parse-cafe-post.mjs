@@ -244,7 +244,7 @@ function detectParty(title, body) {
 
 // ── 연락처 / 지원 방법 ──
 // 전화번호·카톡ID 는 넘기지 않는다(제3자 개인정보). 줄 전체를 제거.
-const PHONE = /(?<!\d)0\d{1,2}[-.\s]?\d{3,4}[-.\s]?\d{4}(?!\d)/;
+const PHONE = /(?<!\d)0\d{1,2}[\s.-]{0,3}\d{3,4}[\s.-]{0,3}\d{4}(?!\d)/; // "010 - 1234 - 5678" 처럼 구분자 앞뒤 공백도 허용
 const KAKAO_ID = /(?:카톡|카카오톡?)\s*(?:아이디|ID|id)/;
 export const scrubContacts = (text) =>
   text.split("\n").filter((l) => !PHONE.test(l) && !KAKAO_ID.test(l)).join("\n");
@@ -267,14 +267,15 @@ const refused = (text, word) => new RegExp(`${word}[^\\n]{0,20}(?:받지\\s*않|
 export function detectApply(text, links = []) {
   const lines = text.split("\n");
   const clean = stripLinkPreviews(text).split("\n"); // 링크 미리보기 카드 줄은 제외
-  const empty = { phone: null, phones: [], email: null, emails: [], kakaoId: null, hint: null };
+  // 오픈채팅/지원폼 링크가 있으면 그것이 주 경로. 문의용 번호 등 나머지 연락처는 보조로 계속 담는다.
+  let link = null;
   for (const l of [...lines, ...links]) {
     const u = l.match(/https?:\/\/open\.kakao\.com\/\S+/)?.[0];
-    if (u) return { channel: "openchat", url: u, ...empty };
+    if (u) { link = { channel: "openchat", url: u }; break; }
   }
-  for (const l of [...lines, ...links]) {
+  for (const l of link ? [] : [...lines, ...links]) {
     const u = l.match(/https?:\/\/(?:forms\.gle|docs\.google\.com\/forms|form\.naver\.com)\/\S+/)?.[0] ?? (/지원|신청|접수/.test(l) ? l.match(/https?:\/\/naver\.me\/\S+/)?.[0] : null);
-    if (u) return { channel: "form", url: u, ...empty };
+    if (u) { link = { channel: "form", url: u }; break; }
   }
 
   // 지원 안내 헤더 → "지원 시/지원하실 분" 류 → 접수/문의
@@ -289,7 +290,7 @@ export function detectApply(text, links = []) {
       .sort((a, b) => b.score - a.score)[0];
   const ph = best(PHONE);
   const em = best(/[\w.+-]+@[\w-]+(?:\.[\w-]+)+/, /지원|접수|보내|메일|이력서|서류/);
-  const kk = best(/(?<=(?:카톡|카카오톡?)\s*(?:아이디|ID|id)?\s*[:：]?\s*)[A-Za-z][\w.-]{3,}/);
+  const kk = best(/(?<=(?:카톡|카카오톡?)\s*(?:아이디|ID|id)?\s*[:：]?\s*)[A-Za-z][\w.@-]{3,}/); // 카톡 ID 가 이메일 형태인 경우도 있음
   const kakaoMention = clean.findIndex((l) => /카톡|카카오/.test(l) && /지원|문의|연락|보내/.test(l));
   const igLine = clean
     .map((l, i) => ({ i, h: /지원|DM|디엠|보내|문의|연락/i.test(l) && /인스타|insta|DM|디엠|instagram\.com/i.test(l) ? l.match(/instagram\.com\/([\w.]{2,30})/)?.[1] ?? l.match(/@([\w.]{2,30})/)?.[1] : null }))
@@ -306,7 +307,7 @@ export function detectApply(text, links = []) {
     (kk || kakaoMention >= 0 || phoneIsKakao) && !noKakao && { channel: "kakao", score: (kk ? kk.score : kakaoMention >= 0 ? 3 + (nearHeader(kakaoMention) ? 2 : 0) : ph.score) + (phoneIsKakao ? 0.15 : 0) },
     ph && !noSms && !phoneIsKakao && { channel: "sms", score: ph.score },
   ].filter(Boolean).sort((a, b) => b.score - a.score);
-  const channel = cands[0]?.channel ?? (/문자|전화/.test(all) && ph ? "sms" : "original");
+  const channel = link?.channel ?? cands[0]?.channel ?? (/문자|전화/.test(all) && ph ? "sms" : "original");
 
   // 번호: 헤더 구간 안의 번호는 모두(한 글에 두 지점 번호가 있는 경우), 없으면 채택된 1개
   const inSection = clean.map((l, i) => (nearHeader(i) ? l.match(PHONE)?.[0] : null)).filter(Boolean).map(fmtPhone);
@@ -319,7 +320,7 @@ export function detectApply(text, links = []) {
   const pf = links.find((u) => /pf\.kakao\.com/.test(u));
   return {
     channel,
-    url: channel === "instagram" ? `https://www.instagram.com/${igLine.h}/` : channel === "kakao" && pf ? pf : null,
+    url: link ? link.url : channel === "instagram" ? `https://www.instagram.com/${igLine.h}/` : channel === "kakao" && pf ? pf : null,
     phone: phones.length === 1 ? phones[0] : ph ? fmtPhone(ph.m) : null,
     phones,
     email: emails.length === 1 ? emails[0] : em?.m ?? null,

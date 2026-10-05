@@ -6,13 +6,15 @@
 // 하루 흐름 ("스탭핑 오늘 크롤링 시작해"):
 //   1) 이 스크립트 실행 → 새 글 수집/파싱, 검수 대기 목록(.crawl/review.json) + 이미지 준비
 //   2) Claude 가 .crawl/sheets/<id>.jpg (앞 12장 번호 시트)를 보고
-//      - 안내문/공고문 이미지 번호를 `node scripts/read-image.mjs <id> <번호...>` 로 읽기 좋게 잘라 읽고 .crawl/ocr/<id>.txt 에 전사
-//        (읽을 게 없으면 빈 파일), 썸네일 번호를 .crawl/thumb/<id>.txt 에 기록("none" 이면 기본 이미지)
+//      - 안내문/공고문 이미지 번호를 `node scripts/read-image.mjs <id> <번호...>` 로 읽기 좋게 잘라 읽고
+//        .crawl/ocr/<id>.txt (전사 텍스트를 파서가 재해석) 또는 .crawl/ocr/<id>.json (읽은 값을 필드로 직접 지정:
+//        { fields, guesthouse, apply } 로 덮어씀. 월 단위 근무일처럼 파서가 오해할 표현이 있을 때) 에 기록. 읽을 게 없으면 빈 .txt
+//      - 썸네일 번호를 .crawl/thumb/<id>.txt 에 기록("none" 이면 기본 이미지)
 //   3) 스크립트 재실행(캐시로 재파싱) → 남은 누락 필드를 사장님이 직접 판정
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { htmlToText, parsePost, stripLinkPreviews } from "./lib/parse-cafe-post.mjs";
+import { ASAP_DATE, buildTags, htmlToText, parsePost, stripLinkPreviews } from "./lib/parse-cafe-post.mjs";
 import { dedupe } from "./lib/dedupe.mjs";
 import { analyze, autoPick, contactSheet, suitability } from "./lib/pick-thumbnail.mjs";
 
@@ -79,6 +81,21 @@ for (const f of readdirSync(C("raw")).filter((x) => x.endsWith(".json"))) {
   const ocrText = read(C("ocr", `${a.id}.txt`));
   const parsed = parsePost({ subject: a.subject, contentHtml: a.contentHtml, nick: a.nick, extraText: ocrText ?? "" });
 
+  // 이미지에서 Claude 가 직접 읽어 지정한 값: 파서 결과 위에 덮어쓰고, 누락/가정 표시에서 뺀다
+  const ov = existsSync(C("ocr", `${a.id}.json`)) ? JSON.parse(readFileSync(C("ocr", `${a.id}.json`), "utf8")) : null;
+  if (ov) {
+    const keys = Object.keys(ov.fields ?? {});
+    Object.assign(parsed.fields, ov.fields);
+    Object.assign(parsed.guesthouse, ov.guesthouse);
+    Object.assign(parsed.apply, ov.apply);
+    if (ov.party_kind !== undefined) parsed.party_kind = ov.party_kind;
+    parsed.missing = parsed.missing.filter((k) => !keys.includes(k) && !(k === "region" && ov.guesthouse?.region));
+    parsed.assumed = parsed.assumed.filter((k) => !keys.includes(k));
+    parsed.derived = parsed.derived.filter((k) => !keys.includes(k));
+    parsed.manual = keys;
+    parsed.tags = buildTags(parsed.fields, parsed.guesthouse, parsed.fields.work_start_date === ASAP_DATE, parsed.party_kind);
+  }
+
   const cands = await Promise.all(parsed.images.slice(0, SHEET_SCAN).map(analyzed));
   const manual = read(C("thumb", `${a.id}.txt`))?.trim();
   let thumbnail = null;
@@ -91,7 +108,7 @@ for (const f of readdirSync(C("raw")).filter((x) => x.endsWith(".json"))) {
     thumbnailSource = thumbnail ? "auto" : "none";
   }
 
-  const needsOcr = ocrText === null && parsed.missing.length > 0 && cands.length > 0; // 안내문 이미지가 있는지는 시트를 보고 판단
+  const needsOcr = ocrText === null && !ov && parsed.missing.length > 0 && cands.length > 0; // 안내문 이미지가 있는지는 시트를 보고 판단
   const needsThumbReview = !manual && cands.length > 0;
 
   saved[a.id] = {
@@ -99,7 +116,7 @@ for (const f of readdirSync(C("raw")).filter((x) => x.endsWith(".json"))) {
     ...parsed,
     thumbnail,
     thumbnail_source: thumbnailSource,
-    ocr_done: ocrText !== null,
+    ocr_done: ocrText !== null || Boolean(ov),
   };
 
   dedupeItems.push({ id: a.id, writer: a.memberKey ?? a.nick, title: a.subject, body: stripLinkPreviews(htmlToText(a.contentHtml)), at: a.writeDate });
