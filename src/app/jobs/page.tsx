@@ -6,6 +6,7 @@ import { getPublicJobs } from "@/lib/public-job-data";
 import { formatDate } from "@/lib/owner-utils";
 import { AnalyticsEventTracker } from "@/components/analytics/AnalyticsEventTracker";
 import { FavoriteGuesthouseButton } from "@/components/jobs/FavoriteGuesthouseButton";
+import { CrawledJobsSection } from "@/components/jobs/CrawledJobsSection";
 import { JobsFilterBar } from "@/components/jobs/JobsFilterBar";
 import { AppHeader } from "@/components/layout/AppHeader";
 import { RoleCoachmarkController } from "@/components/onboarding/RoleCoachmarkController";
@@ -318,6 +319,8 @@ export default async function PublicJobsPage({
       </section>
 
       <JobsFilterBar filters={filters} />
+
+      <CrawledJobsSection searchParams={resolvedSearchParams} />
 
       <section className="mx-auto flex w-full max-w-7xl flex-col gap-4 px-4 py-5 md:px-6 md:py-6">
         <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
