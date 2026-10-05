@@ -1,12 +1,15 @@
 import Image from "next/image";
 import Link from "next/link";
+import { JobsCarousel } from "@/components/jobs/JobsCarousel";
+import { ARROW_PATH, JobsMoreTile } from "@/components/jobs/JobsMoreTile";
 import { Badge, Card } from "@/components/ui";
 import { getTodayCrawledJobs, type CrawledJobCard } from "@/lib/crawled-jobs";
 import { DEFAULT_GUESTHOUSE_IMAGE } from "@/lib/guesthouse-image";
+import { buildFilterQuery, hasFilter } from "@/lib/jobs/filter-query";
 import { formatDate } from "@/lib/owner-utils";
 
-const FILTER_KEYS = ["region", "gender", "party", "paid", "accommodation", "meal", "urgent", "q", "arrivalStart", "arrivalEnd"];
-
+// 한 화면 8개(2줄 × 4열) + 옆으로 넘기면 15개 더 = 카드 23개, 마지막 칸은 전체보기 타일
+const MAX_CARDS = 23;
 type Chipped = Pick<CrawledJobCard, "provides_accommodation" | "provides_meal" | "stipend_type" | "party_kind">;
 
 export function getCrawledChips(job: Chipped) {
@@ -19,7 +22,7 @@ export function getCrawledChips(job: Chipped) {
   ].filter((label): label is string => Boolean(label));
 }
 
-function CrawledJobCardView({ job }: { job: CrawledJobCard }) {
+export function CrawledJobCardView({ job }: { job: CrawledJobCard }) {
   const conditions = [
     `입도일 ${formatDate(job.work_start_date)}`,
     `최소 ${job.min_work_period}`,
@@ -83,6 +86,7 @@ function CrawledJobCardView({ job }: { job: CrawledJobCard }) {
 }
 
 // 오늘 카페에 새로 올라온 모집글 섹션. 기존 /jobs 필터를 그대로 적용한다.
+// 2줄 가로 스크롤 캐러셀이고, 마지막 칸이 전체보기 타일이다.
 // 테이블이 없거나 오늘 새 글이 하나도 없으면 렌더하지 않는다.
 export async function CrawledJobsSection({
   searchParams,
@@ -92,32 +96,53 @@ export async function CrawledJobsSection({
   const { jobs, todayTotal, available } = await getTodayCrawledJobs(searchParams);
   if (!available || todayTotal === 0) return null;
 
-  const filtered = FILTER_KEYS.some((key) => Boolean(searchParams[key]));
+  const filtered = hasFilter(searchParams);
+  const moreHref = `/jobs/all_list${buildFilterQuery(searchParams)}`; // 걸려 있는 필터를 그대로 유지
   const todayLabel = new Date().toLocaleDateString("ko-KR", { timeZone: "Asia/Seoul", month: "long", day: "numeric" });
 
-  return (
-    <section className="mx-auto flex w-full max-w-7xl flex-col gap-4 px-4 pt-5 md:px-6 md:pt-6">
-      <div>
-        <div className="flex items-center gap-2">
-          <h2 className="text-title text-neutral-900">오늘 올라온 스탭 모집</h2>
-          <Badge variant="sand" className="h-6 px-2.5 text-[11px]">
-            외부 모집글
-          </Badge>
-        </div>
-        <p className="mt-1 text-body-sm font-semibold text-neutral-500">
-          오늘({todayLabel}) 카페에 새로 올라온 모집글 {filtered ? `${jobs.length}건 (전체 ${todayTotal}건)` : `${todayTotal}건`} · 지원은 각 모집글의 안내를 따라 직접 연락해요
-        </p>
+  const heading = (
+    <div>
+      <div className="flex items-center gap-2">
+        <h2 className="text-title text-neutral-900">오늘 올라온 스탭 모집</h2>
+        <Link
+          href={moreHref}
+          aria-label="오늘 올라온 모집글 전체보기"
+          className="inline-flex size-8 items-center justify-center rounded-full bg-neutral-100 text-neutral-700 transition-colors hover:bg-neutral-200 focus-ring"
+        >
+          <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d={ARROW_PATH} />
+          </svg>
+        </Link>
+        <Badge variant="sand" className="h-6 px-2.5 text-[11px]">
+          외부 모집글
+        </Badge>
       </div>
+      <p className="mt-1 text-body-sm font-semibold text-neutral-500">
+        오늘({todayLabel}) 카페에 새로 올라온 모집글 {filtered ? `${jobs.length}건 (전체 ${todayTotal}건)` : `${todayTotal}건`} · 지원은 각 모집글의 안내를 따라 직접 연락해요
+      </p>
+    </div>
+  );
+
+  return (
+    <section className="mx-auto flex w-full max-w-7xl flex-col gap-4 px-4 pb-10 pt-5 md:px-6 md:pb-12 md:pt-6">
       {jobs.length === 0 ? (
-        <p className="rounded-md border border-neutral-100 bg-neutral-0 px-4 py-6 text-center text-body-sm text-neutral-500">
-          오늘 새로 올라온 카페 모집글 중 조건에 맞는 글이 없습니다.
-        </p>
+        <>
+          {heading}
+          <p className="rounded-md border border-neutral-100 bg-neutral-0 px-4 py-6 text-center text-body-sm text-neutral-500">
+            오늘 새로 올라온 카페 모집글 중 조건에 맞는 글이 없습니다.
+          </p>
+        </>
       ) : (
-        <div className="grid gap-x-5 gap-y-7 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {jobs.map((job) => (
-            <CrawledJobCardView key={job.id} job={job} />
+        <JobsCarousel heading={heading}>
+          {jobs.slice(0, MAX_CARDS).map((job) => (
+            <div key={job.id} className="min-w-0 snap-start">
+              <CrawledJobCardView job={job} />
+            </div>
           ))}
-        </div>
+          <div className="min-w-0 snap-start">
+            <JobsMoreTile href={moreHref} thumbnails={jobs.map((job) => job.thumbnail_url)} ariaLabel="오늘 올라온 모집글 전체보기" caption="지난 모집글까지 한 번에 확인해요" />
+          </div>
+        </JobsCarousel>
       )}
     </section>
   );

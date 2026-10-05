@@ -407,18 +407,20 @@ async function getPagedPublicJobCards({
   viewerProfile,
   filters,
   currentPage,
+  pageSize,
   filteredGuesthouseIds,
 }: {
   viewerProfile: Profile | null;
   filters: PublicJobFilters;
   currentPage: number;
+  pageSize: number;
   filteredGuesthouseIds: string[] | null;
 }) {
   if (filteredGuesthouseIds && filteredGuesthouseIds.length === 0) return [];
 
   const supabase = createSupabaseAdminClient();
-  const from = (currentPage - 1) * PUBLIC_JOBS_PAGE_SIZE;
-  const to = from + PUBLIC_JOBS_PAGE_SIZE - 1;
+  const from = (currentPage - 1) * pageSize;
+  const to = from + pageSize - 1;
   let filteredQuery = applyJobPostQueryFilters(
     supabase.from("job_posts").select("*") as unknown as SupabaseQueryBuilder,
     filters,
@@ -512,7 +514,9 @@ async function getPagedPublicJobCards({
 
 export async function getPublicJobs(
   searchParams: SearchParams,
+  options: { pageSize?: number } = {},
 ): Promise<PublicJobsResult> {
+  const pageSize = options.pageSize ?? PUBLIC_JOBS_PAGE_SIZE;
   await convertExpiredOpenJobPostsToAsap();
 
   const filters = normalizeFilters(searchParams);
@@ -520,7 +524,7 @@ export async function getPublicJobs(
   const viewerProfile = await getViewerProfile();
   const filteredGuesthouseIds = await getFilteredGuesthouseIds(filters);
   const totalCount = await getFilteredPublicJobCount(filters, filteredGuesthouseIds);
-  const totalPages = Math.max(1, Math.ceil(totalCount / PUBLIC_JOBS_PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
   const currentPage = Math.min(requestedPage, totalPages);
   const jobs =
     totalCount > 0
@@ -528,6 +532,7 @@ export async function getPublicJobs(
           viewerProfile,
           filters,
           currentPage,
+          pageSize,
           filteredGuesthouseIds,
         })
       : [];
@@ -536,7 +541,7 @@ export async function getPublicJobs(
     jobs,
     filters,
     pagination: {
-      pageSize: PUBLIC_JOBS_PAGE_SIZE,
+      pageSize,
       totalCount,
       totalPages,
       currentPage,

@@ -7,7 +7,8 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 const TABLE = "crawled_job_posts";
 const BUCKET = "crawled-job-images";
-const LIST_LIMIT = 60;
+const TODAY_LIMIT = 60;
+const ALL_LIMIT = 200;
 
 export type ApplyChannel = "instagram" | "openchat" | "form" | "sms" | "kakao" | "email" | "original";
 
@@ -86,9 +87,8 @@ export interface TodayCrawledJobs {
   available: boolean;
 }
 
-// "오늘 새로 올라온" 모집글: 가장 처음 올라온 시각이 오늘(KST)인 글. 어제 글을 다시 올린 끌올은 새 글이 아니다.
 // 필터 의미는 기존 /jobs(public-job-data.ts applyJobPostQueryFilters)와 같다.
-export async function getTodayCrawledJobs(searchParams: Params): Promise<TodayCrawledJobs> {
+async function fetchCrawledJobs(searchParams: Params, todayOnly: boolean, limit: number): Promise<TodayCrawledJobs> {
   try {
     const supabase = createSupabaseAdminClient();
     const since = todayStartIso();
@@ -96,7 +96,8 @@ export async function getTodayCrawledJobs(searchParams: Params): Promise<TodayCr
     const count = await supabase.from(TABLE).select("id", { count: "exact", head: true }).eq("status", "visible").gte("first_posted_at", since);
     if (count.error) throw count.error;
 
-    let query = supabase.from(TABLE).select(CARD_COLUMNS.join(",")).eq("status", "visible").gte("first_posted_at", since);
+    let query = supabase.from(TABLE).select(CARD_COLUMNS.join(",")).eq("status", "visible");
+    if (todayOnly) query = query.gte("first_posted_at", since);
 
     const region = first(searchParams.region);
     if (region) query = query.eq("region", region);
@@ -118,7 +119,7 @@ export async function getTodayCrawledJobs(searchParams: Params): Promise<TodayCr
     const keyword = normalizeKeyword(first(searchParams.q));
     if (keyword) query = query.or(`title.ilike.%${keyword}%,work_content.ilike.%${keyword}%,description.ilike.%${keyword}%`);
 
-    const { data, error } = await query.order("first_posted_at", { ascending: false }).limit(LIST_LIMIT);
+    const { data, error } = await query.order("first_posted_at", { ascending: false }).limit(limit);
     if (error) throw error;
 
     const rows = (data ?? []) as unknown as Array<Pick<CrawledJobRow, (typeof CARD_COLUMNS)[number]>>;
@@ -128,6 +129,12 @@ export async function getTodayCrawledJobs(searchParams: Params): Promise<TodayCr
     return { jobs: [], todayTotal: 0, available: false };
   }
 }
+
+// "오늘 새로 올라온" 모집글: 가장 처음 올라온 시각이 오늘(KST)인 글. 어제 글을 다시 올린 끌올은 새 글이 아니다.
+export const getTodayCrawledJobs = (searchParams: Params) => fetchCrawledJobs(searchParams, true, TODAY_LIMIT);
+
+// 전체보기: 오늘 이전에 올라온 글까지 모두 (최신순)
+export const getAllCrawledJobs = (searchParams: Params) => fetchCrawledJobs(searchParams, false, ALL_LIMIT);
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
