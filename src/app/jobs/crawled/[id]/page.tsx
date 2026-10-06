@@ -208,7 +208,7 @@ export default async function CrawledJobDetailPage({ params }: { params: Promise
             {/* 모바일에서는 지원 안내를 본문 위에 */}
             <div className="lg:hidden">{full ? <ApplyCard job={full} /> : <LockedApplyCard redirectPath={detailPath} />}</div>
 
-            <Section title="모집 정보" description="근무 방식과 상세 안내를 확인하세요.">
+            <Section title="모집 정보" description="모집글에서 핵심만 정리했어요. 자세한 내용은 카페 원문에서 볼 수 있어요.">
               {full ? (
                 <>
                   <Grid
@@ -219,8 +219,19 @@ export default async function CrawledJobDetailPage({ params }: { params: Promise
                       { label: "파티", value: partyText(full) },
                     ]}
                   />
+                  {full.intro && <p className="whitespace-pre-wrap break-words rounded-md bg-primary-50/70 p-4 text-body leading-relaxed text-neutral-800">{full.intro}</p>}
                   <div className="divide-y divide-neutral-200 border-t border-neutral-200">
-                    <TextBlock title="업무 내용" value={full.work_content} />
+                    {full.highlights.map((h) => (
+                      <section key={h.title} className="py-5 first:pt-0 last:pb-0">
+                        <h3 className="text-body font-bold text-neutral-900">{h.title}</h3>
+                        <ul className="mt-3 flex list-disc flex-col gap-1.5 pl-5 text-body-sm leading-relaxed text-neutral-600">
+                          {h.items.map((item) => (
+                            <li key={item}>{item}</li>
+                          ))}
+                        </ul>
+                      </section>
+                    ))}
+                    {full.highlights.length === 0 && <TextBlock title="업무 내용" value={full.work_content} />}
                     <TextBlock title="우대 조건" value={full.preferred_conditions} />
                     <TextBlock title="주의사항" value={full.caution} />
                   </div>

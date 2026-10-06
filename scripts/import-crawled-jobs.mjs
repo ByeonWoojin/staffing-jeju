@@ -114,7 +114,15 @@ for (const r of targets) {
     thumbnail_source_url = null;
   }
 
-  const f = r.fields;
+  // Claude 가 원문을 읽고 정리한 어필 포인트(.crawl/summary/<글번호>.json: { intro, highlights }). 없으면 비워 둔다.
+  const sumPath = path.join(root, ".crawl", "summary", `${r.id}.json`);
+  const summary = existsSync(sumPath) ? JSON.parse(readFileSync(sumPath, "utf8")) : {};
+
+  // 파서가 놓치거나 잘못 읽은 값은 Claude 가 원문을 보고 summary.fields 로 덮어쓴다(컬럼 이름 그대로).
+  const partyKind = summary.party_kind ?? r.party_kind;
+  const a = { ...r.apply, ...(summary.apply ?? {}) };
+  const f = { ...r.fields, ...(summary.fields ?? {}) };
+  const g = { ...r.guesthouse, ...(summary.fields?.address_text ? { address_text: summary.fields.address_text } : {}), ...(summary.fields?.map_url ? { map_url: summary.fields.map_url } : {}) };
   rows.push({
     source: "naver_cafe",
     source_group_id: groupId,
@@ -126,8 +134,8 @@ for (const r of targets) {
     title: f.title,
     guesthouse_name: r.guesthouse.name,
     region: r.guesthouse.region,
-    address_text: r.guesthouse.address_text,
-    map_url: r.guesthouse.map_url,
+    address_text: g.address_text,
+    map_url: g.map_url,
     recruit_count: f.recruit_count || 1,
     gender_condition: f.gender_condition,
     age_condition: f.age_condition,
@@ -141,19 +149,21 @@ for (const r of targets) {
     stipend_description: f.stipend_description,
     provides_accommodation: Boolean(f.provides_accommodation),
     provides_meal: Boolean(f.provides_meal),
-    has_party: r.party_kind === "party",
-    party_kind: r.party_kind,
+    has_party: partyKind === "party",
+    party_kind: partyKind,
     party_description: f.party_description,
     is_urgent: Boolean(f.is_urgent),
     preferred_conditions: f.preferred_conditions,
     caution: f.caution,
     description: f.description,
-    apply_channel: r.apply.channel,
-    apply_url: r.apply.url,
-    apply_phones: r.apply.phones ?? [],
-    apply_emails: r.apply.emails ?? [],
-    apply_kakao_id: r.apply.kakaoId,
-    apply_hint: r.apply.hint,
+    intro: summary.intro ?? null,
+    highlights: summary.highlights ?? [],
+    apply_channel: a.channel,
+    apply_url: a.url,
+    apply_phones: a.phones ?? [],
+    apply_emails: a.emails ?? [],
+    apply_kakao_id: a.kakaoId,
+    apply_hint: a.hint,
     tags: r.tags,
     thumbnail_path,
     thumbnail_source_url,

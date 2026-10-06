@@ -43,6 +43,8 @@ export interface CrawledJobRow {
   preferred_conditions: string | null;
   caution: string | null;
   description: string | null;
+  intro: string | null;
+  highlights: Array<{ title: string; items: string[] }>;
   apply_channel: ApplyChannel;
   apply_url: string | null;
   apply_phones: string[];

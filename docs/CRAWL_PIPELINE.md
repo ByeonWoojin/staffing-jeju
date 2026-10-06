@@ -16,6 +16,9 @@ node scripts/lib/parse-cafe-post.check.mjs              # 파서 회귀 체크
 2. **Claude 검수** (API 키 불필요, Claude가 이미지를 직접 읽는다)
    - 시트를 보고 **썸네일 번호**를 정해 `.crawl/thumb/<글번호>.txt`에 기록 (`none`이면 기본 이미지).
    - 시트에 **안내문/공고문 이미지**가 있으면 `read-image.mjs`로 잘라 읽고 `.crawl/ocr/<글번호>.txt`에 전사. 없으면 빈 파일. 전사 텍스트는 같은 파서로 재해석된다.
+   - **어필 포인트 요약**: 글을 끝까지 읽고 `.crawl/summary/<글번호>.json`에 `{ intro, highlights:[{title, items[]}] }`로 정리한다(복지·근무와 하루 일과·분위기·위치·선호 인재·모집 안내). 연락처는 넣지 않는다. 상세의 "모집 정보"에 그대로 보인다(마이그레이션 `020`).
+   - 파서가 틀리게 읽은 값은 같은 파일의 `fields`(컬럼 이름 그대로), `apply`, `party_kind`로 덮어쓴다. 업로드 때 반영된다.
+   - 목록은 페이지가 여러 장이므로 어제·오늘 글을 다 받으려면 `--pages=4 --size=30`으로 돌린다. 업로드는 `--days=2`.
 3. 스크립트를 다시 돌리면(캐시라 몇 초) 보강된 결과로 갱신된다. **그래도 비는 필드는 Claude가 목록으로 정리해 사장님께 알리고, 사장님이 직접 판정해서 넘긴다.**
 4. **업로드**: `import-crawled-jobs.mjs`가 대표 글을 `crawled_job_posts`에 올리고 썸네일을 4:3으로 잘라 `crawled-job-images` 버킷에 저장한다. 같은 글(끌올)은 `source_group_id`로 찾아 갱신하고, 숨김 처리한 글의 `status`는 덮어쓰지 않는다.
 
