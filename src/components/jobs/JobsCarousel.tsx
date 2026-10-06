@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { Children, cloneElement, isValidElement, useCallback, useEffect, useRef, useState, type CSSProperties, type ReactElement, type ReactNode } from "react";
 import { Button } from "@/components/ui";
 
 // 2줄 가로 스크롤 캐러셀. 한 화면에 (열 수 × 2줄) 개가 보이고, 좌우 버튼은 한 화면(페이지) 단위로 넘긴다.
+// 카드는 한 화면 안에서 1,2,3,4 / 5,6,7,8 순서(가로 우선)로 채우고, 카드가 한 줄 분량 이하이면 한 줄만 쓴다.
 // 카드는 서버에서 렌더해 children 으로 받는다. 이 컴포넌트는 스크롤 위치와 버튼 상태만 담당한다.
 function Chevron({ direction }: { direction: "left" | "right" }) {
   return (
@@ -13,8 +14,13 @@ function Chevron({ direction }: { direction: "left" | "right" }) {
   );
 }
 
+// 열 수는 아래 트랙의 auto-cols 브레이크포인트(sm 2 · lg 3 · xl 4, 모바일 1)와 같아야 한다.
+const COLUMN_QUERIES = [["(min-width: 1280px)", 4], ["(min-width: 1024px)", 3], ["(min-width: 640px)", 2]] as const;
+const getColumns = () => COLUMN_QUERIES.find(([query]) => window.matchMedia(query).matches)?.[1] ?? 1;
+
 export function JobsCarousel({ heading, children }: { heading: ReactNode; children: ReactNode }) {
   const trackRef = useRef<HTMLDivElement>(null);
+  const [columns, setColumns] = useState(4);
   const [{ canPrev, canNext }, setState] = useState({ canPrev: false, canNext: false });
 
   const update = useCallback(() => {
@@ -36,6 +42,13 @@ export function JobsCarousel({ heading, children }: { heading: ReactNode; childr
       observer.disconnect();
     };
   }, [update]);
+
+  useEffect(() => {
+    const sync = () => setColumns(getColumns());
+    sync();
+    window.addEventListener("resize", sync);
+    return () => window.removeEventListener("resize", sync);
+  }, []);
 
   const scrollByPage = (direction: 1 | -1) => {
     const el = trackRef.current;
@@ -60,9 +73,15 @@ export function JobsCarousel({ heading, children }: { heading: ReactNode; childr
       </div>
       <div
         ref={trackRef}
-        className="grid snap-x snap-mandatory auto-cols-[82%] grid-flow-col grid-rows-2 gap-x-5 gap-y-7 overflow-x-auto overscroll-x-contain pb-3 [scrollbar-width:none] sm:auto-cols-[calc((100%_-_1.25rem)/2)] lg:auto-cols-[calc((100%_-_2.5rem)/3)] xl:auto-cols-[calc((100%_-_3.75rem)/4)] [&::-webkit-scrollbar]:hidden"
+        className="grid snap-x snap-mandatory auto-cols-[82%] gap-x-5 gap-y-7 overflow-x-auto overscroll-x-contain pb-3 [scrollbar-width:none] sm:auto-cols-[calc((100%_-_1.25rem)/2)] lg:auto-cols-[calc((100%_-_2.5rem)/3)] xl:auto-cols-[calc((100%_-_3.75rem)/4)] [&::-webkit-scrollbar]:hidden"
       >
-        {children}
+        {Children.toArray(children).map((child, i) => {
+          if (!isValidElement(child)) return child;
+          const page = Math.floor(i / (columns * 2));
+          const slot = i % (columns * 2);
+          const style: CSSProperties = { gridRow: Math.floor(slot / columns) + 1, gridColumn: page * columns + (slot % columns) + 1 };
+          return cloneElement(child as ReactElement<{ style?: CSSProperties }>, { style });
+        })}
       </div>
     </div>
   );
