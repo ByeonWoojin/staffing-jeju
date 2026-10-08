@@ -31,7 +31,7 @@ jobs:
           key: crawl-raw-${{ github.run_id }}
           restore-keys: crawl-raw-
       - run: node scripts/cookie-state.mjs pull
-      - run: node scripts/crawl-naver-cafe.mjs --pages=10 --size=30
+      - run: node scripts/crawl-naver-cafe.mjs --pages=14 --size=30
       # 쿠키는 크롤링 직후 먼저 저장(이후 단계가 실패해도 갱신분을 잃지 않게)
       - run: node scripts/cookie-state.mjs push
       - run: node scripts/import-crawled-jobs.mjs --days=2 --keep-existing
