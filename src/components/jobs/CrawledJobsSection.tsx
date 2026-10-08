@@ -3,7 +3,7 @@ import Link from "next/link";
 import { JobsCarousel } from "@/components/jobs/JobsCarousel";
 import { ARROW_PATH, JobsMoreTile } from "@/components/jobs/JobsMoreTile";
 import { Badge, Card } from "@/components/ui";
-import { getTodayCrawledJobs, type CrawledJobCard } from "@/lib/crawled-jobs";
+import { getTodayCrawledJobs, isBumped, type CrawledJobCard } from "@/lib/crawled-jobs";
 import { DEFAULT_GUESTHOUSE_IMAGE } from "@/lib/guesthouse-image";
 import { buildFilterQuery, hasFilter } from "@/lib/jobs/filter-query";
 import { formatDate } from "@/lib/owner-utils";
@@ -45,11 +45,18 @@ export function CrawledJobCardView({ job }: { job: CrawledJobCard }) {
           className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
           sizes="(min-width: 1280px) 25vw, (min-width: 768px) 50vw, 100vw"
         />
-        {job.is_urgent && (
-          <div className="absolute left-3 top-3">
-            <Badge variant="urgent" className="h-6 px-2 text-[12px]">
-              급구
-            </Badge>
+        {(job.is_urgent || isBumped(job)) && (
+          <div className="absolute left-3 top-3 flex gap-1.5">
+            {job.is_urgent && (
+              <Badge variant="urgent" className="h-6 px-2 text-[12px]">
+                급구
+              </Badge>
+            )}
+            {isBumped(job) && (
+              <Badge variant="sand" className="h-6 px-2 text-[12px]">
+                끌올
+              </Badge>
+            )}
           </div>
         )}
       </div>
@@ -85,7 +92,7 @@ export function CrawledJobCardView({ job }: { job: CrawledJobCard }) {
   );
 }
 
-// 오늘 카페에 새로 올라온 모집글 섹션. 기존 /jobs 필터를 그대로 적용한다.
+// 오늘 카페에 올라온(새 글 + 끌올) 모집글 섹션. 기존 /jobs 필터를 그대로 적용한다.
 // 2줄 가로 스크롤 캐러셀이고, 마지막 칸이 전체보기 타일이다.
 // 테이블이 없거나 오늘 새 글이 하나도 없으면 렌더하지 않는다.
 export async function CrawledJobsSection({
@@ -93,7 +100,7 @@ export async function CrawledJobsSection({
 }: {
   searchParams: Record<string, string | string[] | undefined>;
 }) {
-  const { jobs, todayTotal, available } = await getTodayCrawledJobs(searchParams);
+  const { jobs, todayTotal, todayNew, available } = await getTodayCrawledJobs(searchParams);
   if (!available || todayTotal === 0) return null;
 
   const filtered = hasFilter(searchParams);
@@ -118,7 +125,7 @@ export async function CrawledJobsSection({
         </Badge>
       </div>
       <p className="mt-1 text-body-sm font-semibold text-neutral-500">
-        오늘({todayLabel}) 카페에 새로 올라온 모집글 {filtered ? `${jobs.length}건 (전체 ${todayTotal}건)` : `${todayTotal}건`} · 지원은 각 모집글의 안내를 따라 직접 연락해요
+        오늘({todayLabel}) 카페에 올라온 모집글 {filtered ? `${jobs.length}건 (전체 ${todayTotal}건)` : `${todayTotal}건`} (새 글 {todayNew}건 · 끌올 {todayTotal - todayNew}건) · 지원은 각 모집글의 안내를 따라 직접 연락해요
       </p>
     </div>
   );
@@ -129,7 +136,7 @@ export async function CrawledJobsSection({
         <>
           {heading}
           <p className="rounded-md border border-neutral-100 bg-neutral-0 px-4 py-6 text-center text-body-sm text-neutral-500">
-            오늘 새로 올라온 카페 모집글 중 조건에 맞는 글이 없습니다.
+            오늘 올라온 카페 모집글 중 조건에 맞는 글이 없습니다.
           </p>
         </>
       ) : (

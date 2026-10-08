@@ -58,7 +58,7 @@ export interface CrawledJobRow {
 const CARD_COLUMNS = [
   "id", "title", "guesthouse_name", "region", "thumbnail_path", "work_start_date", "min_work_period",
   "work_days_per_week", "off_days_per_week", "provides_accommodation", "provides_meal", "stipend_type",
-  "party_kind", "is_urgent", "first_posted_at",
+  "party_kind", "is_urgent", "first_posted_at", "posted_at",
 ] as const;
 const PUBLIC_COLUMNS = ["id", "title", "guesthouse_name", "region", "thumbnail_path", "status", "first_posted_at", "is_urgent"] as const;
 
@@ -83,8 +83,10 @@ function withThumb<T extends { thumbnail_path: string | null }>(supabase: Return
 
 export interface TodayCrawledJobs {
   jobs: CrawledJobCard[];
-  /** 필터와 무관한 오늘 새 글 수 */
+  /** 필터와 무관한 오늘 올라온 글 수(새 글 + 끌올) */
   todayTotal: number;
+  /** 그중 오늘 처음 올라온 새 글 수 */
+  todayNew: number;
   /** 테이블이 없거나 조회 실패 → 섹션을 숨긴다 (마이그레이션 적용 전에도 /jobs 가 깨지지 않게) */
   available: boolean;
 }
@@ -95,11 +97,13 @@ async function fetchCrawledJobs(searchParams: Params, todayOnly: boolean, limit:
     const supabase = createSupabaseAdminClient();
     const since = todayStartIso();
 
-    const count = await supabase.from(TABLE).select("id", { count: "exact", head: true }).eq("status", "visible").gte("first_posted_at", since);
+    const base = () => supabase.from(TABLE).select("id", { count: "exact", head: true }).eq("status", "visible");
+    const [count, newCount] = await Promise.all([base().gte("posted_at", since), base().gte("first_posted_at", since)]);
     if (count.error) throw count.error;
+    if (newCount.error) throw newCount.error;
 
     let query = supabase.from(TABLE).select(CARD_COLUMNS.join(",")).eq("status", "visible");
-    if (todayOnly) query = query.gte("first_posted_at", since);
+    if (todayOnly) query = query.gte("posted_at", since);
 
     const region = first(searchParams.region);
     if (region) query = query.eq("region", region);
@@ -121,18 +125,18 @@ async function fetchCrawledJobs(searchParams: Params, todayOnly: boolean, limit:
     const keyword = normalizeKeyword(first(searchParams.q));
     if (keyword) query = query.or(`title.ilike.%${keyword}%,work_content.ilike.%${keyword}%,description.ilike.%${keyword}%`);
 
-    const { data, error } = await query.order("first_posted_at", { ascending: false }).limit(limit);
+    const { data, error } = await query.order("posted_at", { ascending: false }).limit(limit);
     if (error) throw error;
 
     const rows = (data ?? []) as unknown as Array<Pick<CrawledJobRow, (typeof CARD_COLUMNS)[number]>>;
-    return { jobs: rows.map((row) => withThumb(supabase, row)), todayTotal: count.count ?? 0, available: true };
+    return { jobs: rows.map((row) => withThumb(supabase, row)), todayTotal: count.count ?? 0, todayNew: newCount.count ?? 0, available: true };
   } catch (error) {
     console.error("[crawled-jobs] 오늘 수집 공고 조회 실패", error instanceof Error ? error.message : error);
-    return { jobs: [], todayTotal: 0, available: false };
+    return { jobs: [], todayTotal: 0, todayNew: 0, available: false };
   }
 }
 
-// "오늘 새로 올라온" 모집글: 가장 처음 올라온 시각이 오늘(KST)인 글. 어제 글을 다시 올린 끌올은 새 글이 아니다.
+// "오늘 올라온" 모집글: 마지막 게시 시각이 오늘(KST)인 글. 어제 글을 다시 올린 끌올도 포함하고 카드에 끌올 뱃지를 단다.
 export const getTodayCrawledJobs = (searchParams: Params) => fetchCrawledJobs(searchParams, true, TODAY_LIMIT);
 
 // 전체보기: 오늘 이전에 올라온 글까지 모두 (최신순)
@@ -165,3 +169,6 @@ export async function getCrawledJobDetail(
     return null;
   }
 }
+
+// 처음 올라온 날과 마지막 게시일이 다르면 끌올
+export const isBumped = (job: { first_posted_at: string; posted_at: string }) => kstDate(job.first_posted_at) !== kstDate(job.posted_at);

@@ -56,8 +56,8 @@ export default async function AllListPage({
           <div className="grid gap-x-5 gap-y-7 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {jobs.map((job, index) => {
               // 처음 올라온 날짜(KST)가 바뀌는 지점에만 얇은 구분선을 넣는다 (최신순은 쿼리에서 이미 정렬됨)
-              const day = kstDate(job.first_posted_at);
-              const startsNewDay = index === 0 || day !== kstDate(jobs[index - 1].first_posted_at);
+              const day = kstDate(job.posted_at);
+              const startsNewDay = index === 0 || day !== kstDate(jobs[index - 1].posted_at);
               return (
                 <Fragment key={job.id}>
                   {startsNewDay && (

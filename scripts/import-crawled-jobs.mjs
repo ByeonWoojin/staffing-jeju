@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // .crawl/feed.json 의 수집 공고를 Supabase(crawled_job_posts + 이미지 버킷)에 올린다.
 // 사용: node scripts/import-crawled-jobs.mjs [--days=1] [--all] [--dry-run]
-//   기본: 오늘(KST) 처음 올라온 글만. --days=N 이면 최근 N일, --all 이면 대표 글 전체.
+//   기본: 오늘(KST) 올라온 글(끌올 포함, posted_at 갱신). --days=N 이면 최근 N일, --all 이면 대표 글 전체.
 //   같은 글(끌올)은 source_group_id 로 찾아 새 행을 만들지 않고 갱신한다. status(숨김 처리 등)는 덮어쓰지 않는다.
 // 필요: .env.local 의 NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY, 마이그레이션 019 적용
 import { existsSync, readFileSync } from "node:fs";
@@ -43,10 +43,10 @@ const posts = JSON.parse(readFileSync(postsPath, "utf8"));
 const kst = (v) => new Date(v).toLocaleDateString("sv-SE", { timeZone: "Asia/Seoul" });
 const days = +arg("days", 1);
 const cutoff = new Date(`${kst(new Date())}T00:00:00+09:00`).getTime() - (days - 1) * 864e5;
-const targets = feed.filter((r) => flag("all") || new Date(r.firstPostedAt).getTime() >= cutoff);
+const targets = feed.filter((r) => flag("all") || new Date(r.writtenAt).getTime() >= cutoff);
 
 console.log(`대상 프로젝트: ${new URL(url).hostname}`);
-console.log(`선택된 글: ${targets.length}건 (대표 글 ${feed.length}건 중, ${flag("all") ? "전체" : `최근 ${days}일 최초 게시`})${DRY ? " [dry-run]" : ""}`);
+console.log(`선택된 글: ${targets.length}건 (대표 글 ${feed.length}건 중, ${flag("all") ? "전체" : `최근 ${days}일 게시(끌올 포함)`})${DRY ? " [dry-run]" : ""}`);
 if (targets.length === 0) process.exit(0);
 
 // ── 테이블 존재 확인 ──
