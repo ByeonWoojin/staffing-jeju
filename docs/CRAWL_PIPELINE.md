@@ -167,7 +167,7 @@ node scripts/lib/parse-cafe-post.check.mjs              # 파서 회귀 체크
 
 ## 8. 자동 배치 (GitHub Actions)
 
-`.github/workflows/crawl.yml` — 한국시간 09·13·18·22시에 `crawl-naver-cafe.mjs --pages=2` → `import-crawled-jobs.mjs --days=2 --keep-existing`를 돌린다. 수동 실행은 Actions 탭의 `Run workflow`.
+`.github/workflows/crawl.yml` — 한국시간 09·13·18·22시에 `crawl-naver-cafe.mjs --pages=10` → `import-crawled-jobs.mjs --days=2 --keep-existing`를 돌린다. 수동 실행은 Actions 탭의 `Run workflow`.
 
 - **Secrets**(저장소 Settings → Secrets and variables → Actions): `NAVER_NID_AUT`, `NAVER_NID_SES`, `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`.
 - **검수는 자동화하지 않는다.** 새 글은 자동 선택 썸네일과 파서 값으로 올라가고(어필 포인트 요약 없음), 이미 올라간 행은 `posted_at`/`repost_count`/원문 링크만 갱신해 수동 검수한 썸네일·요약을 덮어쓰지 않는다(`--keep-existing`). 요약·썸네일은 Claude 세션에서 채우고 `import-crawled-jobs.mjs`(옵션 없이)로 올린다.
