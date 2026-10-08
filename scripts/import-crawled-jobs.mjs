@@ -70,13 +70,21 @@ if (!DRY) {
 }
 
 // ── 이미 올라간 행 조회(끌올 갱신 / 썸네일 재업로드 판단) ──
-const groupIds = targets.map((r) => posts[r.id].dedupe.firstId);
-const { data: existingRows, error: exErr } = await supabase.from(TABLE).select("source_group_id, thumbnail_path, thumbnail_source_url").eq("source", "naver_cafe").in("source_group_id", groupIds);
+// 그룹 키(source_group_id)는 "그 그룹에서 가장 오래된 글 번호"인데, 수집 이력의 깊이(로컬/Actions 캐시)에 따라 달라질 수 있다.
+// 그래서 현재 그룹 구성원 중 이미 DB 에 키로 저장된 번호가 있으면 그 키를 그대로 쓰고, 없을 때만 firstId 를 쓴다.
+const membersOf = new Map();
+for (const [id, p] of Object.entries(posts)) {
+  if (!membersOf.has(p.dedupe.firstId)) membersOf.set(p.dedupe.firstId, []);
+  membersOf.get(p.dedupe.firstId).push(id);
+}
+const lookupIds = [...new Set(targets.flatMap((r) => membersOf.get(posts[r.id].dedupe.firstId)))];
+const { data: existingRows, error: exErr } = await supabase.from(TABLE).select("source_group_id, thumbnail_path, thumbnail_source_url").eq("source", "naver_cafe").in("source_group_id", lookupIds);
 if (exErr) {
   console.error("기존 행 조회 실패:", exErr.message);
   process.exit(1);
 }
 const existing = new Map(existingRows.map((r) => [r.source_group_id, r]));
+const keyOf = (r) => { const first = posts[r.id].dedupe.firstId; return membersOf.get(first).find((id) => existing.has(id)) ?? first; };
 
 // 썸네일: 카드가 4:3 이므로 중앙(주요 피사체 기준) 4:3 으로 잘라 1200x900 JPEG 로 저장
 async function uploadThumbnail(groupId, srcUrl) {
@@ -95,7 +103,7 @@ let inserted = 0;
 let updated = 0;
 let thumbs = 0;
 for (const r of targets) {
-  const groupId = posts[r.id].dedupe.firstId;
+  const groupId = keyOf(r);
   const prev = existing.get(groupId);
   prev ? updated++ : inserted++;
   if (prev && KEEP) {
