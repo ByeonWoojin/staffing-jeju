@@ -1,0 +1,37 @@
+name: crawl-naver-cafe
+
+on:
+  schedule:
+    # 한국시간 09·13·18·22시 (UTC 00·04·09·13시)
+    - cron: "0 0,4,9,13 * * *"
+  workflow_dispatch:
+
+concurrency: crawl
+
+jobs:
+  crawl:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      NAVER_NID_AUT: ${{ secrets.NAVER_NID_AUT }}
+      NAVER_NID_SES: ${{ secrets.NAVER_NID_SES }}
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # 중복/끌올 판정은 이전에 받은 글에 의존하므로 raw 캐시를 실행 사이에 이어 쓴다
+      - uses: actions/cache@v4
+        with:
+          path: .crawl/raw
+          key: crawl-raw-${{ github.run_id }}
+          restore-keys: crawl-raw-
+      - run: node scripts/cookie-state.mjs pull
+      - run: node scripts/crawl-naver-cafe.mjs --pages=2 --size=30
+      # 쿠키는 크롤링 직후 먼저 저장(이후 단계가 실패해도 갱신분을 잃지 않게)
+      - run: node scripts/cookie-state.mjs push
+      - run: node scripts/import-crawled-jobs.mjs --days=2 --keep-existing

@@ -164,3 +164,12 @@ node scripts/lib/parse-cafe-post.check.mjs              # 파서 회귀 체크
 1. 수집 공고의 만료/마감 기준(예: 마지막 게시 후 N일). 지금은 "오늘 처음 올라온 글"만 노출한다.
 2. 노출 위치: 지금은 기존 목록 위. 탭으로 나눌지, 목록 아래로 둘지.
 3. 본문·사진을 그대로 복제하지 않고 요약 + 원문 링크로 가는 범위 (현재 상세는 파싱한 필드만 보여주고 원문 본문은 싣지 않는다).
+
+## 8. 자동 배치 (GitHub Actions)
+
+`.github/workflows/crawl.yml` — 한국시간 09·13·18·22시에 `crawl-naver-cafe.mjs --pages=2` → `import-crawled-jobs.mjs --days=2 --keep-existing`를 돌린다. 수동 실행은 Actions 탭의 `Run workflow`.
+
+- **Secrets**(저장소 Settings → Secrets and variables → Actions): `NAVER_NID_AUT`, `NAVER_NID_SES`, `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`.
+- **검수는 자동화하지 않는다.** 새 글은 자동 선택 썸네일과 파서 값으로 올라가고(어필 포인트 요약 없음), 이미 올라간 행은 `posted_at`/`repost_count`/원문 링크만 갱신해 수동 검수한 썸네일·요약을 덮어쓰지 않는다(`--keep-existing`). 요약·썸네일은 Claude 세션에서 채우고 `import-crawled-jobs.mjs`(옵션 없이)로 올린다.
+- **쿠키 자동 연장**: 네이버가 응답마다 새 `NID_SES`를 내려주므로 `.crawl/cookie.json`에 받아 두고, 실행 사이에는 `scripts/cookie-state.mjs`가 Supabase 비공개 버킷 `crawler-state`에 보관/복원한다. Secrets 값을 새로 바꾸면(base 불일치) 저장본은 무시한다. 네이버 쪽에서 완전히 만료되면 `0004`로 실패하고 GitHub가 실패 메일을 보내니 쿠키를 다시 발급해 Secrets에 넣는다.
+- `.crawl/raw`는 `actions/cache`로 이어 써서 중복/끌올 판정이 유지된다. 캐시가 비면 첫 실행이 오래 걸린다.

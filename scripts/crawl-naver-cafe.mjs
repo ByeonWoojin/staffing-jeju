@@ -38,12 +38,25 @@ const AUTO_SCAN = 8; // 자동 1차 썸네일 선택 범위
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const read = (f, d = null) => (existsSync(f) ? readFileSync(f, "utf8") : d);
+// 네이버가 응답마다 갱신된 NID_SES 를 내려주므로(슬라이딩 만료) 받은 쿠키를 .crawl/cookie.json 에 남겨 다음 실행이 이어 쓴다.
+// base(= 환경변수로 넣어준 원래 값)가 바뀌면 사용자가 새로 발급한 것이니 저장본은 버린다.
+const cookieFile = C("cookie.json");
+const base = `${process.env.NAVER_NID_AUT}|${process.env.NAVER_NID_SES}`;
+const stored = JSON.parse(read(cookieFile, "null"));
+const jar = stored?.base === base ? { NID_AUT: stored.NID_AUT, NID_SES: stored.NID_SES } : { NID_AUT: process.env.NAVER_NID_AUT, NID_SES: process.env.NAVER_NID_SES };
+let jarDirty = false;
 const H = {
   "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/124 Safari/537.36",
   Referer: "https://cafe.naver.com/",
-  Cookie: `NID_AUT=${process.env.NAVER_NID_AUT}; NID_SES=${process.env.NAVER_NID_SES}`,
 };
-const getJson = async (url) => (await fetch(url, { headers: H })).json();
+const getJson = async (url) => {
+  const res = await fetch(url, { headers: { ...H, Cookie: `NID_AUT=${jar.NID_AUT}; NID_SES=${jar.NID_SES}` } });
+  for (const c of res.headers.getSetCookie()) {
+    const m = /^(NID_AUT|NID_SES)=([^;]+)/.exec(c);
+    if (m && m[2] !== "deleted" && jar[m[1]] !== m[2]) (jar[m[1]] = m[2]), (jarDirty = true);
+  }
+  return res.json();
+};
 
 // ── 1) 수집: 새 글만 raw 캐시에 저장 ──
 let added = 0;
@@ -66,6 +79,8 @@ if (!process.env.NAVER_NID_AUT || !process.env.NAVER_NID_SES) {
     }
   }
 }
+
+if (jarDirty) writeFileSync(cookieFile, JSON.stringify({ base, ...jar }));
 
 // ── 2) 파싱 + 이미지 판정 (분석 결과는 URL 기준 캐시) ──
 const analysisFile = C("analysis.json");

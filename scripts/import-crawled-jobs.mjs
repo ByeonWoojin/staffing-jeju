@@ -2,6 +2,7 @@
 // .crawl/feed.json 의 수집 공고를 Supabase(crawled_job_posts + 이미지 버킷)에 올린다.
 // 사용: node scripts/import-crawled-jobs.mjs [--days=1] [--all] [--dry-run]
 //   기본: 오늘(KST) 올라온 글(끌올 포함, posted_at 갱신). --days=N 이면 최근 N일, --all 이면 대표 글 전체.
+//   --keep-existing: 기존 행은 posted_at/repost_count/원문 링크만 갱신 (GitHub Actions 배치용)
 //   같은 글(끌올)은 source_group_id 로 찾아 새 행을 만들지 않고 갱신한다. status(숨김 처리 등)는 덮어쓰지 않는다.
 // 필요: .env.local 의 NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY, 마이그레이션 019 적용
 import { existsSync, readFileSync } from "node:fs";
@@ -19,6 +20,8 @@ for (const l of existsSync(path.join(root, ".env.local")) ? readFileSync(path.jo
 const arg = (k, d) => process.argv.find((a) => a.startsWith(`--${k}=`))?.split("=")[1] ?? d;
 const flag = (k) => process.argv.includes(`--${k}`);
 const DRY = flag("dry-run");
+// 자동 배치용: 이미 올라간 행은 게시 시각/끌올 횟수/원문 링크만 갱신한다(수동 검수한 썸네일·요약·보정값을 덮어쓰지 않도록).
+const KEEP = flag("keep-existing");
 const BUCKET = "crawled-job-images";
 const TABLE = "crawled_job_posts";
 
@@ -87,6 +90,7 @@ async function uploadThumbnail(groupId, srcUrl) {
 }
 
 const rows = [];
+const bumps = [];
 let inserted = 0;
 let updated = 0;
 let thumbs = 0;
@@ -94,6 +98,10 @@ for (const r of targets) {
   const groupId = posts[r.id].dedupe.firstId;
   const prev = existing.get(groupId);
   prev ? updated++ : inserted++;
+  if (prev && KEEP) {
+    bumps.push({ groupId, patch: { posted_at: r.writtenAt, repost_count: r.reposts, source_article_id: r.id, source_url: r.url } });
+    continue;
+  }
 
   let thumbnail_path = prev?.thumbnail_path ?? null;
   let thumbnail_source_url = prev?.thumbnail_source_url ?? null;
@@ -174,6 +182,18 @@ for (const r of targets) {
 
 if (DRY) {
   console.log(`\n[dry-run] 신규 ${inserted}건 · 갱신(끌올 포함) ${updated}건 · 업로드할 썸네일 ${thumbs}건 — 아무것도 쓰지 않았습니다.`);
+  process.exit(0);
+}
+
+for (const { groupId, patch } of bumps) {
+  const { error } = await supabase.from(TABLE).update(patch).eq("source", "naver_cafe").eq("source_group_id", groupId);
+  if (error) {
+    console.error("끌올 갱신 실패:", error.message);
+    process.exit(1);
+  }
+}
+if (rows.length === 0) {
+  console.log(`\n완료: 신규 0건 · 갱신 ${updated}건`);
   process.exit(0);
 }
 
