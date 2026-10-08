@@ -92,7 +92,7 @@ export interface TodayCrawledJobs {
 }
 
 // 필터 의미는 기존 /jobs(public-job-data.ts applyJobPostQueryFilters)와 같다.
-async function fetchCrawledJobs(searchParams: Params, todayOnly: boolean, limit: number): Promise<TodayCrawledJobs> {
+async function fetchCrawledJobs(searchParams: Params, todayOnly: boolean, limit: number, includeBumped = true): Promise<TodayCrawledJobs> {
   try {
     const supabase = createSupabaseAdminClient();
     const since = todayStartIso();
@@ -128,7 +128,8 @@ async function fetchCrawledJobs(searchParams: Params, todayOnly: boolean, limit:
     const { data, error } = await query.order("posted_at", { ascending: false }).limit(limit);
     if (error) throw error;
 
-    const rows = (data ?? []) as unknown as Array<Pick<CrawledJobRow, (typeof CARD_COLUMNS)[number]>>;
+    const all = (data ?? []) as unknown as Array<Pick<CrawledJobRow, (typeof CARD_COLUMNS)[number]>>;
+    const rows = includeBumped ? all : all.filter((row) => !isBumped(row));
     return { jobs: rows.map((row) => withThumb(supabase, row)), todayTotal: count.count ?? 0, todayNew: newCount.count ?? 0, available: true };
   } catch (error) {
     console.error("[crawled-jobs] 오늘 수집 공고 조회 실패", error instanceof Error ? error.message : error);
@@ -140,7 +141,7 @@ async function fetchCrawledJobs(searchParams: Params, todayOnly: boolean, limit:
 export const getTodayCrawledJobs = (searchParams: Params) => fetchCrawledJobs(searchParams, true, TODAY_LIMIT);
 
 // 전체보기: 오늘 이전에 올라온 글까지 모두 (최신순)
-export const getAllCrawledJobs = (searchParams: Params) => fetchCrawledJobs(searchParams, false, ALL_LIMIT);
+export const getAllCrawledJobs = (searchParams: Params, includeBumped = true) => fetchCrawledJobs(searchParams, false, ALL_LIMIT, includeBumped);
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 

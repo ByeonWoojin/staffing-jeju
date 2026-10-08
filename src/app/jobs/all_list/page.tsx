@@ -4,6 +4,7 @@ import { Fragment } from "react";
 import { CrawledJobCardView } from "@/components/jobs/CrawledJobsSection";
 import { AppHeader } from "@/components/layout/AppHeader";
 import { EmptyState } from "@/components/ui";
+import { buildFilterQuery } from "@/lib/jobs/filter-query";
 import { getCurrentAuthUser } from "@/lib/auth/onboarding";
 import { getAllCrawledJobs, kstDate } from "@/lib/crawled-jobs";
 
@@ -27,8 +28,13 @@ export default async function AllListPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const [params, user] = await Promise.all([searchParams, getCurrentAuthUser()]);
-  const { jobs, available } = await getAllCrawledJobs(params);
+  const bump = params.bump;
+  const includeBumped = (Array.isArray(bump) ? bump[0] : bump) !== "off";
+  const { jobs, available } = await getAllCrawledJobs(params, includeBumped);
   const today = kstDate(new Date());
+  const toggleParams = new URLSearchParams(buildFilterQuery(params).slice(1));
+  if (includeBumped) toggleParams.set("bump", "off");
+  const bumpQuery = toggleParams.size ? `?${toggleParams}` : "";
 
   return (
     <main className="min-h-screen bg-neutral-50">
@@ -46,9 +52,24 @@ export default async function AllListPage({
       </section>
 
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-4 px-4 py-5 md:px-6 md:py-6">
-        <Link href="/jobs" className="w-fit rounded-md text-body-sm font-semibold text-primary-700 hover:text-primary-600 focus-ring">
-          모집글 목록으로
-        </Link>
+        <div className="flex items-center justify-between gap-4">
+          <Link href="/jobs" className="w-fit rounded-md text-body-sm font-semibold text-primary-700 hover:text-primary-600 focus-ring">
+            모집글 목록으로
+          </Link>
+          {/* 끌올 포함 토글: 쿼리 bump=off 로 끈다(기본 켜짐), 걸려 있는 필터는 유지 */}
+          <Link
+            href={`/jobs/all_list${bumpQuery}`}
+            scroll={false}
+            role="switch"
+            aria-checked={includeBumped}
+            className="inline-flex h-9 items-center gap-2 rounded-full border border-neutral-200 bg-neutral-0 px-3 text-caption font-semibold text-neutral-700 transition-colors hover:bg-neutral-50 focus-ring"
+          >
+            끌올 포함
+            <span className={`flex h-5 w-9 items-center rounded-full p-0.5 transition-colors ${includeBumped ? "bg-primary-600" : "bg-neutral-300"}`} aria-hidden="true">
+              <span className={`size-4 rounded-full bg-neutral-0 transition-transform ${includeBumped ? "translate-x-4" : ""}`} />
+            </span>
+          </Link>
+        </div>
 
         {!available || jobs.length === 0 ? (
           <EmptyState title="아직 모아둔 카페 모집글이 없습니다." description="나중에 다시 확인해주세요." />
