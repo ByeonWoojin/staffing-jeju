@@ -193,10 +193,20 @@ if (DRY) {
   process.exit(0);
 }
 
+// 일시적 네트워크 오류(fetch failed)로 배치 전체가 죽지 않도록 행마다 몇 번 재시도한다.
 for (const { groupId, patch } of bumps) {
-  const { error } = await supabase.from(TABLE).update(patch).eq("source", "naver_cafe").eq("source_group_id", groupId);
+  let error;
+  for (let attempt = 1; attempt <= 4; attempt++) {
+    try {
+      ({ error } = await supabase.from(TABLE).update(patch).eq("source", "naver_cafe").eq("source_group_id", groupId));
+    } catch (e) {
+      error = e;
+    }
+    if (!error) break;
+    await new Promise((r) => setTimeout(r, attempt * 1000));
+  }
   if (error) {
-    console.error("끌올 갱신 실패:", error.message);
+    console.error("끌올 갱신 실패:", error.message ?? error);
     process.exit(1);
   }
 }
