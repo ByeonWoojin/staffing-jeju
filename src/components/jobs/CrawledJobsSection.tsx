@@ -92,9 +92,9 @@ export function CrawledJobCardView({ job }: { job: CrawledJobCard }) {
   );
 }
 
-// 오늘 카페에 올라온(새 글 + 끌올) 모집글 섹션. 기존 /jobs 필터를 그대로 적용한다.
+// 최근 24시간 카페에 올라온(새 글 + 끌올) 모집글 섹션. 기존 /jobs 필터를 그대로 적용한다.
 // 2줄 가로 스크롤 캐러셀이고, 마지막 칸이 전체보기 타일이다.
-// 테이블이 없거나 오늘 새 글이 하나도 없으면 렌더하지 않는다.
+// 테이블이 없거나 최근 24시간 글이 하나도 없으면 렌더하지 않는다.
 export async function CrawledJobsSection({
   searchParams,
 }: {
@@ -105,15 +105,14 @@ export async function CrawledJobsSection({
 
   const filtered = hasFilter(searchParams);
   const moreHref = `/jobs/all_list${buildFilterQuery(searchParams)}`; // 걸려 있는 필터를 그대로 유지
-  const todayLabel = new Date().toLocaleDateString("ko-KR", { timeZone: "Asia/Seoul", month: "long", day: "numeric" });
 
   const heading = (
     <div>
       <div className="flex items-center gap-2">
-        <h2 className="text-title text-neutral-900">오늘 올라온 스탭 모집</h2>
+        <h2 className="text-title text-neutral-900">최근 올라온 스탭 모집</h2>
         <Link
           href={moreHref}
-          aria-label="오늘 올라온 모집글 전체보기"
+          aria-label="최근 올라온 모집글 전체보기"
           className="inline-flex size-8 items-center justify-center rounded-full bg-neutral-100 text-neutral-700 transition-colors hover:bg-neutral-200 focus-ring"
         >
           <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -125,7 +124,7 @@ export async function CrawledJobsSection({
         </Badge>
       </div>
       <p className="mt-1 text-body-sm font-semibold text-neutral-500">
-        오늘({todayLabel}) 카페에 올라온 모집글 {filtered ? `${jobs.length}건 (전체 ${todayTotal}건)` : `${todayTotal}건`} (새 글 {todayNew}건 · 끌올 {todayTotal - todayNew}건) · 지원은 각 모집글의 안내를 따라 직접 연락해요
+        최근 24시간 카페에 올라온 모집글 {filtered ? `${jobs.length}건 (전체 ${todayTotal}건)` : `${todayTotal}건`} (새 글 {todayNew}건 · 끌올 {todayTotal - todayNew}건) · 지원은 각 모집글의 안내를 따라 직접 연락해요
       </p>
     </div>
   );
@@ -136,7 +135,7 @@ export async function CrawledJobsSection({
         <>
           {heading}
           <p className="rounded-md border border-neutral-100 bg-neutral-0 px-4 py-6 text-center text-body-sm text-neutral-500">
-            오늘 올라온 카페 모집글 중 조건에 맞는 글이 없습니다.
+            최근 24시간 올라온 카페 모집글 중 조건에 맞는 글이 없습니다.
           </p>
         </>
       ) : (
@@ -147,7 +146,7 @@ export async function CrawledJobsSection({
             </div>
           ))}
           <div className="min-w-0 snap-start">
-            <JobsMoreTile href={moreHref} thumbnails={jobs.map((job) => job.thumbnail_url)} ariaLabel="오늘 올라온 모집글 전체보기" caption="지난 모집글까지 한 번에 확인해요" />
+            <JobsMoreTile href={moreHref} thumbnails={jobs.map((job) => job.thumbnail_url)} ariaLabel="최근 올라온 모집글 전체보기" caption="지난 모집글까지 한 번에 확인해요" />
           </div>
         </JobsCarousel>
       )}

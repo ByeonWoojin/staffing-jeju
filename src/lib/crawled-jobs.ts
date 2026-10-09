@@ -74,7 +74,8 @@ const normalizeKeyword = (k: string) => k.replace(/[%,()]/g, " ").trim();
 
 // 한국 시간 기준 날짜(YYYY-MM-DD)
 export const kstDate = (value: string | Date) => new Date(value).toLocaleDateString("sv-SE", { timeZone: "Asia/Seoul" });
-const todayStartIso = () => new Date(`${kstDate(new Date())}T00:00:00+09:00`).toISOString();
+// 자정에 섹션이 비지 않도록 "오늘"이 아니라 최근 24시간을 기준으로 한다
+const recentStartIso = () => new Date(Date.now() - 864e5).toISOString();
 
 function withThumb<T extends { thumbnail_path: string | null }>(supabase: ReturnType<typeof createSupabaseAdminClient>, row: T): WithThumb<T> {
   const url = row.thumbnail_path ? supabase.storage.from(BUCKET).getPublicUrl(row.thumbnail_path).data.publicUrl : null;
@@ -83,9 +84,9 @@ function withThumb<T extends { thumbnail_path: string | null }>(supabase: Return
 
 export interface TodayCrawledJobs {
   jobs: CrawledJobCard[];
-  /** 필터와 무관한 오늘 올라온 글 수(새 글 + 끌올) */
+  /** 필터와 무관한 최근 24시간 올라온 글 수(새 글 + 끌올) */
   todayTotal: number;
-  /** 그중 오늘 처음 올라온 새 글 수 */
+  /** 그중 최근 24시간 안에 처음 올라온 새 글 수 */
   todayNew: number;
   /** 테이블이 없거나 조회 실패 → 섹션을 숨긴다 (마이그레이션 적용 전에도 /jobs 가 깨지지 않게) */
   available: boolean;
@@ -95,7 +96,7 @@ export interface TodayCrawledJobs {
 async function fetchCrawledJobs(searchParams: Params, todayOnly: boolean, limit: number, includeBumped = true): Promise<TodayCrawledJobs> {
   try {
     const supabase = createSupabaseAdminClient();
-    const since = todayStartIso();
+    const since = recentStartIso();
 
     const base = () => supabase.from(TABLE).select("id", { count: "exact", head: true }).eq("status", "visible");
     const [count, newCount] = await Promise.all([base().gte("posted_at", since), base().gte("first_posted_at", since)]);
@@ -132,12 +133,12 @@ async function fetchCrawledJobs(searchParams: Params, todayOnly: boolean, limit:
     const rows = includeBumped ? all : all.filter((row) => !isBumped(row));
     return { jobs: rows.map((row) => withThumb(supabase, row)), todayTotal: count.count ?? 0, todayNew: newCount.count ?? 0, available: true };
   } catch (error) {
-    console.error("[crawled-jobs] 오늘 수집 공고 조회 실패", error instanceof Error ? error.message : error);
+    console.error("[crawled-jobs] 최근 수집 공고 조회 실패", error instanceof Error ? error.message : error);
     return { jobs: [], todayTotal: 0, todayNew: 0, available: false };
   }
 }
 
-// "오늘 올라온" 모집글: 마지막 게시 시각이 오늘(KST)인 글. 어제 글을 다시 올린 끌올도 포함하고 카드에 끌올 뱃지를 단다.
+// "최근 올라온" 모집글: 마지막 게시 시각이 최근 24시간 안인 글. 어제 글을 다시 올린 끌올도 포함하고 카드에 끌올 뱃지를 단다.
 export const getTodayCrawledJobs = (searchParams: Params) => fetchCrawledJobs(searchParams, true, TODAY_LIMIT);
 
 // 전체보기: 오늘 이전에 올라온 글까지 모두 (최신순)
