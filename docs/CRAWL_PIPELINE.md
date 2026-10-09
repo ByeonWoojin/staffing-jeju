@@ -6,6 +6,7 @@
 
 ```bash
 node scripts/crawl-naver-cafe.mjs --pages=1 --size=30   # 새 글 수집 + 파싱 + 검수 대기 목록
+node scripts/carry-over-review.mjs                     # 끌올로 새 번호가 붙은 글에 이전 번호의 요약·썸네일 번호를 복사 → 크롤링 스크립트 재실행
 node scripts/read-image.mjs <글번호> <시트번호...>      # 안내문 이미지를 읽기 좋게 분할 (Claude가 읽는다)
 node scripts/import-crawled-jobs.mjs --dry-run          # DB 업로드 미리보기 (신규/갱신/썸네일 수)
 node scripts/import-crawled-jobs.mjs                    # 오늘 처음 올라온 글을 Supabase 에 업로드 → 배포 사이트에 노출
