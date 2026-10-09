@@ -78,13 +78,19 @@ for (const [id, p] of Object.entries(posts)) {
   membersOf.get(p.dedupe.firstId).push(id);
 }
 const lookupIds = [...new Set(targets.flatMap((r) => membersOf.get(posts[r.id].dedupe.firstId)))];
-const { data: existingRows, error: exErr } = await supabase.from(TABLE).select("source_group_id, thumbnail_path, thumbnail_source_url").eq("source", "naver_cafe").in("source_group_id", lookupIds);
+// 구성원이 수집 이력 깊이에 따라 달라질 수 있어, 그룹 키뿐 아니라 마지막으로 저장한 글 번호(source_article_id)로도 찾는다.
+const idList = lookupIds.join(",");
+const { data: existingRows, error: exErr } = await supabase.from(TABLE).select("source_group_id, source_article_id, thumbnail_path, thumbnail_source_url").eq("source", "naver_cafe").or(`source_group_id.in.(${idList}),source_article_id.in.(${idList})`);
 if (exErr) {
   console.error("기존 행 조회 실패:", exErr.message);
   process.exit(1);
 }
 const existing = new Map(existingRows.map((r) => [r.source_group_id, r]));
-const keyOf = (r) => { const first = posts[r.id].dedupe.firstId; return membersOf.get(first).find((id) => existing.has(id)) ?? first; };
+const byArticle = new Map(existingRows.map((r) => [r.source_article_id, r]));
+const keyOf = (r) => {
+  const members = membersOf.get(posts[r.id].dedupe.firstId);
+  return members.find((id) => existing.has(id)) ?? members.map((id) => byArticle.get(id)?.source_group_id).find(Boolean) ?? posts[r.id].dedupe.firstId;
+};
 
 // 썸네일: 카드가 4:3 이므로 중앙(주요 피사체 기준) 4:3 으로 잘라 1200x900 JPEG 로 저장
 async function uploadThumbnail(groupId, srcUrl) {
