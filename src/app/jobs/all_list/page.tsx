@@ -47,6 +47,9 @@ export default async function AllListPage({
             <p className="mt-1.5 text-body-sm text-neutral-500">
               네이버 카페에 올라온 제주 게스트하우스 스탭 모집글을 최신순으로 모았어요.
             </p>
+            <p className="mt-1 text-caption text-neutral-400">
+              게시·끌올 시점 기준 최근 30일의 글만 보여드리고, 지난 정보는 매일 자동 삭제해요.
+            </p>
           </div>
         </div>
       </section>

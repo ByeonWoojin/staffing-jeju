@@ -9,6 +9,7 @@ const TABLE = "crawled_job_posts";
 const BUCKET = "crawled-job-images";
 const TODAY_LIMIT = 60;
 const ALL_LIMIT = 200;
+const RETENTION_DAYS = 30;
 
 export type ApplyChannel = "instagram" | "openchat" | "form" | "sms" | "kakao" | "email" | "original";
 
@@ -76,6 +77,7 @@ const normalizeKeyword = (k: string) => k.replace(/[%,()]/g, " ").trim();
 export const kstDate = (value: string | Date) => new Date(value).toLocaleDateString("sv-SE", { timeZone: "Asia/Seoul" });
 // 자정에 섹션이 비지 않도록 "오늘"이 아니라 최근 24시간을 기준으로 한다
 const recentStartIso = () => new Date(Date.now() - 864e5).toISOString();
+const retentionStartIso = () => new Date(Date.now() - RETENTION_DAYS * 864e5).toISOString();
 
 function withThumb<T extends { thumbnail_path: string | null }>(supabase: ReturnType<typeof createSupabaseAdminClient>, row: T): WithThumb<T> {
   const url = row.thumbnail_path ? supabase.storage.from(BUCKET).getPublicUrl(row.thumbnail_path).data.publicUrl : null;
@@ -97,13 +99,14 @@ async function fetchCrawledJobs(searchParams: Params, todayOnly: boolean, limit:
   try {
     const supabase = createSupabaseAdminClient();
     const since = recentStartIso();
+    const retainedSince = retentionStartIso();
 
     const base = () => supabase.from(TABLE).select("id", { count: "exact", head: true }).eq("status", "visible");
     const [count, newCount] = await Promise.all([base().gte("posted_at", since), base().gte("first_posted_at", since)]);
     if (count.error) throw count.error;
     if (newCount.error) throw newCount.error;
 
-    let query = supabase.from(TABLE).select(CARD_COLUMNS.join(",")).eq("status", "visible");
+    let query = supabase.from(TABLE).select(CARD_COLUMNS.join(",")).eq("status", "visible").gte("posted_at", retainedSince);
     if (todayOnly) query = query.gte("posted_at", since);
 
     const region = first(searchParams.region);

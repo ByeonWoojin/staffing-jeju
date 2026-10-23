@@ -126,6 +126,9 @@ export async function CrawledJobsSection({
       <p className="mt-1 text-body-sm font-semibold text-neutral-500">
         최근 24시간 카페에 올라온 모집글 {filtered ? `${jobs.length}건 (전체 ${todayTotal}건)` : `${todayTotal}건`} (새 글 {todayNew}건 · 끌올 {todayTotal - todayNew}건) · 지원은 각 모집글의 안내를 따라 직접 연락해요
       </p>
+      <p className="mt-1 text-caption text-neutral-400">
+        수집한 모집글은 게시·끌올 시점 기준 최근 30일만 보여드리며, 지난 정보는 매일 자동 삭제돼요.
+      </p>
     </div>
   );
 
