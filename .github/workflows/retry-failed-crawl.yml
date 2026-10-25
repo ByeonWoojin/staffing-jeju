@@ -1,0 +1,65 @@
+name: retry-failed-crawl
+
+on:
+  workflow_run:
+    workflows: ["crawl-naver-cafe"]
+    types: [completed]
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  retry:
+    # One controller handles the initial failure and all five retries.
+    # Ignore later completion events from rerun attempts to avoid duplicate controllers.
+    if: >-
+      ${{
+        github.event.workflow_run.run_attempt == 1 &&
+        (github.event.workflow_run.conclusion == 'failure' ||
+         github.event.workflow_run.conclusion == 'timed_out')
+      }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RUN_ID: ${{ github.event.workflow_run.id }}
+      LAST_ATTEMPT: ${{ github.event.workflow_run.run_attempt }}
+      REPOSITORY: ${{ github.repository }}
+
+    steps:
+      - name: Retry failed crawl up to five times
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          last_attempt="$LAST_ATTEMPT"
+
+          for retry_number in 1 2 3 4 5; do
+            echo "Retry ${retry_number}/5 will start in one hour (run ${RUN_ID}, attempt ${last_attempt})."
+            sleep 3600
+
+            expected_attempt=$((last_attempt + 1))
+            gh api --method POST "repos/${REPOSITORY}/actions/runs/${RUN_ID}/rerun-failed-jobs" >/dev/null
+            echo "Started retry ${retry_number}/5 (attempt ${expected_attempt})."
+
+            while true; do
+              state="$(gh api "repos/${REPOSITORY}/actions/runs/${RUN_ID}" --jq '[.status, (.conclusion // ""), (.run_attempt | tostring)] | @tsv')"
+              read -r status conclusion current_attempt <<< "$state"
+
+              if [[ "$current_attempt" -ge "$expected_attempt" && "$status" == "completed" ]]; then
+                last_attempt="$current_attempt"
+                if [[ "$conclusion" == "success" ]]; then
+                  echo "Crawl recovered successfully on attempt ${last_attempt}; stopping retries."
+                  exit 0
+                fi
+                echo "Attempt ${last_attempt} completed with conclusion '${conclusion}'."
+                break
+              fi
+
+              sleep 30
+            done
+          done
+
+          echo "Crawl still failed after five additional hourly retries."
+          exit 1
