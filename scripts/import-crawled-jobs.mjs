@@ -24,6 +24,7 @@ const DRY = flag("dry-run");
 const KEEP = flag("keep-existing");
 const BUCKET = "crawled-job-images";
 const TABLE = "crawled_job_posts";
+const LOOKUP_BATCH_SIZE = 100;
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -32,6 +33,15 @@ if (!url || !key) {
   process.exit(1);
 }
 const supabase = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const isRetryableRequestError = (error) => {
+  const status = error?.status;
+  return error instanceof TypeError
+    || status === 429
+    || status >= 500
+    || /fetch failed|network|timeout|socket|ECONNRESET|ETIMEDOUT|EAI_AGAIN/i.test(error?.message ?? "");
+};
 
 const feedPath = path.join(root, ".crawl", "feed.json");
 const postsPath = path.join(root, ".crawl", "posts.json");
@@ -79,10 +89,39 @@ for (const [id, p] of Object.entries(posts)) {
 }
 const lookupIds = [...new Set(targets.flatMap((r) => membersOf.get(posts[r.id].dedupe.firstId)))];
 // 구성원이 수집 이력 깊이에 따라 달라질 수 있어, 그룹 키뿐 아니라 마지막으로 저장한 글 번호(source_article_id)로도 찾는다.
-const idList = lookupIds.join(",");
-const { data: existingRows, error: exErr } = await supabase.from(TABLE).select("source_group_id, source_article_id, thumbnail_path, thumbnail_source_url").eq("source", "naver_cafe").or(`source_group_id.in.(${idList}),source_article_id.in.(${idList})`);
-if (exErr) {
-  console.error("기존 행 조회 실패:", exErr.message);
+const existingRows = [];
+for (let offset = 0; offset < lookupIds.length; offset += LOOKUP_BATCH_SIZE) {
+  const batch = lookupIds.slice(offset, offset + LOOKUP_BATCH_SIZE);
+  const idList = batch.join(",");
+  let data;
+  let error;
+
+  // 요청 URL 이 지나치게 길어지는 것을 막고, 네트워크 단절도 지수 간격으로 재시도한다.
+  for (let attempt = 1; attempt <= 4; attempt++) {
+    try {
+      ({ data, error } = await supabase
+        .from(TABLE)
+        .select("source_group_id, source_article_id, thumbnail_path, thumbnail_source_url")
+        .eq("source", "naver_cafe")
+        .or(`source_group_id.in.(${idList}),source_article_id.in.(${idList})`));
+    } catch (cause) {
+      error = cause;
+    }
+
+    if (!error) break;
+    if (attempt === 4 || !isRetryableRequestError(error)) break;
+    console.warn(`기존 행 조회 재시도 ${attempt}/4 (묶음 ${Math.floor(offset / LOOKUP_BATCH_SIZE) + 1}): ${error.message ?? error}`);
+    await sleep(1000 * 2 ** (attempt - 1));
+  }
+
+  if (error) {
+    console.error("기존 행 조회 실패:", error.message ?? error);
+    process.exit(1);
+  }
+  existingRows.push(...(data ?? []));
+}
+if (existingRows.length === 0 && lookupIds.length === 0) {
+  console.error("기존 행 조회 대상 ID 가 없습니다.");
   process.exit(1);
 }
 const existing = new Map(existingRows.map((r) => [r.source_group_id, r]));
