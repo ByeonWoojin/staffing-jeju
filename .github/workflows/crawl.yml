@@ -35,3 +35,18 @@ jobs:
       # 쿠키는 크롤링 직후 먼저 저장(이후 단계가 실패해도 갱신분을 잃지 않게)
       - run: node scripts/cookie-state.mjs push
       - run: node scripts/import-crawled-jobs.mjs --days=2 --keep-existing
+      # 요약이 빈 최신 글 몇 건을 Claude(구독 토큰)가 검수·요약 → 크롤 스크립트를 캐시로 재실행해 썸네일/요약을 반영 → 업로드
+      - run: node scripts/review-queue.mjs --limit=6
+      - name: Claude 검수·요약 (실패해도 업로드는 계속)
+        continue-on-error: true
+        timeout-minutes: 20
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+        run: |
+          if [ -n "$CLAUDE_CODE_OAUTH_TOKEN" ] && [ "$(cat .crawl/review-queue.json)" != "[]" ]; then
+            npx -y @anthropic-ai/claude-code@latest -p "$(cat .github/review-prompt.md)" \
+              --permission-mode acceptEdits --max-turns 120 \
+              --allowedTools "Read" "Write" "Bash(node scripts/read-image.mjs:*)"
+          fi
+      - run: node scripts/crawl-naver-cafe.mjs --pages=14 --size=30
+      - run: node scripts/import-crawled-jobs.mjs --days=2 --keep-existing --review

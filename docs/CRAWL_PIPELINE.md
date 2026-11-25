@@ -174,3 +174,7 @@ node scripts/lib/parse-cafe-post.check.mjs              # 파서 회귀 체크
 - **검수는 자동화하지 않는다.** 새 글은 자동 선택 썸네일과 파서 값으로 올라가고(어필 포인트 요약 없음), 이미 올라간 행은 `posted_at`/`repost_count`/원문 링크만 갱신해 수동 검수한 썸네일·요약을 덮어쓰지 않는다(`--keep-existing`). 요약·썸네일은 Claude 세션에서 채우고 `import-crawled-jobs.mjs`(옵션 없이)로 올린다.
 - **쿠키 자동 연장**: 네이버가 응답마다 새 `NID_SES`를 내려주므로 `.crawl/cookie.json`에 받아 두고, 실행 사이에는 `scripts/cookie-state.mjs`가 Supabase 비공개 버킷 `crawler-state`에 보관/복원한다. Secrets 값을 새로 바꾸면(base 불일치) 저장본은 무시한다. 네이버 쪽에서 완전히 만료되면 `0004`로 실패하고 GitHub가 실패 메일을 보내니 쿠키를 다시 발급해 Secrets에 넣는다.
 - `.crawl/raw`는 `actions/cache`로 이어 써서 중복/끌올 판정이 유지된다. 캐시가 비면 첫 실행이 오래 걸린다.
+
+## 자동 검수·요약 (GitHub Actions)
+
+크롤 → 업로드 직후 `review-queue.mjs`가 요약(intro)이 빈 공개 행 최신 6건을 고르고, Claude Code(구독 토큰 `CLAUDE_CODE_OAUTH_TOKEN`)가 `.github/review-prompt.md` 지침대로 썸네일·요약을 `.crawl/`에 쓴 뒤, 크롤 스크립트를 캐시로 재실행해 반영하고 `import --review`로 해당 글만 전체 갱신한다. 토큰이 없거나 검수가 실패해도 기본 업로드는 유지된다. 한 번에 6건이라 밀린 글은 실행 때마다 줄어든다. 토큰 발급: 터미널에서 `claude setup-token` → `gh secret set CLAUDE_CODE_OAUTH_TOKEN`.

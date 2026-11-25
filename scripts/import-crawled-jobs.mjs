@@ -3,6 +3,7 @@
 // 사용: node scripts/import-crawled-jobs.mjs [--days=1] [--all] [--dry-run]
 //   기본: 오늘(KST) 올라온 글(끌올 포함, posted_at 갱신). --days=N 이면 최근 N일, --all 이면 대표 글 전체.
 //   --keep-existing: 기존 행은 posted_at/repost_count/원문 링크만 갱신 (GitHub Actions 배치용)
+//   --review: review-queue.json 의 글은 기존 행도 요약·썸네일까지 전체 갱신
 //   같은 글(끌올)은 source_group_id 로 찾아 새 행을 만들지 않고 갱신한다. status(숨김 처리 등)는 덮어쓰지 않는다.
 // 필요: .env.local 의 NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY, 마이그레이션 019 적용
 import { existsSync, readFileSync } from "node:fs";
@@ -56,7 +57,9 @@ const posts = JSON.parse(readFileSync(postsPath, "utf8"));
 const kst = (v) => new Date(v).toLocaleDateString("sv-SE", { timeZone: "Asia/Seoul" });
 const days = +arg("days", 1);
 const cutoff = new Date(`${kst(new Date())}T00:00:00+09:00`).getTime() - (days - 1) * 864e5;
-const targets = feed.filter((r) => flag("all") || new Date(r.writtenAt).getTime() >= cutoff);
+// --review: .crawl/review-queue.json 의 글(Claude 가 요약을 채운 글)은 기존 행이어도 --keep-existing 을 무시하고 전체 갱신한다.
+const reviewIds = new Set(flag("review") && existsSync(path.join(root, ".crawl", "review-queue.json")) ? JSON.parse(readFileSync(path.join(root, ".crawl", "review-queue.json"), "utf8")) : []);
+const targets = feed.filter((r) => flag("all") || reviewIds.has(r.id) || new Date(r.writtenAt).getTime() >= cutoff);
 
 console.log(`대상 프로젝트: ${new URL(url).hostname}`);
 console.log(`선택된 글: ${targets.length}건 (대표 글 ${feed.length}건 중, ${flag("all") ? "전체" : `최근 ${days}일 게시(끌올 포함)`})${DRY ? " [dry-run]" : ""}`);
@@ -151,7 +154,7 @@ for (const r of targets) {
   const groupId = keyOf(r);
   const prev = existing.get(groupId);
   prev ? updated++ : inserted++;
-  if (prev && KEEP) {
+  if (prev && KEEP && !reviewIds.has(r.id)) {
     bumps.push({ groupId, patch: { posted_at: r.writtenAt, repost_count: r.reposts, source_article_id: r.id, source_url: r.url } });
     continue;
   }
